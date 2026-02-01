@@ -3,5 +3,5 @@ export interface User {
   name: string;
   username: string;
   email: string;
-  avatar: string;
+  avatar?: string;
 }

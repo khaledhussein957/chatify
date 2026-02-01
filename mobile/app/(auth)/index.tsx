@@ -16,41 +16,45 @@ const AuthScreen = () => {
   return (
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <View style={{ gap: 12, alignItems: "center", justifyContent: "center" }}>
+        <View
+          style={{ gap: 12, alignItems: "center", justifyContent: "center" }}
+        >
           <Pressable
-          disabled={isLoading}
-          accessibilityRole="button"
-          accessibilityLabel="Continue with Google"
-          onPress={() => !isLoading && handleSocialAuth("oauth_google")}
-        >
-          {loadingStrategy === "oauth_google" ? (
-            <ActivityIndicator size="small" color="#1a1a1a" />
-          ) : (
-            <>
-              <Text className="text-gray-900 font-semibold text-sm">
-                Google
-              </Text>
-            </>
-          )}
-        </Pressable>
+            disabled={isLoading}
+            style={[styles.button, styles.googleButton]}
+            accessibilityRole="button"
+            accessibilityLabel="Continue with Google"
+            onPress={() => handleSocialAuth("oauth_google")}
+          >
+            {loadingStrategy === "oauth_google" ? (
+              <ActivityIndicator size="small" color="#1a1a1a" />
+            ) : (
+              <>
+                <Text className="text-gray-900 font-semibold text-sm">
+                  Google
+                </Text>
+              </>
+            )}
+          </Pressable>
 
-        {/* APPLE BTN */}
-        <Pressable
-          disabled={isLoading}
-          accessibilityRole="button"
-          accessibilityLabel="Continue with Apple"
-          onPress={() => !isLoading && handleSocialAuth("oauth_apple")}
-        >
-          {loadingStrategy === "oauth_apple" ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <>
-              <Text className="text-foreground font-semibold text-sm">
-                Apple
-              </Text>
-            </>
-          )}
-        </Pressable>
+          {/* APPLE BTN */}
+          <Pressable
+            disabled={isLoading}
+            style={[styles.button, styles.appleButton]}
+            accessibilityRole="button"
+            accessibilityLabel="Continue with Apple"
+            onPress={() => handleSocialAuth("oauth_apple")}
+          >
+            {loadingStrategy === "oauth_apple" ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Text className="text-foreground font-semibold text-sm">
+                  Apple
+                </Text>
+              </>
+            )}
+          </Pressable>
         </View>
       </SafeAreaView>
     </View>

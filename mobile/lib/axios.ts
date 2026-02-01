@@ -2,7 +2,7 @@ import axios from "axios";
 import { useAuth } from "@clerk/clerk-expo";
 import { useCallback } from "react";
 
-const API_URL = "http://192.168.8.51:9000/api";
+const API_URL = process.env.EXPO_PUBLIC_API_URL!
 
 // this is the same thing we did with useEffect setup but it's optimized version - it's better!!
 
