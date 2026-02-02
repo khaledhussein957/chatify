@@ -18,14 +18,20 @@ export const useMessages = (chatId: string) => {
   });
 };
 
+type FileUpload = {
+  uri: string;
+  type: string;
+  name: string;
+};
+
 export const useSendMessageWithContent = () => {
   const { apiWithAuth } = useApi();
 
-  return async (chatId: string, text: string, file?: FormData) => {
+  return async (chatId: string, text: string, file?: FileUpload) => {
     const formData = new FormData();
     formData.append("chatId", chatId);
     formData.append("text", text);
-    if (file) formData.append("content", file as any); // use 'content' to match server
+    if (file) formData.append("content", file as any); // React Native accepts {uri, type, name}
 
     const { data } = await apiWithAuth<Message>({
       method: "POST",

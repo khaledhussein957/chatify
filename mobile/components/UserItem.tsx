@@ -10,6 +10,8 @@ type UserItemProps = {
 };
 
 function UserItem({ user, isOnline, onPress }: UserItemProps) {
+  const hasAvatar = Boolean(user.avatar);
+  const initial = user.name?.trim()?.[0]?.toUpperCase() ?? "?";
   return (
     <Pressable
       onPress={onPress}
@@ -23,10 +25,27 @@ function UserItem({ user, isOnline, onPress }: UserItemProps) {
     >
       {/* Avatar & online indicator */}
       <View style={{ position: "relative" }}>
-        <Image
-          source={{ uri: user.avatar }}
-          style={{ width: 48, height: 48, borderRadius: 999 }}
-        />
+        {hasAvatar ? (
+          <Image
+            source={{ uri: user.avatar }}
+            style={{ width: 48, height: 48, borderRadius: 999 }}
+          />
+        ) : (
+          <View
+            style={{
+              width: 48,
+              height: 48,
+              borderRadius: 999,
+              backgroundColor: COLORS.surfaceLight,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ color: COLORS.foreground, fontWeight: "600" }}>
+              {initial}
+            </Text>
+          </View>
+        )}
         {isOnline && (
           <View
             style={{

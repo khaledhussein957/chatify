@@ -10,13 +10,25 @@ const SocketConnection = () => {
   const disconnect = useSocketStore((state) => state.disconnect);
 
   useEffect(() => {
-    if (isSignedIn) {
-      getToken().then((token) => {
-        if (token) connect(token, queryClient);
-      });
-    } else disconnect();
+    let active = true;
+
+    const run = async () => {
+      if (!isSignedIn) {
+        disconnect();
+        return;
+      }
+      try {
+        const token = await getToken();
+        if (active && token) connect(token, queryClient);
+      } catch (err) {
+        console.warn("Socket auth token fetch failed", err);
+      }
+    };
+
+    run();
 
     return () => {
+      active = false;
       disconnect();
     };
   }, [isSignedIn, connect, disconnect, getToken, queryClient]);

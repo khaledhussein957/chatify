@@ -6,7 +6,14 @@ import { User } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, Text, TextInput, View, ScrollView } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+  ScrollView,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS } from "@/constants/theme";
 
@@ -14,14 +21,18 @@ const NewChatScreen = () => {
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: allUsers, isLoading } = useUsers();
-  const { mutate: getOrCreateChat, isPending: isCreatingChat } = useGetOrCreateChat();
+  const { mutate: getOrCreateChat, isPending: isCreatingChat } =
+    useGetOrCreateChat();
   const { onlineUsers } = useSocketStore();
 
   // client-side filtering
   const users = allUsers?.filter((u) => {
     if (!searchQuery.trim()) return true;
     const query = searchQuery.toLowerCase();
-    return u.name?.toLowerCase().includes(query) || u.email?.toLowerCase().includes(query);
+    return (
+      u.name?.toLowerCase().includes(query) ||
+      u.email?.toLowerCase().includes(query)
+    );
   });
 
   const handleUserSelect = (user: User) => {
@@ -40,12 +51,25 @@ const NewChatScreen = () => {
           });
         }, 100);
       },
+      onError: (error) => {
+        // Consider showing an alert or toast
+        console.error("Failed to create chat:", error);
+      },
     });
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: COLORS.background }} edges={["top"]}>
-      <View style={{ flex: 1, backgroundColor: COLORS.background + "40", justifyContent: "flex-end" }}>
+    <SafeAreaView
+      style={{ flex: 1, backgroundColor: COLORS.background }}
+      edges={["top"]}
+    >
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: COLORS.background + "40",
+          justifyContent: "flex-end",
+        }}
+      >
         <View
           style={{
             backgroundColor: COLORS.surfaceCard,
@@ -83,7 +107,13 @@ const NewChatScreen = () => {
             </Pressable>
 
             <View style={{ flex: 1 }}>
-              <Text style={{ color: COLORS.foreground, fontSize: 20, fontWeight: "600" }}>
+              <Text
+                style={{
+                  color: COLORS.foreground,
+                  fontSize: 20,
+                  fontWeight: "600",
+                }}
+              >
                 New chat
               </Text>
               <Text style={{ color: COLORS.grey, fontSize: 12, marginTop: 2 }}>
@@ -93,7 +123,13 @@ const NewChatScreen = () => {
           </View>
 
           {/* SEARCH BAR */}
-          <View style={{ paddingHorizontal: 20, paddingVertical: 12, backgroundColor: COLORS.surfaceCard }}>
+          <View
+            style={{
+              paddingHorizontal: 20,
+              paddingVertical: 12,
+              backgroundColor: COLORS.surfaceCard,
+            }}
+          >
             <View
               style={{
                 flexDirection: "row",
@@ -126,24 +162,56 @@ const NewChatScreen = () => {
           {/* USERS LIST */}
           <View style={{ flex: 1, backgroundColor: COLORS.surfaceCard }}>
             {isCreatingChat || isLoading ? (
-              <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
                 <ActivityIndicator size="large" color={COLORS.primary} />
               </View>
             ) : !users || users.length === 0 ? (
-              <View style={{ flex: 1, justifyContent: "center", alignItems: "center", paddingHorizontal: 20 }}>
+              <View
+                style={{
+                  flex: 1,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  paddingHorizontal: 20,
+                }}
+              >
                 <Ionicons name="person-outline" size={64} color={COLORS.grey} />
-                <Text style={{ color: COLORS.grey, fontSize: 18, marginTop: 12 }}>No users found</Text>
-                <Text style={{ color: COLORS.grey, fontSize: 14, marginTop: 4, textAlign: "center" }}>
+                <Text
+                  style={{ color: COLORS.grey, fontSize: 18, marginTop: 12 }}
+                >
+                  No users found
+                </Text>
+                <Text
+                  style={{
+                    color: COLORS.grey,
+                    fontSize: 14,
+                    marginTop: 4,
+                    textAlign: "center",
+                  }}
+                >
                   Try a different search term
                 </Text>
               </View>
             ) : (
               <ScrollView
                 style={{ flex: 1 }}
-                contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24 }}
+                contentContainerStyle={{
+                  paddingHorizontal: 20,
+                  paddingTop: 16,
+                  paddingBottom: 24,
+                }}
                 showsVerticalScrollIndicator={false}
               >
-                <Text style={{ color: COLORS.grey, fontSize: 12, marginBottom: 8 }}>USERS</Text>
+                <Text
+                  style={{ color: COLORS.grey, fontSize: 12, marginBottom: 8 }}
+                >
+                  USERS
+                </Text>
                 {users.map((user) => (
                   <UserItem
                     key={user._id}

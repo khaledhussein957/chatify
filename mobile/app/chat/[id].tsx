@@ -29,7 +29,12 @@ type ChatParams = {
 };
 
 const ChatDetailScreen = () => {
-  const { id: chatId, avatar, name, participantId } = useLocalSearchParams<ChatParams>();
+  const {
+    id: chatId,
+    avatar,
+    name,
+    participantId,
+  } = useLocalSearchParams<ChatParams>();
 
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -38,8 +43,15 @@ const ChatDetailScreen = () => {
   const { data: currentUser } = useCurrentUser();
   const { data: messages, isLoading } = useMessages(chatId);
 
-  const { joinChat, leaveChat, sendMessage, sendTyping, isConnected, onlineUsers, typingUsers } =
-    useSocketStore();
+  const {
+    joinChat,
+    leaveChat,
+    sendMessage,
+    sendTyping,
+    isConnected,
+    onlineUsers,
+    typingUsers,
+  } = useSocketStore();
 
   const isOnline = participantId ? onlineUsers.has(participantId) : false;
   const isTyping = typingUsers.get(chatId) === participantId;
@@ -91,12 +103,11 @@ const ChatDetailScreen = () => {
         sendTyping(chatId, false);
       }
     },
-    [chatId, isConnected, sendTyping]
+    [chatId, isConnected, sendTyping],
   );
 
   const handleSend = () => {
-    console.log({ isSending, isConnected, currentUser, messageText });
-    if (!messageText.trim() || isSending || !isConnected || !currentUser) return;
+    if (!messageText.trim() || !isConnected || !currentUser) return;
 
     // stop typing indicator
     if (typingTimeoutRef.current) {
@@ -104,15 +115,13 @@ const ChatDetailScreen = () => {
     }
     sendTyping(chatId, false);
 
-    setIsSending(true);
     sendMessage(chatId, messageText.trim(), {
       _id: currentUser._id,
       name: currentUser.name,
       email: currentUser.email,
-      avatar: currentUser.avatar,
+      avatar: currentUser.avatar as string,
     });
     setMessageText("");
-    setIsSending(false);
 
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -127,12 +136,22 @@ const ChatDetailScreen = () => {
           <Ionicons name="arrow-back" size={24} color="#F4A261" />
         </Pressable>
         <View className="flex-row items-center flex-1 ml-2">
-          {avatar && <Image source={avatar} style={{ width: 40, height: 40, borderRadius: 999 }} />}
+          {avatar && (
+            <Image
+              source={avatar}
+              style={{ width: 40, height: 40, borderRadius: 999 }}
+            />
+          )}
           <View className="ml-3">
-            <Text className="text-foreground font-semibold text-base" numberOfLines={1}>
+            <Text
+              className="text-foreground font-semibold text-base"
+              numberOfLines={1}
+            >
               {name}
             </Text>
-            <Text className={`text-xs ${isTyping ? "text-primary" : "text-muted-foreground"}`}>
+            <Text
+              className={`text-xs ${isTyping ? "text-primary" : "text-muted-foreground"}`}
+            >
               {isTyping ? "typing..." : isOnline ? "Online" : "Offline"}
             </Text>
           </View>
@@ -170,16 +189,31 @@ const ChatDetailScreen = () => {
           ) : (
             <ScrollView
               ref={scrollViewRef}
-              contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 12, gap: 8 }}
+              contentContainerStyle={{
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                gap: 8,
+              }}
               onContentSizeChange={() => {
                 scrollViewRef.current?.scrollToEnd({ animated: false });
               }}
             >
               {messages.map((message) => {
-                const senderId = (message.sender as MessageSender)._id;
-                const isFromMe = currentUser ? senderId === currentUser._id : false;
+                const senderId =
+                  typeof message.sender === "string"
+                    ? message.sender
+                    : message.sender._id;
+                const isFromMe = currentUser
+                  ? senderId === currentUser._id
+                  : false;
 
-                return <MessageBubble key={message._id} message={message} isFromMe={isFromMe} />;
+                return (
+                  <MessageBubble
+                    key={message._id}
+                    message={message}
+                    isFromMe={isFromMe}
+                  />
+                );
               })}
             </ScrollView>
           )}

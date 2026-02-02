@@ -18,7 +18,11 @@ interface SocketState {
   disconnect: () => void;
   joinChat: (chatId: string) => void;
   leaveChat: (chatId: string) => void;
-  sendMessage: (chatId: string, text: string, currentUser: MessageSender) => void;
+  sendMessage: (
+    chatId: string,
+    text: string,
+    currentUser: MessageSender,
+  ) => void;
   sendTyping: (chatId: string, isTyping: boolean) => void;
 }
 
@@ -73,7 +77,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     });
 
     socket.on("new-message", (message: Message) => {
-      const senderId = (message.sender as MessageSender)._id;
+      const senderId =
+        typeof message.sender === "string"
+          ? message.sender
+          : message.sender._id;
       const { currentChatId } = get();
 
       // add message to the chat's message list, replacing optimistic messages
@@ -125,7 +132,15 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     socket.on(
       "typing",
-      ({ userId, chatId, isTyping }: { userId: string; chatId: string; isTyping: boolean }) => {
+      ({
+        userId,
+        chatId,
+        isTyping,
+      }: {
+        userId: string;
+        chatId: string;
+        isTyping: boolean;
+      }) => {
         set((state) => {
           const typingUsers = new Map(state.typingUsers);
           if (isTyping) typingUsers.set(chatId, userId);
@@ -133,7 +148,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
           return { typingUsers: typingUsers };
         });
-      }
+      },
     );
 
     set({ socket, queryClient });
