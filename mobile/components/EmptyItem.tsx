@@ -12,6 +12,23 @@ type EmptyUIProps = {
   onPressButton?: () => void;
 };
 
+/**
+ * Render a centered empty-state UI with a title and optional icon, subtitle, and action button.
+ *
+ * Displays the required `title`. If `iconName` is provided an icon is shown above the title.
+ * If `subtitle` is provided it appears beneath the title. If both `buttonLabel` and
+ * `onPressButton` are provided, a pill-shaped action button is rendered that invokes `onPressButton`
+ * when pressed.
+ *
+ * @param title - Primary text shown in the empty state
+ * @param subtitle - Optional supplementary text shown below the title
+ * @param iconName - Optional Ionicons name for the icon to display above the title
+ * @param iconColor - Color used to render the icon
+ * @param iconSize - Size of the icon in pixels
+ * @param buttonLabel - Label text for the optional action button
+ * @param onPressButton - Callback invoked when the action button is pressed
+ * @returns The rendered empty-state React element
+ */
 function EmptyUI({
   title,
   subtitle,

@@ -9,6 +9,14 @@ type UserItemProps = {
   onPress: () => void;
 };
 
+/**
+ * Render a pressable user list item showing avatar, name, email, and an optional online indicator.
+ *
+ * @param user - The user data to display (avatar, name, email).
+ * @param isOnline - If true, show a small online badge on the avatar and an "Online" label.
+ * @param onPress - Callback invoked when the item is pressed.
+ * @returns The rendered React element for the user item.
+ */
 function UserItem({ user, isOnline, onPress }: UserItemProps) {
   const hasAvatar = Boolean(user.avatar);
   const initial = user.name?.trim()?.[0]?.toUpperCase() ?? "?";

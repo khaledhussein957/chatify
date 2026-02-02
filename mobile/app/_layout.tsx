@@ -9,6 +9,15 @@ import SocketConnection from "@/components/SocetConnection";
 
 const queryClient = new QueryClient();
 
+/**
+ * Root application layout that supplies authentication, React Query, socket connectivity, and app navigation.
+ *
+ * This component wraps the app in authentication and data-fetching providers, renders authentication synchronization
+ * and a status bar, establishes a socket connection, and declares the top-level navigation stack with the
+ * "(auth)" and "(tabs)" screens (both using a fade animation).
+ *
+ * @returns The root JSX element containing provider wrappers, the socket connection, and the navigation stack.
+ */
 export default function RootLayout() {
   return (
     <ClerkProvider tokenCache={tokenCache}>
