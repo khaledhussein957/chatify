@@ -20,6 +20,11 @@ const app = Express();
 app.use(Express.json());
 app.use(clerkMiddleware());
 
+// test route
+app.get("/api/health", (req, res) => {
+  res.status(200).json({ status: "OK", message: "Server is healthy" });
+});
+
 // Routes
 app.use("/api/auth", authRoute);
 app.use("/api/chats", chatRoute);
