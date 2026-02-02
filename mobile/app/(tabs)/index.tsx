@@ -1,4 +1,3 @@
-
 import { useChats } from "@/hooks/useChat";
 import { Chat } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
@@ -71,6 +70,14 @@ const ChatsTab = () => {
 
 export default ChatsTab;
 
+/**
+ * Renders the Chats tab header with a title and a New Chat action.
+ *
+ * Displays the "Chats" title on the left and a circular create button on the right
+ * that navigates to /new-chat when pressed.
+ *
+ * @returns The header view containing the title text and the New Chat pressable.
+ */
 function Header() {
   const router = useRouter();
 
