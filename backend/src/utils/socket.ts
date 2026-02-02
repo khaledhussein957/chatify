@@ -23,7 +23,9 @@ export const initializeSocket = (httpServer: HttpServer) => {
     if (!token) return next(new Error("Authentication error"));
 
     try {
-      const session = await verifyToken(token, { secretKey: process.env.CLERK_SECRET_KEY! });
+      const session = await verifyToken(token, {
+        secretKey: process.env.CLERK_SECRET_KEY!,
+      });
 
       const clerkId = session.sub;
 
@@ -63,48 +65,61 @@ export const initializeSocket = (httpServer: HttpServer) => {
     });
 
     // handle sending messages
-    socket.on("send-message", async (data: { chatId: string; text: string }) => {
-      try {
-        const { chatId, text } = data;
+    socket.on(
+      "send-message",
+      async (data: { chatId: string; text: string }) => {
+        try {
+          const { chatId, text } = data;
 
-        const chat = await Chat.findOne({
-          _id: chatId,
-          participants: userId,
-        });
+          const chat = await Chat.findOne({
+            _id: chatId,
+            participants: userId,
+          });
 
-        if (!chat) {
-          socket.emit("socket-error", { message: "Chat not found" });
-          return;
+          if (!chat) {
+            socket.emit("socket-error", { message: "Chat not found" });
+            return;
+          }
+
+          if (!text || text.trim() === "") {
+            socket.emit("socket-error", {
+              message: "Message text cannot be empty",
+            });
+            return;
+          }
+
+          const message = await Message.create({
+            chat: chatId,
+            sender: userId,
+            text,
+          });
+
+          chat.lastMessage = message._id;
+          chat.lastMessageAt = new Date();
+          await chat.save();
+
+          await message.populate("sender", "name avatar");
+
+          // emit to participants' personal rooms, excluding those in the chat room
+          for (const participantId of chat.participants) {
+            const userRoom = `user:${participantId}`;
+            const chatRoom = `chat:${chatId}`;
+            // Get sockets in user room that are NOT in chat room
+            const userRoomSockets = io.sockets.adapter.rooms.get(userRoom);
+            const chatRoomSockets = io.sockets.adapter.rooms.get(chatRoom);
+            if (userRoomSockets) {
+              for (const socketId of userRoomSockets) {
+                if (!chatRoomSockets?.has(socketId)) {
+                  io.to(socketId).emit("new-message", message);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          socket.emit("socket-error", { message: "Failed to send message" });
         }
-
-        if (!text || text.trim() === "") {
-          socket.emit("socket-error", { message: "Message text cannot be empty" });
-          return;
-        }
-
-        const message = await Message.create({
-          chat: chatId,
-          sender: userId,
-          text,
-        });
-
-        chat.lastMessage = message._id;
-        chat.lastMessageAt = new Date();
-        await chat.save();
-
-        await message.populate("sender", "name avatar");
-
-        // emit to chat room (for users inside the chat)
-        io.to(`chat:${chatId}`).emit("new-message", message);
-
-        // also emit to participants' personal rooms (for chat list view)
-        for (const participantId of chat.participants) {
-          io.to(`user:${participantId}`).emit("new-message", message);
-        }
-      } catch (error) {
-        socket.emit("socket-error", { message: "Failed to send message" });
-      }
-    });
+      },
+    );
 
     socket.on("typing", async (data: { chatId: string; isTyping: boolean }) => {
       const typingPayload = {
@@ -120,9 +135,13 @@ export const initializeSocket = (httpServer: HttpServer) => {
       try {
         const chat = await Chat.findById(data.chatId);
         if (chat) {
-          const otherParticipantId = chat.participants.find((p: any) => p.toString() !== userId);
+          const otherParticipantId = chat.participants.find(
+            (p: any) => p.toString() !== userId,
+          );
           if (otherParticipantId) {
-            socket.to(`user:${otherParticipantId}`).emit("typing", typingPayload);
+            socket
+              .to(`user:${otherParticipantId}`)
+              .emit("typing", typingPayload);
           }
         }
       } catch (error) {

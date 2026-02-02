@@ -17,7 +17,6 @@ export async function getUsers(req: AuthRequest, res: Response, next: NextFuncti
     res.json(users);
   } catch (error) {
     console.log(`Error in get users: ${error}`);
-    res.status(500).json({ message: "Internal server error" });
     next(error);
   }
 }

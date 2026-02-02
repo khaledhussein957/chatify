@@ -3,7 +3,11 @@ import type { AuthRequest } from "../middlewares/auth.middleware";
 import Chat from "../models/chat.model";
 import { Types } from "mongoose";
 
-export const getOrCreateChat = async (req: AuthRequest, res: Response, next: NextFunction) => {
+export const getOrCreateChat = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
   try {
     const userId = req.userId;
     const { participantId } = req.body;
@@ -22,10 +26,14 @@ export const getOrCreateChat = async (req: AuthRequest, res: Response, next: Nex
         .json({ message: "Cannot create chat with yourself" });
     }
 
-    // Check if a chat already exists between the two users
-    let chat = await Chat.findOne({
-      participants: { $all: [userId, participantId] },
-    })
+    // Sort participants for consistent ordering
+    const sortedParticipants = [userId, participantId].sort();
+
+    let chat = await Chat.findOneAndUpdate(
+      { participants: { $all: sortedParticipants, $size: 2 } },
+      { $setOnInsert: { participants: sortedParticipants } },
+      { upsert: true, new: true },
+    )
       .populate("participants", "name email avatar")
       .populate("lastMessage");
 
@@ -49,7 +57,6 @@ export const getOrCreateChat = async (req: AuthRequest, res: Response, next: Nex
     });
   } catch (error) {
     console.log(`Error in get or create chat: ${error}`);
-    res.status(500).json({ message: "Internal server error" });
     next(error);
   }
 };
@@ -87,7 +94,6 @@ export const getChats = async (
     res.json(formattedChats);
   } catch (error) {
     console.log(`Error in get chats: ${error}`);
-    res.status(500).json({ message: "Internal server error" });
     next(error);
   }
 };

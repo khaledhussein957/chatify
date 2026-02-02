@@ -32,7 +32,6 @@ export const getMessages = async (
     res.json(messages);
   } catch (error) {
     console.log(`Error in get messages: ${error}`);
-    res.status(500).json({ message: "Internal server error" });
     next(error);
   }
 };
@@ -87,7 +86,6 @@ export const sendMessageWithContent = async (
     res.status(201).json(message);
   } catch (error) {
     console.log(`Error in send message: ${error}`);
-    res.status(500).json({ message: "Internal server error" });
     next(error);
   }
 };
