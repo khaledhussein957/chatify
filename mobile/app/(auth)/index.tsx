@@ -30,7 +30,7 @@ const AuthScreen = () => {
               <ActivityIndicator size="small" color="#1a1a1a" />
             ) : (
               <>
-                <Text className="text-gray-900 font-semibold text-sm">
+                <Text style={{ color: "#FFFFFF", fontWeight: "600", fontSize: 16 }}>
                   Google
                 </Text>
               </>
@@ -49,7 +49,7 @@ const AuthScreen = () => {
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <>
-                <Text className="text-foreground font-semibold text-sm">
+                <Text style={{ color: "#000000", fontWeight: "600", fontSize: 16 }}>
                   Apple
                 </Text>
               </>
@@ -68,12 +68,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginVertical: 8,
+    width: "100%",
   },
   googleButton: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#000000",
   },
   appleButton: {
-    backgroundColor: "#000000",
+    backgroundColor: "#FFFFFF",
   },
   safeArea: {
     flex: 1,
