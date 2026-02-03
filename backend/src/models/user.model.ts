@@ -1,22 +1,37 @@
 import mongoose, { Schema, type Document } from "mongoose";
 
 export interface IUser extends Document {
-  clerkId: string;
   name: string;
-  username: string;
   email: string;
+  password: string;
+  bio?: string;
   avatar?: string;
+
+  resetCode?: string;
+  resetCodeExpiresAt?: Date;
+  resetPasswordResendCount: number;
+  resetPasswordRequestedAt?: Date;
+
   createdAt: Date;
   updatedAt: Date;
 }
 
 const UserSchema: Schema = new Schema<IUser>(
   {
-    clerkId: { type: String, required: true, unique: true },
     name: { type: String, required: true },
-    username: { type: String, required: true, unique: true },
     email: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    bio: { type: String, required: false },
     avatar: { type: String, required: false },
+
+    resetCode: { type: String, required: false },
+    resetCodeExpiresAt: { type: Date, required: false },
+    resetPasswordResendCount: {
+      type: Number,
+      default: 0,
+      max: 3,
+    },
+    resetPasswordRequestedAt: Date,
   },
   { timestamps: true },
 );

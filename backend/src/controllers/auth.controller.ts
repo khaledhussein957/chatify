@@ -1,15 +1,19 @@
-import { Request, Response, NextFunction } from "express";
-import { clerkClient, getAuth } from "@clerk/express";
+import { Request, Response } from "express";
+import bcrypt from "bcryptjs";
 
 import User from "../models/user.model";
 
 import { AuthRequest } from "../middlewares/auth.middleware";
 
-export const getMe = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction,
-) => {
+import { isValidStrongPassword } from "../utils/validStrongPassword";
+import { generateToken } from "../utils/generateToken";
+
+import {
+  forgotPasswordEmail,
+  sendPasswordResetSuccessEmail,
+} from "../emails/emailHandler";
+
+export const getMe = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
 
@@ -22,44 +26,262 @@ export const getMe = async (
 
     res.status(200).json(user);
   } catch (error) {
-    res.status(500);
-    next(error);
+    console.log(`❌ Error in get Me: ${error}`);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
-export const authCallback = async (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+export const register = async (req: Request, res: Response) => {
   try {
-    const { userId: clerkId } = getAuth(req);
+    const { name, email, password } = req.body;
+    if (!name || !email || !password)
+      return res.status(400).json({ message: "❌ All fields are required" });
 
-    if (!clerkId) {
-      res.status(401).json({ message: "Unauthorized" });
-      return;
-    }
+    // email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email))
+      return res.status(400).json({ message: "❌ Invalid email format" });
 
-    let user = await User.findOne({ clerkId });
+    const isStrongPassword = isValidStrongPassword(password);
+    if (!isStrongPassword)
+      return res
+        .status(400)
+        .json({ message: "❌ Password is not strong enough" });
 
-    if (!user) {
-      // get user info from clerk and save to db
-      const clerkUser = await clerkClient.users.getUser(clerkId);
+    const existingUser = await User.findOne({ email });
+    if (existingUser)
+      return res.status(409).json({ message: "❌ User already exists" });
 
-      user = await User.create({
-        clerkId,
-        name: clerkUser.firstName
-          ? `${clerkUser.firstName} ${clerkUser.lastName || ""}`.trim()
-          : clerkUser.emailAddresses[0]?.emailAddress?.split("@")[0],
-        username: clerkUser.username || clerkUser.emailAddresses[0]?.emailAddress?.split("@")[0],
-        email: clerkUser.emailAddresses[0]?.emailAddress,
-        avatar: clerkUser.imageUrl,
-      });
-    }
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    res.json(user);
+    // first letter of name capitalized as avatar
+    const avatar = name.charAt(0).toUpperCase();
+
+    const newUser = new User({
+      name,
+      email,
+      password: hashedPassword,
+      avatar,
+    });
+
+    await newUser.save();
+
+    const token = generateToken(newUser._id.toString());
+
+    res.status(201).json({
+      message: "✅ User registered successfully",
+      token,
+      user: {
+        _id: newUser._id,
+        name: newUser.name,
+        email: newUser.email,
+        bio: newUser.bio,
+        avatar: newUser.avatar,
+      },
+    });
   } catch (error) {
-    res.status(500);
-    next(error);
+    console.log(`❌ Error in register: ${error}`);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const login = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password)
+      return res.status(400).json({ message: "❌ All fields are required" });
+
+    // email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email))
+      return res.status(400).json({ message: "❌ Invalid email format" });
+
+    const isStrongPassword = isValidStrongPassword(password);
+    if (!isStrongPassword)
+      return res
+        .status(400)
+        .json({ message: "❌ Password is not strong enough" });
+
+    const user = await User.findOne({ email });
+    if (!user)
+      return res.status(404).json({ message: "❌ User does not exist" });
+
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid)
+      return res.status(401).json({ message: "❌ Invalid credentials" });
+
+    const token = generateToken(user._id.toString());
+
+    res.status(200).json({
+      message: "✅ User logged in successfully",
+      token,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        bio: user.bio,
+        avatar: user.avatar,
+      },
+    });
+  } catch (error) {
+    console.log(`❌ Error in login: ${error}`);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// --- Forgot Password ---
+export const forgotPassword = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email)
+      return res.status(400).json({ message: "❌ Email field is required" });
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email))
+      return res.status(400).json({ message: "❌ Invalid email format" });
+
+    const user = await User.findOne({ email });
+    if (!user)
+      return res.status(404).json({ message: "❌ User does not exist" });
+
+    const now = new Date();
+
+    // reset counter if more than 1 hour passed
+    if (
+      user.resetPasswordRequestedAt &&
+      now.getTime() - user.resetPasswordRequestedAt.getTime() > 60 * 60 * 1000
+    ) {
+      user.resetPasswordResendCount = 0;
+      user.resetPasswordRequestedAt = undefined;
+    }
+
+    if (user.resetPasswordResendCount >= 3) {
+      return res
+        .status(429)
+        .json({ message: "❌ Maximum resend attempts reached" });
+    }
+
+    // first send after reset → set timestamp
+    if (user.resetPasswordResendCount === 0) {
+      user.resetPasswordRequestedAt = now;
+    }
+
+    user.resetPasswordResendCount += 1;
+
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    user.resetCode = resetCode;
+    user.resetCodeExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min
+
+    await user.save();
+
+    await forgotPasswordEmail(user.name, user.email, resetCode);
+
+    res.status(200).json({ message: "✅ Reset code sent to email" });
+  } catch (error) {
+    console.log(`❌ Error in forgot password: ${error}`);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// --- Resend Code ---
+export const resendCode = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+    if (!email)
+      return res.status(400).json({ message: "❌ Email field is required" });
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email))
+      return res.status(400).json({ message: "❌ Invalid email format" });
+
+    const user = await User.findOne({ email });
+    if (!user)
+      return res.status(404).json({ message: "❌ User does not exist" });
+
+    const now = new Date();
+
+    // reset counter if more than 1 hour passed
+    if (
+      user.resetPasswordRequestedAt &&
+      now.getTime() - user.resetPasswordRequestedAt.getTime() > 60 * 60 * 1000
+    ) {
+      user.resetPasswordResendCount = 0;
+      user.resetPasswordRequestedAt = undefined;
+    }
+
+    if (user.resetPasswordResendCount >= 3) {
+      return res
+        .status(429)
+        .json({ message: "❌ Maximum resend attempts reached" });
+    }
+
+    if (user.resetPasswordResendCount === 0) {
+      user.resetPasswordRequestedAt = now;
+    }
+
+    user.resetPasswordResendCount += 1;
+
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    user.resetCode = resetCode;
+    user.resetCodeExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min
+
+    await user.save();
+
+    await forgotPasswordEmail(user.name, user.email, resetCode);
+
+    res.status(200).json({ message: "✅ Reset code resent to email" });
+  } catch (error) {
+    console.log(`❌ Error in resend code: ${error}`);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// --- Reset Password ---
+export const resetPassword = async (req: Request, res: Response) => {
+  try {
+    const { email, resetCode, newPassword, confirmPassword } = req.body;
+    if (!email || !resetCode || !newPassword || !confirmPassword)
+      return res.status(400).json({ message: "❌ All fields are required" });
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email))
+      return res.status(400).json({ message: "❌ Invalid email format" });
+
+    if (newPassword !== confirmPassword)
+      return res.status(400).json({ message: "❌ Passwords do not match" });
+
+    const user = await User.findOne({ email });
+    if (!user)
+      return res.status(404).json({ message: "❌ User does not exist" });
+
+    if (user.resetCode !== resetCode)
+      return res.status(400).json({ message: "❌ Invalid reset code" });
+
+    if (!user.resetCodeExpiresAt || user.resetCodeExpiresAt < new Date())
+      return res.status(400).json({ message: "❌ Reset code has expired" });
+
+    if (!isValidStrongPassword(newPassword))
+      return res
+        .status(400)
+        .json({ message: "❌ Password is not strong enough" });
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashedPassword;
+
+    // clear reset code and resend counter
+    user.resetCode = undefined;
+    user.resetCodeExpiresAt = undefined;
+    user.resetPasswordResendCount = 0;
+    user.resetPasswordRequestedAt = undefined;
+
+    await user.save();
+    await sendPasswordResetSuccessEmail(user.email);
+
+    res.status(200).json({ message: "✅ Password reset successfully" });
+  } catch (error) {
+    console.log(`❌ Error in reset password: ${error}`);
+    return res.status(500).json({ message: "Internal server error" });
   }
 };

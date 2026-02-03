@@ -1,6 +1,5 @@
 import Express from "express";
 import { createServer } from "http";
-import { clerkMiddleware } from "@clerk/express";
 
 import ENV from "./configs/env";
 import connectDB from "./configs/db";
@@ -18,7 +17,7 @@ const app = Express();
 
 // Middlewares
 app.use(Express.json());
-app.use(clerkMiddleware());
+
 
 // test route
 app.get("/api/health", (req, res) => {
