@@ -6,19 +6,20 @@ const { height } = Dimensions.get("window");
 export const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background, // black
+    backgroundColor: COLORS.background,
   },
 
+  /* ================= BRAND ================= */
   brandSection: {
     alignItems: "center",
-    marginTop: height * 0.1,
+    marginTop: height * 0.08,
   },
 
   logoContainer: {
     width: 64,
     height: 64,
     borderRadius: 18,
-    backgroundColor: "rgba(34, 197, 94, 0.15)", // green glow
+    backgroundColor: "rgba(34, 197, 94, 0.15)",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 16,
@@ -28,7 +29,7 @@ export const styles = StyleSheet.create({
     fontSize: 40,
     fontWeight: "700",
     fontFamily: "JetBrainsMono-Medium",
-    color: COLORS.primary, // green
+    color: COLORS.primary,
     marginBottom: 6,
   },
 
@@ -39,62 +40,96 @@ export const styles = StyleSheet.create({
     textTransform: "lowercase",
   },
 
+  /* ================= IMAGE ================= */
   illustrationContainer: {
-    flex: 1,
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 32,
     width: "100%",
-    height: height * 0.32, // 👈 controls how tall the image area is
-    overflow: "hidden", // 👈 REQUIRED for cover
+    height: height * 0.32,
+    overflow: "hidden",
     marginTop: 32,
   },
 
   illustration: {
     width: "100%",
-  height: undefined,
+    height: undefined,
     aspectRatio: 1,
   },
 
+  /* ================= FORM ================= */
   loginSection: {
     width: "100%",
     paddingHorizontal: 24,
     paddingBottom: 40,
   },
 
-  buttonRow: {
-    flexDirection: "row",
-    gap: 14,
+  formSection: {
+    marginTop: 24,
+    width: "100%",
   },
 
-  button: {
-    flex: 1,
+  inputContainer: {
+    marginBottom: 16,
+  },
+
+  label: {
+    fontSize: 14,
+    color: COLORS.grey,
+    marginBottom: 6,
+    fontWeight: "500",
+  },
+
+  input: {
+    height: 48,
+    borderWidth: 1,
+    borderColor: COLORS.grey,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    color: COLORS.white,
+    backgroundColor: COLORS.inputBackground || "#1F1F1F",
+  },
+
+  inputError: {
+    borderColor: COLORS.error,
+  },
+
+  errorText: {
+    fontSize: 12,
+    color: COLORS.error,
+    marginTop: 4,
+  },
+
+  /* ================= BUTTONS ================= */
+  formButton: {
+    marginTop: 12,
     height: 52,
     borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
-  },
-
-  googleButton: {
-    backgroundColor: COLORS.background,
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-  },
-
-  appleButton: {
     backgroundColor: COLORS.primary,
   },
 
-  buttonTextLight: {
-    color: COLORS.white,
-    fontSize: 16,
+  formButtonText: {
+    color: COLORS.background,
     fontWeight: "600",
+    fontSize: 16,
   },
 
-  buttonTextDark: {
+  resendButton: {
+    marginTop: 8,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: COLORS.primary,
+  },
+
+  resendButtonText: {
     color: COLORS.background,
-    fontSize: 16,
     fontWeight: "600",
+    fontSize: 14,
   },
 
   termsText: {
@@ -102,5 +137,15 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 12,
     color: COLORS.grey,
+  },
+
+  /* ================= KEYBOARD + SCROLL ================= */
+  keyboardView: {
+    flex: 1,
+  },
+
+  scrollContent: {
+    paddingTop: 40,
+    paddingBottom: 40, // 🔑 REQUIRED for scrolling
   },
 });

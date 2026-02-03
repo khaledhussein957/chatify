@@ -13,6 +13,7 @@ import {
   validateChangePassword,
   validateUpdateProfile,
 } from "../middlewares/userValidate.middleware";
+import upload from "../middlewares/upload";
 
 const router = Router();
 
@@ -30,7 +31,12 @@ router.put(
   validateUpdateProfile,
   updateProfile,
 );
-router.put("/update-profile-avatar", protectRoute, updateProfileAvatar);
+router.put(
+  "/update-profile-avatar",
+  protectRoute,
+  upload.single("avatar"),
+  updateProfileAvatar,
+);
 
 router.delete("/delete-account", protectRoute, deleteAccount);
 

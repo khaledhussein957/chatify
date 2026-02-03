@@ -5,8 +5,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { ActivityIndicator, FlatList, Pressable, Text, View, StyleSheet } from "react-native";
 import { COLORS } from "@/constants/theme";
-import ChatItem from "@/components/chatItem";
-import EmptyUI from "@/components/emptyItem";
+import ChatItem from "@/components/ChatItem";
+import EmptyUI from "@/components/EmptyItem";
 
 const ChatsTab = () => {
   const router = useRouter();

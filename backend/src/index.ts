@@ -1,5 +1,6 @@
 import Express from "express";
 import { createServer } from "http";
+import cors from "cors"
 
 import ENV from "./configs/env";
 import connectDB from "./configs/db";
@@ -14,6 +15,8 @@ import { errorHandler } from "./middlewares/errorHandler.middleware";
 import { initializeSocket } from "./utils/socket";
 
 const app = Express();
+
+app.use(cors());
 
 // Middlewares
 app.use(Express.json());

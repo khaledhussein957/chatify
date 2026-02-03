@@ -1,37 +1,39 @@
 import { useSocketStore } from "@/lib/socket";
-import { useAuth } from "@clerk/clerk-expo";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SocketConnection = () => {
-  const { getToken, isSignedIn } = useAuth();
   const queryClient = useQueryClient();
   const connect = useSocketStore((state) => state.connect);
   const disconnect = useSocketStore((state) => state.disconnect);
+  const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
 
-    const run = async () => {
-      if (!isSignedIn) {
-        disconnect();
-        return;
-      }
+    const getTokenFromStorage = async () => {
       try {
-        const token = await getToken();
-        if (active && token) connect(token, queryClient);
+        const storedToken = await AsyncStorage.getItem("authToken"); // your JWT key
+        if (active && storedToken) {
+          setToken(storedToken);
+          connect(storedToken, queryClient);
+        } else {
+          disconnect();
+        }
       } catch (err) {
-        console.warn("Socket auth token fetch failed", err);
+        console.warn("Failed to get token for socket connection", err);
+        disconnect();
       }
     };
 
-    run();
+    getTokenFromStorage();
 
     return () => {
       active = false;
       disconnect();
     };
-  }, [isSignedIn, connect, disconnect, getToken, queryClient]);
+  }, [connect, disconnect, queryClient]);
 
   return null;
 };

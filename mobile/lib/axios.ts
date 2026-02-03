@@ -1,11 +1,9 @@
 import axios from "axios";
-import { useAuth } from "@clerk/clerk-expo";
 import { useCallback } from "react";
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL!
+const API_URL = "http://192.168.8.55:9000/api";
 
-// this is the same thing we did with useEffect setup but it's optimized version - it's better!!
-
+// Axios instance
 const api = axios.create({
   baseURL: API_URL,
   headers: { "Content-Type": "application/json" },
@@ -16,7 +14,7 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-        console.warn("API request failed", {
+      console.warn("API request failed", {
         endpoint: error.config?.url,
         method: error.config?.method,
         status: error.response.status,
@@ -28,21 +26,23 @@ api.interceptors.response.use(
       });
     }
     return Promise.reject(error);
-  }
+  },
 );
 
-export const useApi = () => {
-  const { getToken } = useAuth();
-
+// Custom hook to use API with JWT
+export const useApi = (token?: string) => {
+  // token can be passed from app state / AsyncStorage / context
   const apiWithAuth = useCallback(
     async <T>(config: Parameters<typeof api.request>[0]) => {
-      const token = await getToken();
       return api.request<T>({
         ...config,
-        headers: { ...config.headers, ...(token && { Authorization: `Bearer ${token}` }) },
+        headers: {
+          ...config.headers,
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
       });
     },
-    [getToken]
+    [token],
   );
 
   return { api, apiWithAuth };

@@ -17,12 +17,16 @@ import Joi from "joi";
 import { COLORS } from "@/constants/theme";
 import { styles } from "@/assets/styles/auth.style";
 import { router } from "expo-router";
-import { useUserLogin } from "@/hooks/useAuth";
+import { useUserRegister } from "@/hooks/useAuth";
 import { useState } from "react";
-import { useAlert } from "../../components/AlertMessageController";
+import { useAlert } from "@/components/AlertMessageController"; // ✅ import alert
 
-// Joi schema
-const loginSchema = Joi.object({
+// Joi schema for register validation
+const registerSchema = Joi.object({
+  name: Joi.string().min(3).required().messages({
+    "string.empty": "Name is required",
+    "string.min": "Name must be at least 3 characters",
+  }),
   email: Joi.string()
     .email({ tlds: { allow: false } })
     .required()
@@ -36,42 +40,44 @@ const loginSchema = Joi.object({
   }),
 });
 
-type LoginFormData = {
+type RegisterFormData = {
+  name: string;
   email: string;
   password: string;
 };
 
-const AuthScreen = () => {
+const RegisterScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const {
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginFormData>({
-    resolver: joiResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+  } = useForm<RegisterFormData>({
+    resolver: joiResolver(registerSchema),
+    defaultValues: { name: "", email: "", password: "" },
   });
 
-  const { mutateAsync: login, isPending: isLoggingIn } = useUserLogin();
+  const { mutateAsync: register, isPending: isRegistering } = useUserRegister();
 
   const alert = useAlert(); // 👈 access alert
 
-  const onSubmit = async (data: LoginFormData) => {
+  const onSubmit = async (data: RegisterFormData) => {
     try {
-      await login(data);
+      await register(data);
+
+      // Show success alert
+      alert.success("✅ Registration successful!");
+
       if (router.canDismiss()) router.dismissAll();
       router.replace("/(tabs)");
-
-      // Optional success alert
-      alert.success("✅ Logged in successfully!");
     } catch (error: any) {
-      console.error("Login Error:", error);
+      console.error("Register Error:", error);
 
       // Show error alert
-      const message =
-        error?.response?.data?.message || "❌ Login failed. Please try again.";
-      alert.error(message);
+      const msg =
+        error?.response?.data?.message || "❌ Registration failed. Try again.";
+      alert.error(msg);
     }
   };
 
@@ -79,9 +85,9 @@ const AuthScreen = () => {
     <View style={styles.container}>
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
+          style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
-          style={{ flex: 1 }}
         >
           <ScrollView
             contentContainerStyle={{
@@ -89,8 +95,8 @@ const AuthScreen = () => {
               paddingHorizontal: 24,
               paddingBottom: 40,
             }}
-            showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
           >
             {/* IMAGE */}
             <View style={styles.illustrationContainer}>
@@ -101,7 +107,33 @@ const AuthScreen = () => {
               />
             </View>
 
-            <View style={{ flex: 1, justifyContent: "center" }}>
+            {/* FORM */}
+            <View style={{ flex: 1 }}>
+              {/* Name */}
+              <Controller
+                control={control}
+                name="name"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <View style={styles.inputContainer}>
+                    <Text style={styles.label}>Name</Text>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter your name"
+                      placeholderTextColor={COLORS.grey}
+                      autoCapitalize="words"
+                      onChangeText={onChange}
+                      onBlur={onBlur}
+                      value={value}
+                    />
+                    {errors.name && (
+                      <Text style={styles.errorText}>
+                        {errors.name.message}
+                      </Text>
+                    )}
+                  </View>
+                )}
+              />
+
               {/* Email */}
               <Controller
                 control={control}
@@ -115,7 +147,6 @@ const AuthScreen = () => {
                       placeholderTextColor={COLORS.grey}
                       keyboardType="email-address"
                       autoCapitalize="none"
-                      autoCorrect={false}
                       onChangeText={onChange}
                       onBlur={onBlur}
                       value={value}
@@ -143,7 +174,6 @@ const AuthScreen = () => {
                         placeholderTextColor={COLORS.grey}
                         secureTextEntry={!showPassword}
                         autoCapitalize="none"
-                        autoCorrect={false}
                         onChangeText={onChange}
                         onBlur={onBlur}
                         value={value}
@@ -173,32 +203,20 @@ const AuthScreen = () => {
                 )}
               />
 
-              {/* Forgot password */}
-              <Pressable onPress={() => router.push("/(auth)/forgot_password")}>
-                <Text
-                  style={[
-                    styles.termsText,
-                    { textAlign: "right", marginTop: 8 },
-                  ]}
-                >
-                  Forgot Password?
-                </Text>
-              </Pressable>
-
-              {/* Login button */}
+              {/* Register Button */}
               <Pressable
-                disabled={isSubmitting || isLoggingIn}
+                disabled={isSubmitting || isRegistering}
                 style={styles.formButton}
                 onPress={handleSubmit(onSubmit)}
               >
-                {isSubmitting || isLoggingIn ? (
+                {isSubmitting || isRegistering ? (
                   <ActivityIndicator color={COLORS.background} />
                 ) : (
-                  <Text style={styles.formButtonText}>Login</Text>
+                  <Text style={styles.formButtonText}>Register</Text>
                 )}
               </Pressable>
 
-              {/* Register */}
+              {/* Login Link */}
               <View
                 style={{
                   flexDirection: "row",
@@ -207,11 +225,11 @@ const AuthScreen = () => {
                 }}
               >
                 <Text style={{ color: COLORS.grey }}>
-                  Don’t have an account?{" "}
+                  Already have an account?{" "}
                 </Text>
-                <Pressable onPress={() => router.push("/(auth)/register")}>
+                <Pressable onPress={() => router.push("/(auth)")}>
                   <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
-                    Register
+                    Login
                   </Text>
                 </Pressable>
               </View>
@@ -227,4 +245,4 @@ const AuthScreen = () => {
   );
 };
 
-export default AuthScreen;
+export default RegisterScreen;
