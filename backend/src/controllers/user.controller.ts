@@ -102,7 +102,16 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
 
     await user.save();
 
-    res.status(200).json({ message: "✅ Profile updated successfully", user });
+    res.status(200).json({
+      message: "✅ Profile updated successfully",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        bio: user.bio,
+      },
+    });
   } catch (error) {
     console.log(`❌ Error in update profile: ${error}`);
     return res.status(500).json({ message: "Internal server error" });
