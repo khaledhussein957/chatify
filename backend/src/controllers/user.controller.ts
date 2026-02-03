@@ -29,16 +29,16 @@ export const getUsers = async (req: AuthRequest, res: Response) => {
 export const changePassword = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
-    const { currentPassword, newPassword, comfirmPassword } = req.body;
+    const { currentPassword, newPassword, confirmPassword } = req.body;
 
     if (!userId) {
       return res.status(401).json({ message: "❌ Unauthorized" });
     }
 
-    if (!currentPassword || !newPassword || !comfirmPassword)
+    if (!currentPassword || !newPassword || !confirmPassword)
       return res.status(400).json({ message: "❌ All fields are required" });
 
-    if (newPassword !== comfirmPassword) {
+    if (newPassword !== confirmPassword) {
       return res.status(400).json({ message: "❌ Passwords do not match" });
     }
 

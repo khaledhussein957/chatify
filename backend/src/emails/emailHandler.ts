@@ -30,7 +30,7 @@ export const sendPasswordResetSuccessEmail = async (email: string) => {
   const transporter = await getTransporter();
 
   const info = await transporter.sendMail({
-    from: `Chatify <${ENV.SMTP_EMAIL}>`,
+    from: `Chatify <${ENV.SMTP_FROM_EMAIL}>`,
     to: email,
     subject: "Chatify – Password Reset Successful",
     html: resetSuccessTemplate(),

@@ -12,6 +12,7 @@ import {
   forgotPasswordEmail,
   sendPasswordResetSuccessEmail,
 } from "../emails/emailHandler";
+import { randomInt } from "crypto";
 
 export const getMe = async (req: AuthRequest, res: Response) => {
   try {
@@ -96,12 +97,6 @@ export const login = async (req: Request, res: Response) => {
     if (!emailRegex.test(email))
       return res.status(400).json({ message: "❌ Invalid email format" });
 
-    const isStrongPassword = isValidStrongPassword(password);
-    if (!isStrongPassword)
-      return res
-        .status(400)
-        .json({ message: "❌ Password is not strong enough" });
-
     const user = await User.findOne({ email });
     if (!user)
       return res.status(404).json({ message: "❌ User does not exist" });
@@ -168,9 +163,10 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
     user.resetPasswordResendCount += 1;
 
-    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetCode = randomInt(100000, 1000000).toString();
+    const resetCodeHash = await bcrypt.hash(resetCode, 10);
 
-    user.resetCode = resetCode;
+    user.resetCode = resetCodeHash;
     user.resetCodeExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min
 
     await user.save();
@@ -222,9 +218,10 @@ export const resendCode = async (req: Request, res: Response) => {
 
     user.resetPasswordResendCount += 1;
 
-    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const resetCode = randomInt(100000, 1000000).toString();
+    const resetCodeHash = await bcrypt.hash(resetCode, 10);
 
-    user.resetCode = resetCode;
+    user.resetCode = resetCodeHash;
     user.resetCodeExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min
 
     await user.save();
@@ -256,7 +253,10 @@ export const resetPassword = async (req: Request, res: Response) => {
     if (!user)
       return res.status(404).json({ message: "❌ User does not exist" });
 
-    if (user.resetCode !== resetCode)
+    const isResetCodeValid = user.resetCode
+      ? await bcrypt.compare(resetCode, user.resetCode)
+      : false;
+    if (!isResetCodeValid)
       return res.status(400).json({ message: "❌ Invalid reset code" });
 
     if (!user.resetCodeExpiresAt || user.resetCodeExpiresAt < new Date())

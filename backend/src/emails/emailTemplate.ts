@@ -1,3 +1,16 @@
+const escapeHtml = (value: string) =>
+  value.replace(
+    /[&<>"']/g,
+    (ch) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[ch] as string,
+  );
+
 export const resetCodeTemplate = (name: string, code: string) => `
 <!DOCTYPE html>
 <html>
@@ -33,7 +46,7 @@ export const resetCodeTemplate = (name: string, code: string) => `
         font-size:14px;
         margin:0 0 16px 0;
       ">
-        Hi ${name},
+        Hi ${escapeHtml(name)},
       </p>
 
       <div style="
@@ -48,7 +61,7 @@ export const resetCodeTemplate = (name: string, code: string) => `
         font-weight:700;
         border:1px solid #22C55E33;
       ">
-        ${code}
+        ${escapeHtml(name)}
       </div>
 
       <p style="
