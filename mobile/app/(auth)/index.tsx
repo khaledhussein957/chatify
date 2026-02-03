@@ -174,7 +174,7 @@ const AuthScreen = () => {
               />
 
               {/* Forgot password */}
-              <Pressable onPress={() => router.push("/(auth)/forgor_password")}>
+              <Pressable onPress={() => router.push("/(auth)/forgot_password")}>
                 <Text
                   style={[
                     styles.termsText,

@@ -23,9 +23,9 @@ import { useAlert } from "@/components/AlertMessageController"; // ✅ import al
 
 // Joi schema for register validation
 const registerSchema = Joi.object({
-  name: Joi.string().min(2).required().messages({
+  name: Joi.string().min(3).required().messages({
     "string.empty": "Name is required",
-    "string.min": "Name must be at least 2 characters",
+    "string.min": "Name must be at least 3 characters",
   }),
   email: Joi.string()
     .email({ tlds: { allow: false } })

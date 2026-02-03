@@ -19,6 +19,7 @@ export const useUsers = () => {
       });
       return data;
     },
+    enabled: !!token,
   });
 };
 

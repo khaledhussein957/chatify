@@ -45,7 +45,7 @@ type ResetPasswordFormData = {
 
 const ResetPasswordScreen = () => {
   const route = useRoute();
-  const { email } = route.params as { email: string };
+  const email = (route.params as { email?: string } | undefined)?.email;
 
   /* HOOKS */
   const { mutateAsync: resendCode, isPending: isResending } =
@@ -69,6 +69,10 @@ const ResetPasswordScreen = () => {
 
   /* RESET PASSWORD */
   const onSubmit = async (data: ResetPasswordFormData) => {
+    if (!email) {
+      alert.error("❌ Missing reset email.");
+      return;
+    }
     try {
       await resetPassword({
         email,
@@ -90,6 +94,10 @@ const ResetPasswordScreen = () => {
 
   /* RESEND RESET CODE */
   const handleResendCode = async () => {
+    if (!email) {
+      alert.error("❌ Missing reset email.");
+      return;
+    }
     try {
       await resendCode(email);
       alert.success("✅ Reset code sent to your email!");
