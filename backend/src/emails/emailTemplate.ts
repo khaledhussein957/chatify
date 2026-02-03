@@ -61,7 +61,7 @@ export const resetCodeTemplate = (name: string, code: string) => `
         font-weight:700;
         border:1px solid #22C55E33;
       ">
-        ${escapeHtml(name)}
+        ${escapeHtml(code)}
       </div>
 
       <p style="

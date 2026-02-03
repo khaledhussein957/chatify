@@ -98,7 +98,7 @@ export const login = async (req: Request, res: Response) => {
       return res.status(400).json({ message: "❌ Invalid email format" });
 
     const user = await User.findOne({ email });
-    
+
     const isPasswordValid = user
       ? await bcrypt.compare(password, user.password)
       : false;
@@ -204,6 +204,17 @@ export const resendCode = async (req: Request, res: Response) => {
     ) {
       user.resetPasswordResendCount = 0;
       user.resetPasswordRequestedAt = undefined;
+      user.resetCodeExpiresAt = undefined;
+    }
+
+    // Check if a code already exists and is still valid
+    if (user.resetCodeExpiresAt && user.resetCodeExpiresAt > now) {
+      const secondsLeft = Math.ceil(
+        (user.resetCodeExpiresAt.getTime() - now.getTime()) / 1000,
+      );
+      return res.status(400).json({
+        message: `❌ Reset code is still valid. Try again in ${secondsLeft} seconds.`,
+      });
     }
 
     if (user.resetPasswordResendCount >= 3) {
@@ -212,12 +223,14 @@ export const resendCode = async (req: Request, res: Response) => {
         .json({ message: "❌ Maximum resend attempts reached" });
     }
 
-    if (user.resetPasswordResendCount === 0) {
+    if (!user.resetPasswordRequestedAt) {
       user.resetPasswordRequestedAt = now;
+      user.resetPasswordResendCount = 0;
     }
 
     user.resetPasswordResendCount += 1;
 
+    // Generate new reset code
     const resetCode = randomInt(100000, 1000000).toString();
     const resetCodeHash = await bcrypt.hash(resetCode, 10);
 

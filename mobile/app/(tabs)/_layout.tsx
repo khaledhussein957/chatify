@@ -1,12 +1,24 @@
 import { Redirect, Tabs } from "expo-router";
-import { useAuth } from "@clerk/clerk-expo";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuthStore } from "@/store/auth";
+import { useEffect, useState } from "react";
+import NetInfo from "@react-native-community/netinfo";
 
 const TabsLayout = () => {
-  const { isSignedIn, isLoaded } = useAuth();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const [networkError, setNetworkError] = useState(false);
 
-  if (!isLoaded) return null;
-  if (!isSignedIn) return <Redirect href={"/(auth)"} />;
+  // Monitor network
+  useEffect(() => {
+    const unsub = NetInfo.addEventListener((state) => {
+      setNetworkError(!state.isConnected);
+    });
+    return () => unsub();
+  }, []);
+
+  if (networkError) return <Redirect href="/networkError" />;
+  if (!isAuthenticated) return <Redirect href="/(auth)" />;
+  
 
   return (
     <Tabs
@@ -14,7 +26,7 @@ const TabsLayout = () => {
         headerShown: false,
         tabBarStyle: {
           backgroundColor: "#000000", // black
-          borderTopColor: "#1F2933",  // subtle dark border
+          borderTopColor: "#1F2933", // subtle dark border
           borderTopWidth: 1,
           height: 88,
           paddingTop: 8,

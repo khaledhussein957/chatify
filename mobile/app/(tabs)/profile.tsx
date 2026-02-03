@@ -1,18 +1,70 @@
-import { useAuth, useUser } from "@clerk/clerk-expo";
-import { View, Text, ScrollView, Pressable } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
 import { styles } from "@/assets/styles/profile.style";
+import { useLogout } from "@/hooks/useAuth";
+import { useAuthStore } from "@/store/auth";
+import { useUpdateProfileAvatar } from "@/hooks/useUser";
+import { COLORS } from "@/constants/theme";
 
 const ACCOUNT_ITEMS = [
   { icon: "person-outline", label: "Edit Profile", color: "#22C55E" },
-  { icon: "shield-checkmark-outline", label: "Privacy & Security", color: "#22C55E" },
-  { icon: "notifications-outline", label: "Notifications", value: "On", color: "#22C55E" },
+  {
+    icon: "shield-checkmark-outline",
+    label: "Privacy & Security",
+    color: "#22C55E",
+  },
+  {
+    icon: "notifications-outline",
+    label: "Notifications",
+    value: "On",
+    color: "#22C55E",
+  },
 ];
 
 const ProfileTab = () => {
-  const { signOut } = useAuth();
-  const { user } = useUser();
+  const logout = useLogout();
+  const user = useAuthStore((state) => state.user);
+  const updateUser = useAuthStore((state) => state.updateUser);
+  const { mutateAsync: updateAvatar, isPending: isUpdatingAvatar } = useUpdateProfileAvatar();
+
+  const handleLogout = () => {
+    logout();
+  };
+
+  const pickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+    });
+
+    if (!result.canceled) {
+      const asset = result.assets[0];
+      try {
+        const response = await updateAvatar({
+          uri: asset.uri,
+          name: asset.fileName || "avatar.jpg",
+          type: asset.mimeType || "image/jpeg",
+        });
+        
+        // Update local user state with new avatar URL
+        if (user && response.avatar) {
+          updateUser({ ...user, avatar: response.avatar });
+        }
+      } catch (error) {
+        console.error("Failed to update avatar:", error);
+        Alert.alert("Error", "Failed to update profile picture");
+      }
+    }
+  };
+
+  // Helper to determine if avatar is a URL or a letter
+  const isAvatarUrl = (avatar?: string) => {
+    return avatar && (avatar.startsWith("http") || avatar.startsWith("file"));
+  };
 
   return (
     <View style={styles.container}>
@@ -23,25 +75,32 @@ const ProfileTab = () => {
         {/* HEADER */}
         <View style={styles.header}>
           <View style={styles.avatarWrapper}>
-            <View style={styles.avatarBorder}>
-              <Image
-                source={user?.imageUrl}
-                style={styles.avatar}
-              />
+            <View style={[styles.avatarBorder, { overflow: "hidden", justifyContent: "center", alignItems: "center", backgroundColor: isAvatarUrl(user?.avatar) ? "transparent" : COLORS.primary }]}>
+             {isUpdatingAvatar ? (
+                <ActivityIndicator color={COLORS.primary} />
+              ) : isAvatarUrl(user?.avatar) ? (
+                <Image source={{ uri: user?.avatar }} style={styles.avatar} />
+              ) : (
+                <Text style={{ fontSize: 40, color: "white", fontWeight: "bold" }}>
+                  {user?.avatar || user?.name?.charAt(0).toUpperCase()}
+                </Text>
+              )}
             </View>
 
-            <Pressable style={styles.cameraButton}>
-              <Ionicons name="camera" size={16} color={styles.container.backgroundColor} />
+            <Pressable style={styles.cameraButton} onPress={pickImage} disabled={isUpdatingAvatar}>
+              <Ionicons
+                name="camera"
+                size={16}
+                color={styles.container.backgroundColor}
+              />
             </Pressable>
           </View>
 
           <Text style={styles.name}>
-            {user?.firstName} {user?.lastName}
+            {user?.name}
           </Text>
 
-          <Text style={styles.email}>
-            {user?.emailAddresses[0]?.emailAddress}
-          </Text>
+          <Text style={styles.email}>{user?.email}</Text>
 
           <View style={styles.onlineStatusContainer}>
             <View style={styles.onlineDot} />
@@ -67,7 +126,11 @@ const ProfileTab = () => {
                     { backgroundColor: `${item.color}20` },
                   ]}
                 >
-                  <Ionicons name={item.icon as any} size={20} color={item.color} />
+                  <Ionicons
+                    name={item.icon as any}
+                    size={20}
+                    color={item.color}
+                  />
                 </View>
                 <Text style={styles.sectionLabel}>{item.label}</Text>
                 {item.value && (
@@ -80,7 +143,7 @@ const ProfileTab = () => {
         </View>
 
         {/* LOGOUT BUTTON */}
-        <Pressable style={styles.logoutButton} onPress={() => signOut()}>
+        <Pressable style={styles.logoutButton} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color="#EF4444" />
           <Text style={styles.logoutText}>Log Out</Text>
         </Pressable>

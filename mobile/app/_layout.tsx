@@ -1,20 +1,17 @@
 import { Stack } from "expo-router";
-import { ClerkProvider } from "@clerk/clerk-expo";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { tokenCache } from "@clerk/clerk-expo/token-cache";
 
-import AuthSync from "@/components/AuthSync";
 import SocketConnection from "@/components/SocetConnection";
+import { AlertProvider } from "@/components/AlertMessageController";
 
 const queryClient = new QueryClient();
 
 export default function RootLayout() {
   return (
-    <ClerkProvider tokenCache={tokenCache}>
-      <QueryClientProvider client={queryClient}>
-        <AuthSync />
-        <StatusBar style="light" />
+    <QueryClientProvider client={queryClient}>
+      <StatusBar style="light" />
+      <AlertProvider>
         <SocketConnection />
         <Stack
           screenOptions={{
@@ -25,7 +22,7 @@ export default function RootLayout() {
           <Stack.Screen name="(auth)" options={{ animation: "fade" }} />
           <Stack.Screen name="(tabs)" options={{ animation: "fade" }} />
         </Stack>
-      </QueryClientProvider>
-    </ClerkProvider>
+      </AlertProvider>
+    </QueryClientProvider>
   );
 }
