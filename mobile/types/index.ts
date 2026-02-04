@@ -19,6 +19,7 @@ export interface Message {
   sender: MessageSender | string;
   text: string;
   content?: string;
+  deleted?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -27,6 +28,7 @@ export interface ChatLastMessage {
   _id: string;
   text: string;
   content?: string;
+  deleted?: boolean;
   sender: string;
   createdAt: string;
 }

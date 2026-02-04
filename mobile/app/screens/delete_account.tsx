@@ -4,7 +4,6 @@ import {
   Text,
   Pressable,
   ActivityIndicator,
-  Alert,
 } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,10 +12,12 @@ import { useDeleteAccount } from "@/hooks/useUser";
 import { useLogout } from "@/hooks/useAuth";
 import { styles } from "@/assets/styles/profile.style";
 import { COLORS } from "@/constants/theme";
+import { useAlert } from "@/components/AlertMessageController";
 
 const DeleteAccount = () => {
   const deleteAccount = useDeleteAccount();
   const logout = useLogout();
+  const alert = useAlert();
 
   const handleDelete = async () => {
     try {
@@ -25,7 +26,7 @@ const DeleteAccount = () => {
       router.replace("/(auth)");
     } catch (error: any) {
       const message = error.response?.data?.message || "Failed to delete account";
-      Alert.alert("Error", message);
+      alert.error(message);
     }
   };
 

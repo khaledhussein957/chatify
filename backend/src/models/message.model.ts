@@ -5,6 +5,10 @@ export interface IMessage extends Document {
   sender: mongoose.Types.ObjectId;
   text: string;
   content?: string; // like image, video, etc.
+
+  deleted: boolean;
+  deletedAt?: Date;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,6 +34,14 @@ const MessageSchema = new Schema<IMessage>(
     content: {
       type: String,
       required: false,
+    },
+
+    deleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
     },
   },
   { timestamps: true },

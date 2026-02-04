@@ -11,9 +11,13 @@ import MediaViewer from "./MediaViewer";
 function MessageBubble({
   message,
   isFromMe,
+  onLongPress,
+  isSelected,
 }: {
   message: Message;
   isFromMe: boolean;
+  onLongPress?: () => void;
+  isSelected?: boolean;
 }) {
   const [isViewerVisible, setIsViewerVisible] = useState(false);
 
@@ -36,14 +40,17 @@ function MessageBubble({
         isFromMe ? styles.justifyEnd : styles.justifyStart,
       ]}
     >
-      <View
+      <Pressable
+        onLongPress={message.deleted ? undefined : onLongPress}
         style={[
           styles.bubble,
           isFromMe ? styles.bubbleMe : styles.bubbleOther,
+          isSelected && styles.selectedBubble,
+          message.deleted && styles.bubbleDeleted,
         ]}
       >
         {/* Media Content */}
-        {message.content && (
+        {message.content && !message.deleted && (
           <>
             {isImage && (
               <Pressable onPress={() => setIsViewerVisible(true)}>
@@ -74,28 +81,36 @@ function MessageBubble({
         )}
         
         {/* Text */}
-        {message.text && (
-          <Text
-            style={[
-              styles.text,
-              isFromMe ? styles.textMe : styles.textOther,
-              message.content && { marginTop: 4 },
-            ]}
-          >
-            {message.text}
+        {message.deleted ? (
+          <Text style={[styles.text, styles.deletedText]}>
+            🚫 This message was deleted
           </Text>
+        ) : (
+          message.text && (
+            <Text
+              style={[
+                styles.text,
+                isFromMe ? styles.textMe : styles.textOther,
+                message.content && { marginTop: 4 },
+              ]}
+            >
+              {message.text}
+            </Text>
+          )
         )}
         
         {/* Time */}
-        <Text
-          style={[
-            styles.time,
-            isFromMe ? styles.timeMe : styles.timeOther,
-          ]}
-        >
-          {time}
-        </Text>
-      </View>
+        {!message.deleted && (
+          <Text
+            style={[
+              styles.time,
+              isFromMe ? styles.timeMe : styles.timeOther,
+            ]}
+          >
+            {time}
+          </Text>
+        )}
+      </Pressable>
     </View>
   );
 }
@@ -126,14 +141,26 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 4,
   },
   bubbleOther: {
-    backgroundColor: COLORS.surfaceCard,
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: COLORS.surfaceLight,
+    backgroundColor: COLORS.surfaceLight,
+    borderBottomLeftRadius: 0,
   },
-
+  bubbleDeleted: {
+    backgroundColor: "rgba(255, 68, 68, 0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255, 68, 68, 0.2)",
+  },
+  selectedBubble: {
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    backgroundColor: "rgba(108, 93, 211, 0.2)",
+  },
   text: {
     fontSize: 14,
+  },
+  deletedText: {
+    color: COLORS.grey,
+    fontStyle: "italic",
+    fontSize: 13,
   },
   textMe: {
     color: COLORS.background,

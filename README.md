@@ -63,6 +63,10 @@ Utilizes Expo Router's directory-based navigation:
 ### 💬 Messaging
 
 - **Real-time:** Instant message delivery using WebSockets.
-- **Chat Types:** Support for private messaging (1-on-1).
+- **Message Actions:** Integrated header context bar for editing and deleting messages with long-press selection.
+- **Soft Delete:** Support for deleting messages with a "🚫 This message was deleted" placeholder, maintained for both sender and receiver.
+- **Time Limits:** Enforced 5-minute time window for editing sent messages to maintain conversation integrity.
+- **Rich Media:** Send and preview photos, videos, and documents within the chat interface.
+- **Custom UI Alerts:** Premium, styled confirmation and error alerts replacing standard system dialogs for a cohesive experience.
 - **Status:** Real-time online/offline presence indicators.
 - **History:** Persistent message storage in MongoDB for viewing past conversations.

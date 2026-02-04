@@ -1,7 +1,7 @@
 import EmptyUI from "@/components/EmptyItem";
 import MessageBubble from "@/components/MessageBubble";
 import { useCurrentUser } from "@/hooks/useAuth";
-import { useMessages, useSendMessageWithContent } from "@/hooks/useMessage";
+import { useMessages, useSendMessageWithContent, useUpdateTextMessage, useDeleteMessage } from "@/hooks/useMessage";
 import { useSocketStore } from "@/lib/socket";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -23,8 +23,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { COLORS } from "@/constants/theme";
+import { Message } from "@/types";
+import { useAlert } from "@/components/AlertMessageController";
 
 type ChatParams = {
   id: string;
@@ -37,6 +40,8 @@ const ChatDetailScreen = () => {
   const { id: chatId, avatar, name, participantId } =
     useLocalSearchParams<ChatParams>();
 
+  const alert = useAlert();
+
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [selectedFile, setSelectedFile] = useState<{
@@ -44,8 +49,16 @@ const ChatDetailScreen = () => {
     type: string;
     name: string;
   } | null>(null);
+  
+  // Selection & Editing State
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const [isEditingMode, setIsEditingMode] = useState(false);
+
   const scrollViewRef = useRef<ScrollView>(null);
   const sendMessageWithFile = useSendMessageWithContent();
+  const updateTextMessage = useUpdateTextMessage();
+  const deleteMessage = useDeleteMessage();
+  const queryClient = useQueryClient();
 
   const { data: currentUser } = useCurrentUser();
   const { data: messages, isLoading } = useMessages(chatId);
@@ -120,7 +133,7 @@ const ChatDetailScreen = () => {
           }
         }).catch((error) => {
           console.error("Image picker error:", error);
-          Alert.alert("Error", "Failed to select image. Please check permissions.");
+          alert.error("Failed to select image. Please check permissions.");
          });
       } else if (index === 1) {
         // Document
@@ -137,7 +150,7 @@ const ChatDetailScreen = () => {
           }
         }).catch((error) => {
           console.error("Document picker error:", error);
-          Alert.alert("Error", "Failed to select document. Please check permissions.");
+          alert.error("Failed to select document. Please check permissions.");
          });
       }
     };
@@ -163,9 +176,67 @@ const ChatDetailScreen = () => {
     setSelectedFile(null);
   };
 
+  const handleLongPress = (message: any) => {
+    if (message.deleted) return;
+    const senderId = typeof message.sender === "string" ? message.sender : message.sender._id;
+    if (senderId === currentUser?._id) {
+      setSelectedMessageId(message._id);
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedMessageId(null);
+    setIsEditingMode(false);
+    setMessageText("");
+  };
+
+  const handleDeleteSelected = () => {
+    if (!selectedMessageId) return;
+
+    alert.confirm(
+      "Are you sure you want to delete this message?",
+      async () => {
+        const messageId = selectedMessageId;
+        try {
+          // Optimistic delete (soft delete)
+          queryClient.setQueryData<Message[]>(["messages", chatId], (old) => {
+            return old?.map((m) =>
+              m._id === messageId ? { ...m, deleted: true, text: "" } : m
+            );
+          });
+
+          await deleteMessage(messageId);
+          clearSelection();
+          alert.success("Message deleted");
+        } catch (error) {
+          // Rollback or invalidate on error
+          queryClient.invalidateQueries({ queryKey: ["messages", chatId] });
+          alert.error("Failed to delete message");
+        }
+      },
+      { confirmText: "Delete", confirmColor: COLORS.error }
+    );
+  };
+
+  const handleEditSelected = () => {
+    if (!selectedMessageId) return;
+    const msg = messages?.find((m) => m._id === selectedMessageId);
+    if (msg) {
+      // check if message is too old to edit
+      const timeDiff = Date.now() - new Date(msg.createdAt).getTime();
+      if (timeDiff > 5 * 60 * 1000) {
+        alert.error("This message is too old to edit");
+        clearSelection();
+        return;
+      }
+
+      setMessageText(msg.text || "");
+      setIsEditingMode(true);
+    }
+  };
+
   const handleSend = async () => {
     if ((!messageText.trim() && !selectedFile) || !currentUser) {
-      console.warn("Send blocked: missing text/file or user");
       return;
     }
 
@@ -174,11 +245,41 @@ const ChatDetailScreen = () => {
 
     try {
       setIsSending(true);
-      
-      if (selectedFile) {
+
+      if (isEditingMode && selectedMessageId) {
+        const messageId = selectedMessageId;
+        const newText = messageText.trim();
+        const originalText = messages?.find((m) => m._id === messageId)?.text;
+
+        // Optimistic update
+        queryClient.setQueryData<Message[]>(["messages", chatId], (old) => {
+          return old?.map((m) =>
+            m._id === messageId ? { ...m, text: newText } : m
+          );
+        });
+
+        try {
+          await updateTextMessage(messageId, newText);
+          clearSelection();
+        } catch (error) {
+          // Rollback optimistic update
+          queryClient.setQueryData<Message[]>(["messages", chatId], (old) => {
+            return old?.map((m) =>
+              m._id === messageId ? { ...m, text: originalText || "" } : m
+            );
+          });
+          alert.error("Failed to update message");
+          throw error; // Re-throw to hit outer catch if needed
+        }
+      } else if (selectedFile) {
         // Send with file
-        await sendMessageWithFile(chatId, messageText.trim() || "", selectedFile);
+        await sendMessageWithFile(
+          chatId,
+          messageText.trim() || "",
+          selectedFile
+        );
         setSelectedFile(null);
+        setMessageText("");
       } else if (isConnected) {
         // Send text only via socket
         sendMessage(chatId, messageText.trim(), {
@@ -187,17 +288,18 @@ const ChatDetailScreen = () => {
           email: currentUser.email,
           avatar: currentUser.avatar as string,
         });
+        setMessageText("");
       } else {
-        Alert.alert("Connection Error", "Unable to send message. Please check your connection.");
+        alert.error("Unable to send message.");
         return;
       }
-      
-      setMessageText("");
+
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (error) {
       console.error("Send failed:", error);
+      alert.error("Failed to send message");
     } finally {
       setIsSending(false);
     }
@@ -207,21 +309,44 @@ const ChatDetailScreen = () => {
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
+        <Pressable onPress={() => (selectedMessageId ? clearSelection() : router.back())}>
+          <Ionicons 
+            name={selectedMessageId ? "close" : "arrow-back"} 
+            size={24} 
+            color={COLORS.primary} 
+          />
         </Pressable>
 
         <View style={styles.headerCenter}>
-          {avatar && <Image source={avatar} style={styles.avatar} />}
-          <View style={styles.headerText}>
-            <Text style={styles.name} numberOfLines={1}>
-              {name}
+          {!selectedMessageId ? (
+            <>
+              {avatar && <Image source={avatar} style={styles.avatar} />}
+              <View style={styles.headerText}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {name}
+                </Text>
+                <Text style={[styles.status, isTyping && styles.typing]}>
+                  {isTyping ? "typing..." : isOnline ? "Online" : "Offline"}
+                </Text>
+              </View>
+            </>
+          ) : (
+            <Text style={styles.headerTitleSelected}>
+              {isEditingMode ? "Editing Message" : "Message Selected"}
             </Text>
-            <Text style={[styles.status, isTyping && styles.typing]}>
-              {isTyping ? "typing..." : isOnline ? "Online" : "Offline"}
-            </Text>
-          </View>
+          )}
         </View>
+
+        {selectedMessageId && (
+          <View style={styles.headerActions}>
+            <Pressable style={styles.iconBtn} onPress={handleEditSelected}>
+              <Ionicons name="pencil" size={20} color={COLORS.primary} />
+            </Pressable>
+            <Pressable style={styles.iconBtn} onPress={handleDeleteSelected}>
+              <Ionicons name="trash" size={20} color={COLORS.error} />
+            </Pressable>
+          </View>
+        )}
       </View>
 
       <KeyboardAvoidingView
@@ -257,6 +382,8 @@ const ChatDetailScreen = () => {
                     key={message._id}
                     message={message}
                     isFromMe={senderId === currentUser?._id}
+                    onLongPress={() => handleLongPress(message)}
+                    isSelected={selectedMessageId === message._id}
                   />
                 );
               })}
@@ -348,6 +475,13 @@ const styles = StyleSheet.create({
   name: { color: COLORS.white, fontWeight: "600", fontSize: 16 },
   status: { fontSize: 12, color: COLORS.grey },
   typing: { color: COLORS.primary },
+
+  headerTitleSelected: {
+    color: COLORS.primary,
+    fontWeight: "700",
+    fontSize: 16,
+    marginLeft: 12,
+  },
 
   headerActions: { flexDirection: "row", gap: 12 },
   iconBtn: {

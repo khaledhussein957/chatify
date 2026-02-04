@@ -26,7 +26,9 @@ export const getMessages = async (
       return;
     }
 
-    const messages = await Message.find({ chat: chatId })
+    const messages = await Message.find({
+      chat: chatId,
+    })
       .populate("sender", "name email avatar")
       .sort({ createdAt: 1 }); // oldest first
 
@@ -120,6 +122,97 @@ export const sendMessageWithContent = async (
     res.status(201).json(message);
   } catch (error) {
     console.error(`❌ Error in send message with content:`, error);
+    next(error);
+  }
+};
+
+// update text message with in 5m
+export const updateTextMessage = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.userId;
+    const { messageId } = req.params;
+    const { text } = req.body;
+
+    const message = await Message.findOne({ _id: messageId, sender: userId });
+    if (!message) {
+      console.warn("Message not found for update:", messageId);
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    // check if message is already deleted
+    if (message.deleted) {
+      console.warn("Message already deleted:", messageId);
+      return res.status(400).json({ message: "Message already deleted" });
+    }
+
+    // check if message is content message
+    if (message.content) {
+      console.warn("Message is content message:", messageId);
+      return res.status(400).json({ message: "Message is content message" });
+    }
+
+    // check if message less than 5m old
+    if (new Date().getTime() - message.createdAt.getTime() > 5 * 60 * 1000) {
+      console.warn("Message too old to update:", messageId);
+      return res.status(400).json({ message: "Message too old to update" });
+    }
+
+    message.text = text;
+    await message.save();
+
+    // Socket Emission
+    if (io) {
+      io.to(`chat:${message.chat}`).emit("message-updated", {
+        messageId: message._id,
+        text: message.text,
+      });
+    }
+
+    res.status(200).json(message);
+  } catch (error) {
+    console.error(`❌ Error in update text message:`, error);
+    next(error);
+  }
+};
+
+// delete message
+export const deleteMessage = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.userId;
+    const { messageId } = req.params;
+
+    const message = await Message.findOne({ _id: messageId, sender: userId });
+    if (!message) {
+      console.warn("Message not found for deletion:", messageId);
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    // if it's content message, delete it from cloudinary
+    if (message.content) {
+      await cloudinary.uploader.destroy(message.content);
+      console.log("File deleted successfully");
+    }
+
+    message.deleted = true;
+    message.deletedAt = new Date();
+    await message.save();
+
+    // Socket Emission
+    if (io) {
+      io.to(`chat:${message.chat}`).emit("message-deleted", messageId);
+    }
+
+    res.status(200).json({ message: "Message deleted successfully" });
+  } catch (error) {
+    console.error(`❌ Error in delete message:`, error);
     next(error);
   }
 };

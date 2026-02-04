@@ -156,9 +156,32 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       console.log("Received user-updated for:", userId);
       queryClient.invalidateQueries({ queryKey: ["users"] });
       queryClient.invalidateQueries({ queryKey: ["chats"] });
-      // If we are currently in a chat with this user, we might want to refresh that too
-      // but usually the chat detail screen might rely on these shared queries.
     });
+
+    socket.on("message-deleted", (messageId: string) => {
+      console.log("Received message-deleted:", messageId);
+      // Soft delete in the cache
+      queryClient.setQueriesData<Message[]>(
+        { queryKey: ["messages"] },
+        (old) => {
+          return old?.map((m) =>
+            m._id === messageId ? { ...m, deleted: true, text: "" } : m,
+          );
+        },
+      );
+      // Also update chats list to refresh lastMessage if needed
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+    });
+
+    socket.on(
+      "message-updated",
+      ({ messageId, text }: { messageId: string; text: string }) => {
+        console.log("Received message-updated:", messageId);
+        // Update specific message in the query data
+        queryClient.invalidateQueries({ queryKey: ["messages"] });
+        queryClient.invalidateQueries({ queryKey: ["chats"] });
+      },
+    );
 
     set({ socket, queryClient });
   },

@@ -62,3 +62,47 @@ export const useSendMessageWithContent = () => {
     return response.json();
   };
 };
+
+export const useUpdateTextMessage = () => {
+  const token = useAuthStore((state) => state.token);
+
+  return async (messageId: string, text: string) => {
+    const response = await fetch(`${API_URL}/messages/update/${messageId}`, {
+      method: "PUT",
+      body: JSON.stringify({ text }),
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Update failed server response:", errorText);
+      throw new Error(`Update failed: ${response.status}`);
+    }
+
+    return response.json();
+  };
+};
+
+export const useDeleteMessage = () => {
+  const token = useAuthStore((state) => state.token);
+
+  return async (messageId: string) => {
+    const response = await fetch(`${API_URL}/messages/delete/${messageId}`, {
+      method: "DELETE",
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Delete failed server response:", errorText);
+      throw new Error(`Delete failed: ${response.status}`);
+    }
+
+    return response.json();
+  };
+};
