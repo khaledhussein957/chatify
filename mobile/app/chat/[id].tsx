@@ -3,7 +3,6 @@ import MessageBubble from "@/components/MessageBubble";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useMessages } from "@/hooks/useMessage";
 import { useSocketStore } from "@/lib/socket";
-import { MessageSender } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
@@ -17,8 +16,8 @@ import {
   Platform,
   ActivityIndicator,
   TextInput,
+  StyleSheet,
 } from "react-native";
-
 import { SafeAreaView } from "react-native-safe-area-context";
 
 type ChatParams = {
@@ -29,12 +28,8 @@ type ChatParams = {
 };
 
 const ChatDetailScreen = () => {
-  const {
-    id: chatId,
-    avatar,
-    name,
-    participantId,
-  } = useLocalSearchParams<ChatParams>();
+  const { id: chatId, avatar, name, participantId } =
+    useLocalSearchParams<ChatParams>();
 
   const [messageText, setMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -58,18 +53,15 @@ const ChatDetailScreen = () => {
 
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // join chat room on mount, leave on unmount
   useEffect(() => {
     if (chatId && isConnected) joinChat(chatId);
-
     return () => {
       if (chatId) leaveChat(chatId);
     };
   }, [chatId, isConnected, joinChat, leaveChat]);
 
-  // scroll to bottom when new messages arrive
   useEffect(() => {
-    if (messages && messages.length > 0) {
+    if (messages?.length) {
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
@@ -79,27 +71,16 @@ const ChatDetailScreen = () => {
   const handleTyping = useCallback(
     (text: string) => {
       setMessageText(text);
-
       if (!isConnected || !chatId) return;
 
-      // send typing start
       if (text.length > 0) {
         sendTyping(chatId, true);
-
-        // clear existing timeout
-        if (typingTimeoutRef.current) {
-          clearTimeout(typingTimeoutRef.current);
-        }
-
-        // stop typing after 2 seconds of no input
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         typingTimeoutRef.current = setTimeout(() => {
           sendTyping(chatId, false);
         }, 2000);
       } else {
-        // text cleared, stop typing
-        if (typingTimeoutRef.current) {
-          clearTimeout(typingTimeoutRef.current);
-        }
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
         sendTyping(chatId, false);
       }
     },
@@ -107,12 +88,9 @@ const ChatDetailScreen = () => {
   );
 
   const handleSend = () => {
-    if (!messageText.trim() || !isConnected || !currentUser) return;
+    if (!messageText.trim() || !currentUser || !isConnected) return;
 
-    // stop typing indicator
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     sendTyping(chatId, false);
 
     sendMessage(chatId, messageText.trim(), {
@@ -121,64 +99,53 @@ const ChatDetailScreen = () => {
       email: currentUser.email,
       avatar: currentUser.avatar as string,
     });
-    setMessageText("");
 
+    setMessageText("");
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-surface" edges={["top", "bottom"]}>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       {/* Header */}
-      <View className="flex-row items-center px-4 py-2 bg-surface border-b border-surface-light">
+      <View style={styles.header}>
         <Pressable onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={24} color="#F4A261" />
         </Pressable>
-        <View className="flex-row items-center flex-1 ml-2">
-          {avatar && (
-            <Image
-              source={avatar}
-              style={{ width: 40, height: 40, borderRadius: 999 }}
-            />
-          )}
-          <View className="ml-3">
-            <Text
-              className="text-foreground font-semibold text-base"
-              numberOfLines={1}
-            >
+
+        <View style={styles.headerCenter}>
+          {avatar && <Image source={avatar} style={styles.avatar} />}
+          <View style={styles.headerText}>
+            <Text style={styles.name} numberOfLines={1}>
               {name}
             </Text>
-            <Text
-              className={`text-xs ${isTyping ? "text-primary" : "text-muted-foreground"}`}
-            >
+            <Text style={[styles.status, isTyping && styles.typing]}>
               {isTyping ? "typing..." : isOnline ? "Online" : "Offline"}
             </Text>
           </View>
         </View>
-        <View className="flex-row items-center gap-3">
-          <Pressable className="w-9 h-9 rounded-full items-center justify-center">
+
+        <View style={styles.headerActions}>
+          <Pressable style={styles.iconBtn}>
             <Ionicons name="call-outline" size={20} color="#A0A0A5" />
           </Pressable>
-          <Pressable className="w-9 h-9 rounded-full items-center justify-center">
+          <Pressable style={styles.iconBtn}>
             <Ionicons name="videocam-outline" size={20} color="#A0A0A5" />
           </Pressable>
         </View>
       </View>
 
-      {/* Message + Keyboard input */}
-
       <KeyboardAvoidingView
-        className="flex-1"
+        style={styles.flex}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={0}
       >
-        <View className="flex-1 bg-surface">
+        <View style={styles.flex}>
           {isLoading ? (
-            <View className="flex-1 items-center justify-center">
+            <View style={styles.center}>
               <ActivityIndicator size="large" color="#F4A261" />
             </View>
-          ) : !messages || messages.length === 0 ? (
+          ) : !messages?.length ? (
             <EmptyUI
               title="No messages yet"
               subtitle="Start the conversation!"
@@ -189,58 +156,45 @@ const ChatDetailScreen = () => {
           ) : (
             <ScrollView
               ref={scrollViewRef}
-              contentContainerStyle={{
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                gap: 8,
-              }}
-              onContentSizeChange={() => {
-                scrollViewRef.current?.scrollToEnd({ animated: false });
-              }}
+              contentContainerStyle={styles.messages}
             >
               {messages.map((message) => {
                 const senderId =
                   typeof message.sender === "string"
                     ? message.sender
                     : message.sender._id;
-                const isFromMe = currentUser
-                  ? senderId === currentUser._id
-                  : false;
 
                 return (
                   <MessageBubble
                     key={message._id}
                     message={message}
-                    isFromMe={isFromMe}
+                    isFromMe={senderId === currentUser?._id}
                   />
                 );
               })}
             </ScrollView>
           )}
 
-          {/* Input bar */}
-          <View className="px-3 pb-3 pt-2 bg-surface border-t border-surface-light">
-            <View className="flex-row items-end bg-surface-card rounded-3xl px-3 py-1.5 gap-2">
-              <Pressable className="w-8 h-8 rounded-full items-center justify-center">
+          {/* Input */}
+          <View style={styles.inputWrapper}>
+            <View style={styles.inputBar}>
+              <Pressable style={styles.addBtn}>
                 <Ionicons name="add" size={22} color="#F4A261" />
               </Pressable>
 
               <TextInput
+                style={styles.input}
                 placeholder="Type a message"
                 placeholderTextColor="#6B6B70"
-                className="flex-1 text-foreground text-sm mb-2"
                 multiline
-                style={{ maxHeight: 100 }}
                 value={messageText}
                 onChangeText={handleTyping}
-                onSubmitEditing={handleSend}
-                editable={!isSending}
               />
 
               <Pressable
-                className="w-8 h-8 rounded-full items-center justify-center bg-primary"
+                style={styles.sendBtn}
                 onPress={handleSend}
-                disabled={!messageText.trim() || isSending}
+                disabled={!messageText.trim()}
               >
                 {isSending ? (
                   <ActivityIndicator size="small" color="#0D0D0F" />
@@ -257,3 +211,80 @@ const ChatDetailScreen = () => {
 };
 
 export default ChatDetailScreen;
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  container: { flex: 1, backgroundColor: "#0D0D0F" },
+
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1C1C20",
+  },
+  headerCenter: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 8,
+  },
+  avatar: { width: 40, height: 40, borderRadius: 20 },
+  headerText: { marginLeft: 12 },
+  name: { color: "#FFF", fontWeight: "600", fontSize: 16 },
+  status: { fontSize: 12, color: "#6B6B70" },
+  typing: { color: "#F4A261" },
+
+  headerActions: { flexDirection: "row", gap: 12 },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
+
+  messages: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 8,
+  },
+
+  inputWrapper: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: "#1C1C20",
+  },
+  inputBar: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    backgroundColor: "#1A1A1E",
+    borderRadius: 24,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 8,
+  },
+  addBtn: {
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  input: {
+    flex: 1,
+    color: "#FFF",
+    fontSize: 14,
+    maxHeight: 100,
+  },
+  sendBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F4A261",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+});

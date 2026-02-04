@@ -163,4 +163,151 @@ export const styles = StyleSheet.create({
     color: "#EF4444",
     marginLeft: 8,
   },
+
+  // Edit Profile Styles
+  inputContainer: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: COLORS.grey,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  input: {
+    backgroundColor: COLORS.surfaceCard,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 52,
+    fontSize: 16,
+    color: COLORS.foreground,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceLight,
+  },
+  saveButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: COLORS.background,
+  },
+
+  // Danger / Modal Styles
+  dangerButton: {
+    backgroundColor: COLORS.error,
+    borderRadius: 12,
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 10,
+  },
+  dangerButtonText: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: COLORS.white,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  modalContent: {
+    width: "100%",
+    backgroundColor: COLORS.surfaceCard,
+    borderRadius: 24,
+    padding: 24,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: COLORS.surfaceLight,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: COLORS.white,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  modalDescription: {
+    fontSize: 14,
+    color: COLORS.grey,
+    textAlign: "center",
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  modalActions: {
+    width: "100%",
+    gap: 12,
+  },
+  cancelButton: {
+    paddingVertical: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: COLORS.grey,
+  },
+  errorText: {
+    fontSize: 12,
+    color: COLORS.error,
+    marginTop: 4,
+  },
+
+  // Consistent Sub-page Styles
+  pageHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    width: "100%",
+  },
+  pageTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: COLORS.primary,
+  },
+  avatarHeader: {
+    alignItems: "center",
+    marginTop: 30,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  passwordInputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.surfaceCard,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.surfaceLight,
+    height: 52,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 16,
+    fontSize: 16,
+    height: 52,
+    color: COLORS.foreground,
+  },
+  eyeIcon: {
+    paddingRight: 15,
+    height: "100%",
+    justifyContent: "center",
+    alignItems: "center",
+  },
 });

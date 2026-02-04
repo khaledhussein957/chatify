@@ -1,17 +1,32 @@
 import { Message } from "@/types";
-import { View, Text } from "react-native";
+import { View, Text, StyleSheet } from "react-native";
 
-function MessageBubble({ message, isFromMe }: { message: Message; isFromMe: boolean }) {
+function MessageBubble({
+  message,
+  isFromMe,
+}: {
+  message: Message;
+  isFromMe: boolean;
+}) {
   return (
-    <View className={`flex-row ${isFromMe ? "justify-end" : "justify-start"}`}>
+    <View
+      style={[
+        styles.row,
+        isFromMe ? styles.justifyEnd : styles.justifyStart,
+      ]}
+    >
       <View
-        className={`max-w-[80%] px-3 py-2 rounded-2xl ${
-          isFromMe
-            ? "bg-primary rounded-br-sm"
-            : "bg-surface-card rounded-bl-sm border border-surface-light"
-        }`}
+        style={[
+          styles.bubble,
+          isFromMe ? styles.bubbleMe : styles.bubbleOther,
+        ]}
       >
-        <Text className={`text-sm ${isFromMe ? "text-surface-dark" : "text-foreground"}`}>
+        <Text
+          style={[
+            styles.text,
+            isFromMe ? styles.textMe : styles.textOther,
+          ]}
+        >
           {message.text}
         </Text>
       </View>
@@ -20,3 +35,43 @@ function MessageBubble({ message, isFromMe }: { message: Message; isFromMe: bool
 }
 
 export default MessageBubble;
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: "row",
+  },
+  justifyEnd: {
+    justifyContent: "flex-end",
+  },
+  justifyStart: {
+    justifyContent: "flex-start",
+  },
+
+  bubble: {
+    maxWidth: "80%",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+  },
+
+  bubbleMe: {
+    backgroundColor: "#F4A261",
+    borderBottomRightRadius: 4,
+  },
+  bubbleOther: {
+    backgroundColor: "#1A1A1E",
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: "#1C1C20",
+  },
+
+  text: {
+    fontSize: 14,
+  },
+  textMe: {
+    color: "#0D0D0F",
+  },
+  textOther: {
+    color: "#FFFFFF",
+  },
+});

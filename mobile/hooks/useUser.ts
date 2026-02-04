@@ -34,6 +34,7 @@ export const useChangePassword = () => {
     mutationFn: async (params: {
       currentPassword: string;
       newPassword: string;
+      confirmPassword: string;
     }) => {
       const { data } = await apiWithAuth<{ message: string }>({
         method: "PUT",
@@ -54,12 +55,12 @@ export const useUpdateProfile = () => {
 
   return useMutation({
     mutationFn: async (params: Partial<{ name: string; email: string }>) => {
-      const { data } = await apiWithAuth<User>({
+      const { data } = await apiWithAuth<{ user: User; message: string }>({
         method: "PUT",
         url: "/users/update-profile",
         data: params,
       });
-      return data;
+      return data.user;
     },
   });
 };
