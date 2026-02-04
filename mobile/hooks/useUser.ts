@@ -8,7 +8,7 @@ import { useAuthStore } from "@/store/auth";
 // ----------------------
 export const useUsers = () => {
   const token = useAuthStore((state) => state.token);
-  const { apiWithAuth } = useApi(token || undefined);
+  const { apiWithAuth } = useApi();
 
   return useQuery({
     queryKey: ["users"],
@@ -27,8 +27,7 @@ export const useUsers = () => {
 // Change password
 // ----------------------
 export const useChangePassword = () => {
-  const token = useAuthStore((state) => state.token);
-  const { apiWithAuth } = useApi(token || undefined);
+  const { apiWithAuth } = useApi();
 
   return useMutation({
     mutationFn: async (params: {
@@ -50,8 +49,7 @@ export const useChangePassword = () => {
 // Update profile (name, email, etc.)
 // ----------------------
 export const useUpdateProfile = () => {
-  const token = useAuthStore((state) => state.token);
-  const { apiWithAuth } = useApi(token || undefined);
+  const { apiWithAuth } = useApi();
 
   return useMutation({
     mutationFn: async (params: Partial<{ name: string; email: string }>) => {
@@ -69,8 +67,7 @@ export const useUpdateProfile = () => {
 // Update profile avatar
 // ----------------------
 export const useUpdateProfileAvatar = () => {
-  const token = useAuthStore((state) => state.token);
-  const { apiWithAuth } = useApi(token || undefined);
+  const { apiWithAuth } = useApi();
 
   return useMutation({
     mutationFn: async ({
@@ -109,8 +106,7 @@ export const useUpdateProfileAvatar = () => {
 // Delete account
 // ----------------------
 export const useDeleteAccount = () => {
-  const token = useAuthStore((state) => state.token);
-  const { apiWithAuth } = useApi(token || undefined);
+  const { apiWithAuth } = useApi();
 
   return useMutation({
     mutationFn: async () => {

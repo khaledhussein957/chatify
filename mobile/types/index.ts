@@ -18,6 +18,7 @@ export interface Message {
   chat: string;
   sender: MessageSender | string;
   text: string;
+  content?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -25,6 +26,7 @@ export interface Message {
 export interface ChatLastMessage {
   _id: string;
   text: string;
+  content?: string;
   sender: string;
   createdAt: string;
 }

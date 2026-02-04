@@ -1,5 +1,12 @@
+import React, { useState } from "react";
 import { Message } from "@/types";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, Pressable } from "react-native";
+import { COLORS } from "@/constants/theme";
+import { format } from "date-fns";
+import { Image } from "expo-image";
+import { Ionicons } from "@expo/vector-icons";
+import MediaViewer from "./MediaViewer";
+
 
 function MessageBubble({
   message,
@@ -8,6 +15,29 @@ function MessageBubble({
   message: Message;
   isFromMe: boolean;
 }) {
+  const [isViewerVisible, setIsViewerVisible] = useState(false);
+
+  const time = message.createdAt 
+    ? format(new Date(message.createdAt), "h:mm a")
+    : "";
+
+  const isImage = message.content && (
+    message.content.includes(".jpg") ||
+    message.content.includes(".jpeg") ||
+    message.content.includes(".png") ||
+    message.content.includes(".gif") ||
+    message.content.includes(".webp")
+  );
+
+  const isVideo = message.content && (
+    message.content.includes(".mp4") ||
+    message.content.includes(".mov")
+  );
+
+  const isDocument = message.content && !isImage && !isVideo;
+
+  const mediaType = isImage ? "image" : isVideo ? "video" : "document";
+
   return (
     <View
       style={[
@@ -21,13 +51,58 @@ function MessageBubble({
           isFromMe ? styles.bubbleMe : styles.bubbleOther,
         ]}
       >
+        {/* Media Content */}
+        {message.content && (
+          <>
+            {isImage && (
+              <Pressable onPress={() => setIsViewerVisible(true)}>
+                <Image source={{ uri: message.content }} style={styles.mediaImage} />
+              </Pressable>
+            )}
+            
+            {isVideo && (
+              <Pressable onPress={() => setIsViewerVisible(true)} style={styles.videoContainer}>
+                <Ionicons name="play-circle" size={48} color={COLORS.white} />
+              </Pressable>
+            )}
+            
+            {isDocument && (
+              <Pressable onPress={() => setIsViewerVisible(true)} style={styles.documentContainer}>
+                <Ionicons name="document-text" size={24} color={COLORS.primary} />
+                <Text style={styles.documentText}>Document</Text>
+              </Pressable>
+            )}
+
+            <MediaViewer 
+              isVisible={isViewerVisible}
+              onClose={() => setIsViewerVisible(false)}
+              mediaUrl={message.content}
+              type={mediaType}
+            />
+          </>
+        )}
+        
+        {/* Text */}
+        {message.text && (
+          <Text
+            style={[
+              styles.text,
+              isFromMe ? styles.textMe : styles.textOther,
+              message.content && { marginTop: 4 },
+            ]}
+          >
+            {message.text}
+          </Text>
+        )}
+        
+        {/* Time */}
         <Text
           style={[
-            styles.text,
-            isFromMe ? styles.textMe : styles.textOther,
+            styles.time,
+            isFromMe ? styles.timeMe : styles.timeOther,
           ]}
         >
-          {message.text}
+          {time}
         </Text>
       </View>
     </View>
@@ -35,6 +110,7 @@ function MessageBubble({
 }
 
 export default MessageBubble;
+
 
 const styles = StyleSheet.create({
   row: {
@@ -55,23 +131,62 @@ const styles = StyleSheet.create({
   },
 
   bubbleMe: {
-    backgroundColor: "#F4A261",
+    backgroundColor: COLORS.primary,
     borderBottomRightRadius: 4,
   },
   bubbleOther: {
-    backgroundColor: "#1A1A1E",
+    backgroundColor: COLORS.surfaceCard,
     borderBottomLeftRadius: 4,
     borderWidth: 1,
-    borderColor: "#1C1C20",
+    borderColor: COLORS.surfaceLight,
   },
 
   text: {
     fontSize: 14,
   },
   textMe: {
-    color: "#0D0D0F",
+    color: COLORS.background,
   },
   textOther: {
-    color: "#FFFFFF",
+    color: COLORS.white,
+  },
+  time: {
+    fontSize: 10,
+    marginTop: 4,
+    alignSelf: "flex-end",
+  },
+  timeMe: {
+    color: "rgba(13, 13, 15, 0.5)",
+  },
+  timeOther: {
+    color: "rgba(255, 255, 255, 0.5)",
+  },
+  mediaImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 4,
+  },
+  videoContainer: {
+    width: 200,
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: COLORS.surfaceLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  documentContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    padding: 12,
+    backgroundColor: COLORS.surfaceLight,
+    borderRadius: 8,
+    marginBottom: 4,
+  },
+  documentText: {
+    color: COLORS.white,
+    fontSize: 14,
   },
 });

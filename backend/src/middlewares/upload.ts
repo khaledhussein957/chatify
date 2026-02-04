@@ -16,18 +16,23 @@ const storage = multer.diskStorage({
   },
 });
 
-// File filter to allow only specific file types PDF, DOCX, PNG, JPG, JPEG, VIDEO
 const allowedMimeTypes = new Set([
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword",
   "image/png",
   "image/jpeg",
+  "image/webp",
+  "image/gif",
   "video/mp4",
   "video/quicktime",
   "video/x-msvideo",
+  "video/x-matroska",
+  "video/webm",
 ]);
 
-const allowedExtensions = /\.(pdf|docx|png|jpg|jpeg|mp4|mov|avi)$/i;
+const allowedExtensions =
+  /\.(pdf|docx|doc|png|jpg|jpeg|webp|gif|mp4|mov|avi|mkv|webm)$/i;
 
 const fileFilter = (
   req: Express.Request,
@@ -36,6 +41,7 @@ const fileFilter = (
 ) => {
   const extValid = allowedExtensions.test(file.originalname);
   const mimeValid = allowedMimeTypes.has(file.mimetype);
+
   if (extValid && mimeValid) {
     return cb(null, true);
   }

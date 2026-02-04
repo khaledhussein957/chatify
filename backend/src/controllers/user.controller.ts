@@ -7,6 +7,7 @@ import User from "../models/user.model";
 
 import cloudinary from "../configs/cloudinary";
 import { isValidStrongPassword } from "../utils/validStrongPassword";
+import { io } from "../utils/socket";
 
 export const getUsers = async (req: AuthRequest, res: Response) => {
   try {
@@ -44,11 +45,9 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
     }
 
     if (newPassword === currentPassword) {
-      return res
-        .status(400)
-        .json({
-          message: "❌ New password must be different from current password",
-        });
+      return res.status(400).json({
+        message: "❌ New password must be different from current password",
+      });
     }
 
     const isStrongPassword = isValidStrongPassword(newPassword);
@@ -117,6 +116,13 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
 
     await user.save();
 
+    // Notify all connected clients about the user update
+    io.emit("user-updated", {
+      userId: user._id,
+      name: user.name,
+      avatar: user.avatar,
+    });
+
     res.status(200).json({
       message: "✅ Profile updated successfully",
       user: {
@@ -167,6 +173,13 @@ export const updateProfileAvatar = async (req: AuthRequest, res: Response) => {
 
     user.avatar = result.secure_url;
     await user.save();
+
+    // Notify all connected clients about the user update
+    io.emit("user-updated", {
+      userId: user._id,
+      name: user.name,
+      avatar: user.avatar,
+    });
 
     res
       .status(200)

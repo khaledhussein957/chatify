@@ -10,13 +10,13 @@ export const getOrCreateChat = async (
 ) => {
   try {
     const userId = req.userId;
-    const { participantId } = req.body;
+    const { participantId } = req.params;
 
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    if (!participantId || !Types.ObjectId.isValid(participantId)) {
+    if (!participantId || !Types.ObjectId.isValid(participantId.toString())) {
       return res.status(400).json({ message: "Invalid participant ID" });
     }
 
@@ -29,18 +29,17 @@ export const getOrCreateChat = async (
     // Sort participants for consistent ordering
     const sortedParticipants = [userId, participantId].sort();
 
-    let chat = await Chat.findOneAndUpdate(
-      { participants: { $all: sortedParticipants, $size: 2 } },
-      { $setOnInsert: { participants: sortedParticipants } },
-      { upsert: true, new: true },
-    )
+    let chat = await Chat.findOne({
+      participants: { $all: sortedParticipants, $size: 2 },
+    })
       .populate("participants", "name email avatar")
       .populate("lastMessage");
 
     if (!chat) {
-      const newChat = new Chat({ participants: [userId, participantId] });
-      await newChat.save();
-      chat = await newChat.populate("participants", "name email avatar");
+      chat = await Chat.create({
+        participants: sortedParticipants,
+      });
+      chat = await chat.populate("participants", "name email avatar");
     }
 
     // Get the other participant's details

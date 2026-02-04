@@ -3,7 +3,7 @@ import { io, Socket } from "socket.io-client";
 import { QueryClient } from "@tanstack/react-query";
 import { Chat, Message, MessageSender } from "@/types";
 
-const SOCKET_URL = "https://chatify-phi-five.vercel.app";
+const SOCKET_URL = "http://192.168.8.55:9000";
 
 interface SocketState {
   socket: Socket | null;
@@ -101,6 +101,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
               lastMessage: {
                 _id: message._id,
                 text: message.text,
+                content: message.content,
                 sender: senderId,
                 createdAt: message.createdAt,
               },
@@ -150,6 +151,14 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         });
       },
     );
+
+    socket.on("user-updated", ({ userId }: { userId: string }) => {
+      console.log("Received user-updated for:", userId);
+      queryClient.invalidateQueries({ queryKey: ["users"] });
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+      // If we are currently in a chat with this user, we might want to refresh that too
+      // but usually the chat detail screen might rely on these shared queries.
+    });
 
     set({ socket, queryClient });
   },

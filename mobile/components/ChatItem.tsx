@@ -49,7 +49,11 @@ const ChatItem = ({ chat, onPress }: { chat: Chat; onPress: () => void }) => {
               ]}
               numberOfLines={1}
             >
-              {chat.lastMessage?.text || "No messages yet"}
+              {chat.lastMessage?.text ||
+                (chat.lastMessage?.content ? (
+                  chat.lastMessage.content.match(/\.(jpg|jpeg|png|webp|gif)$/i) ? "Photo 📸" :
+                  chat.lastMessage.content.match(/\.(mp4|mov|avi|mkv|webm)$/i) ? "Video 📹" : "File 📁"
+                ) : "No messages yet 📝")}
             </Text>
           )}
         </View>
