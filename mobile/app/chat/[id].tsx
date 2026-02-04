@@ -249,6 +249,7 @@ const ChatDetailScreen = () => {
       if (isEditingMode && selectedMessageId) {
         const messageId = selectedMessageId;
         const newText = messageText.trim();
+        const originalText = messages?.find((m) => m._id === messageId)?.text;
 
         // Optimistic update
         queryClient.setQueryData<Message[]>(["messages", chatId], (old) => {
@@ -257,8 +258,19 @@ const ChatDetailScreen = () => {
           );
         });
 
-        clearSelection();
-        await updateTextMessage(messageId, newText);
+        try {
+          await updateTextMessage(messageId, newText);
+          clearSelection();
+        } catch (error) {
+          // Rollback optimistic update
+          queryClient.setQueryData<Message[]>(["messages", chatId], (old) => {
+            return old?.map((m) =>
+              m._id === messageId ? { ...m, text: originalText || "" } : m
+            );
+          });
+          alert.error("Failed to update message");
+          throw error; // Re-throw to hit outer catch if needed
+        }
       } else if (selectedFile) {
         // Send with file
         await sendMessageWithFile(

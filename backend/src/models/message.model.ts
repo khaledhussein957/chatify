@@ -7,7 +7,7 @@ export interface IMessage extends Document {
   content?: string; // like image, video, etc.
 
   deleted: boolean;
-  deletedAt: Date;
+  deletedAt?: Date;
 
   createdAt: Date;
   updatedAt: Date;
