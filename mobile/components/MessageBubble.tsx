@@ -21,18 +21,9 @@ function MessageBubble({
     ? format(new Date(message.createdAt), "h:mm a")
     : "";
 
-  const isImage = message.content && (
-    message.content.includes(".jpg") ||
-    message.content.includes(".jpeg") ||
-    message.content.includes(".png") ||
-    message.content.includes(".gif") ||
-    message.content.includes(".webp")
-  );
-
-  const isVideo = message.content && (
-    message.content.includes(".mp4") ||
-    message.content.includes(".mov")
-  );
+  const contentPath = message.content?.split("?")[0].toLowerCase();
+  const isImage = !!contentPath && /\.(jpg|jpeg|png|gif|webp)$/.test(contentPath);
+  const isVideo = !!contentPath && /\.(mp4|mov)$/.test(contentPath);
 
   const isDocument = message.content && !isImage && !isVideo;
 

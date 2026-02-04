@@ -118,7 +118,10 @@ const ChatDetailScreen = () => {
               name: asset.fileName || `media_${Date.now()}${asset.type === "video" ? ".mp4" : ".jpg"}`,
             });
           }
-        });
+        }).catch((error) => {
+          console.error("Image picker error:", error);
+          Alert.alert("Error", "Failed to select image. Please check permissions.");
+         });
       } else if (index === 1) {
         // Document
         DocumentPicker.getDocumentAsync({
@@ -132,7 +135,10 @@ const ChatDetailScreen = () => {
               name: asset.name,
             });
           }
-        });
+        }).catch((error) => {
+          console.error("Document picker error:", error);
+          Alert.alert("Error", "Failed to select document. Please check permissions.");
+         });
       }
     };
 
@@ -181,6 +187,9 @@ const ChatDetailScreen = () => {
           email: currentUser.email,
           avatar: currentUser.avatar as string,
         });
+      } else {
+        Alert.alert("Connection Error", "Unable to send message. Please check your connection.");
+        return;
       }
       
       setMessageText("");

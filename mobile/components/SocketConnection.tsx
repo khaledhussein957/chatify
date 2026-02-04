@@ -21,6 +21,7 @@ const SocketConnection = () => {
 
     return () => {
       console.log("SocketConnection effect cleanup");
+      disconnect();
     };
   }, [token, connect, disconnect, queryClient]);
 
