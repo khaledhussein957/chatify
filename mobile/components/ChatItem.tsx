@@ -1,7 +1,7 @@
 import { Chat } from "@/types";
 import { Image } from "expo-image";
 import { View, Text, Pressable, StyleSheet } from "react-native";
-import { formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 import { useSocketStore } from "@/lib/socket";
 import { COLORS } from "@/constants/theme";
 
@@ -32,7 +32,7 @@ const ChatItem = ({ chat, onPress }: { chat: Chat; onPress: () => void }) => {
             {hasUnread && <View style={styles.unreadDot} />}
             <Text style={styles.time}>
               {chat.lastMessageAt
-                ? formatDistanceToNow(new Date(chat.lastMessageAt), { addSuffix: false })
+                ? format(new Date(chat.lastMessageAt), "h:mm a")
                 : ""}
             </Text>
           </View>
@@ -46,17 +46,22 @@ const ChatItem = ({ chat, onPress }: { chat: Chat; onPress: () => void }) => {
               style={[
                 styles.lastMessage,
                 hasUnread ? { color: COLORS.foreground, fontWeight: "500" } : { color: COLORS.grey },
+                chat.lastMessage?.deleted && styles.deletedText,
               ]}
               numberOfLines={1}
             >
-              {chat.lastMessage?.text ||
+              {chat.lastMessage?.deleted ? (
+                "🚫 Message was deleted"
+              ) : (
+                chat.lastMessage?.text ||
                 (chat.lastMessage?.content ? (
                   chat.lastMessage.content.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i)
                     ? "Photo 📸"
                     : chat.lastMessage.content.match(/\.(mp4|mov|avi|mkv|webm)(\?|$)/i)
                     ? "Video 📹"
                     : "File 📁"
-                ) : "No messages yet 📝")}
+                ) : "No messages yet 📝")
+              )}
             </Text>
           )}
         </View>
@@ -135,6 +140,10 @@ const styles = StyleSheet.create({
 
   time: {
     fontSize: 12,
+    color: COLORS.grey,
+  },
+  deletedText: {
+    fontStyle: "italic",
     color: COLORS.grey,
   },
 });

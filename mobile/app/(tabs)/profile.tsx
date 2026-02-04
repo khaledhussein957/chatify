@@ -1,4 +1,4 @@
-import { View, Text, ScrollView, Pressable, ActivityIndicator, Alert } from "react-native";
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -8,6 +8,7 @@ import { useAuthStore } from "@/store/auth";
 import { useUpdateProfileAvatar } from "@/hooks/useUser";
 import { COLORS } from "@/constants/theme";
 import { router } from "expo-router";
+import { useAlert } from "@/components/AlertMessageController";
 
 const ACCOUNT_ITEMS = [
   { icon: "person-outline", label: "Edit Profile", color: "#22C55E", route: "/screens/edit_profile" },
@@ -30,6 +31,7 @@ const ProfileTab = () => {
   const user = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
   const { mutateAsync: updateAvatar, isPending: isUpdatingAvatar } = useUpdateProfileAvatar();
+  const alert = useAlert();
 
   const handleLogout = () => {
     logout();
@@ -58,7 +60,7 @@ const ProfileTab = () => {
         }
       } catch (error) {
         console.error("Failed to update avatar:", error);
-        Alert.alert("Error", "Failed to update profile picture");
+        alert.error("Failed to update profile picture");
       }
     }
   };
