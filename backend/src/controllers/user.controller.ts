@@ -6,6 +6,7 @@ import type { AuthRequest } from "../middlewares/auth.middleware";
 import User from "../models/user.model";
 
 import cloudinary from "../configs/cloudinary";
+import { isValidStrongPassword } from "../utils/validStrongPassword";
 
 export const getUsers = async (req: AuthRequest, res: Response) => {
   try {
@@ -41,6 +42,20 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
     if (newPassword !== confirmPassword) {
       return res.status(400).json({ message: "❌ Passwords do not match" });
     }
+
+    if (newPassword === currentPassword) {
+      return res
+        .status(400)
+        .json({
+          message: "❌ New password must be different from current password",
+        });
+    }
+
+    const isStrongPassword = isValidStrongPassword(newPassword);
+    if (!isStrongPassword)
+      return res
+        .status(400)
+        .json({ message: "❌ New password is not strong enough" });
 
     const user = await User.findById(userId);
 

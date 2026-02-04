@@ -7,19 +7,21 @@ import { useLogout } from "@/hooks/useAuth";
 import { useAuthStore } from "@/store/auth";
 import { useUpdateProfileAvatar } from "@/hooks/useUser";
 import { COLORS } from "@/constants/theme";
+import { router } from "expo-router";
 
 const ACCOUNT_ITEMS = [
-  { icon: "person-outline", label: "Edit Profile", color: "#22C55E" },
+  { icon: "person-outline", label: "Edit Profile", color: "#22C55E", route: "/screens/edit_profile" },
   {
-    icon: "shield-checkmark-outline",
-    label: "Privacy & Security",
+    icon: "lock-closed-outline",
+    label: "Change Password",
     color: "#22C55E",
+    route: "/screens/change_password"
   },
   {
-    icon: "notifications-outline",
-    label: "Notifications",
-    value: "On",
-    color: "#22C55E",
+    icon: "trash-outline",
+    label: "Delete Account",
+    color: "#EF4444",
+    route: "/screens/delete_account"
   },
 ];
 
@@ -119,6 +121,7 @@ const ProfileTab = () => {
                   styles.sectionItem,
                   index < ACCOUNT_ITEMS.length - 1 && styles.sectionItemBorder,
                 ]}
+                onPress={() => router.push(item.route as any)}
               >
                 <View
                   style={[
@@ -133,9 +136,6 @@ const ProfileTab = () => {
                   />
                 </View>
                 <Text style={styles.sectionLabel}>{item.label}</Text>
-                {item.value && (
-                  <Text style={styles.sectionValue}>{item.value}</Text>
-                )}
                 <Ionicons name="chevron-forward" size={18} color="#6B6B70" />
               </Pressable>
             ))}
