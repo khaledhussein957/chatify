@@ -5,6 +5,7 @@ import Chat from "../models/chat.model";
 import cloudinary from "../configs/cloudinary";
 import path from "path";
 import fs from "fs";
+import { io } from "../utils/socket";
 
 export const getMessages = async (
   req: AuthRequest,
@@ -46,25 +47,31 @@ export const sendMessageWithContent = async (
     const { chatId, text } = req.body;
 
     const chat = await Chat.findOne({ _id: chatId, participants: userId });
-    if (!chat) return res.status(404).json({ message: "Chat not found" });
+    if (!chat) {
+      console.warn("Chat not found for message send:", chatId);
+      return res.status(404).json({ message: "Chat not found" });
+    }
 
     let contentUrl: string | undefined = undefined;
 
     // if a file was uploaded via multer, upload it to Cloudinary
     if (req.file) {
       const filePath = path.resolve(req.file.path);
+      console.log("Uploading file to Cloudinary:", filePath);
+
       const uploadResult = await cloudinary.uploader.upload(filePath, {
         folder: "chatify",
         resource_type: "auto",
       });
 
       contentUrl = uploadResult.secure_url as string;
+      console.log("File uploaded successfully:", contentUrl);
 
       // remove local file after upload
       try {
         fs.unlinkSync(filePath);
       } catch (err) {
-        // non-fatal
+        console.error("Failed to delete temp file:", err);
       }
     }
 
@@ -72,7 +79,7 @@ export const sendMessageWithContent = async (
       chat: chatId,
       sender: userId,
       text: text || "",
-      ...(contentUrl ? { content: contentUrl } : {}),
+      content: contentUrl,
     });
 
     await message.save();
@@ -81,11 +88,38 @@ export const sendMessageWithContent = async (
     chat.lastMessageAt = new Date();
     await chat.save();
 
-    await (message as any).populate("sender", "name avatar");
+    await message.populate("sender", "name avatar");
+
+    // Socket Emission
+    if (io) {
+      console.log("Emitting new-message via socket for file attachment");
+      // to the chat room
+      io.to(`chat:${chatId}`).emit("new-message", message);
+
+      // to other participants personal rooms
+      chat.participants.forEach((participantId) => {
+        const participantIdStr = participantId.toString();
+        if (participantIdStr !== userId) {
+          const userRoom = `user:${participantIdStr}`;
+          const chatRoom = `chat:${chatId}`;
+
+          const chatRoomSockets = io.sockets.adapter.rooms.get(chatRoom);
+          const userRoomSockets = io.sockets.adapter.rooms.get(userRoom);
+
+          if (userRoomSockets) {
+            userRoomSockets.forEach((socketId) => {
+              if (!chatRoomSockets?.has(socketId)) {
+                io.to(socketId).emit("new-message", message);
+              }
+            });
+          }
+        }
+      });
+    }
 
     res.status(201).json(message);
   } catch (error) {
-    console.log(`Error in send message: ${error}`);
+    console.error(`❌ Error in send message with content:`, error);
     next(error);
   }
 };

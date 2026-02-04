@@ -1,6 +1,6 @@
 import Express from "express";
 import { createServer } from "http";
-import cors from "cors"
+import cors from "cors";
 
 import ENV from "./configs/env";
 import connectDB from "./configs/db";
@@ -20,7 +20,6 @@ app.use(cors());
 
 // Middlewares
 app.use(Express.json());
-
 
 // test route
 app.get("/api/health", (req, res) => {

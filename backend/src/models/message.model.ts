@@ -23,15 +23,16 @@ const MessageSchema = new Schema<IMessage>(
     },
     text: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
+      default: "",
     },
     content: {
       type: String,
       required: false,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // indexes for faster queries

@@ -10,12 +10,16 @@ import ENV from "../configs/env";
 // store online users in memory: userId -> socketIds
 export const onlineUsers: Map<string, Set<string>> = new Map();
 
+export let io: SocketServer;
+
 export const initializeSocket = (httpServer: HttpServer) => {
   const allowedOrigins = [
     "http://localhost:8081", // Expo mobile
+    "http://192.168.8.55:9000",
+    "http://192.168.8.55:8081",
   ].filter(Boolean) as string[];
 
-  const io = new SocketServer(httpServer, { cors: { origin: allowedOrigins } });
+  io = new SocketServer(httpServer, { cors: { origin: allowedOrigins } });
 
   // JWT auth middleware
   io.use(async (socket, next) => {
@@ -72,14 +76,19 @@ export const initializeSocket = (httpServer: HttpServer) => {
         try {
           const { chatId, text } = data;
 
-          const chat = await Chat.findOne({ _id: chatId, participants: userId });
+          const chat = await Chat.findOne({
+            _id: chatId,
+            participants: userId,
+          });
           if (!chat) {
             socket.emit("socket-error", { message: "Chat not found" });
             return;
           }
 
           if (!text || text.trim() === "") {
-            socket.emit("socket-error", { message: "Message text cannot be empty" });
+            socket.emit("socket-error", {
+              message: "Message text cannot be empty",
+            });
             return;
           }
 
@@ -95,17 +104,25 @@ export const initializeSocket = (httpServer: HttpServer) => {
 
           await message.populate("sender", "name avatar");
 
-          // emit to participants' personal rooms, excluding those in the chat room
-          for (const participantId of chat.participants) {
-            const userRoom = `user:${participantId}`;
-            const chatRoom = `chat:${chatId}`;
-            const userRoomSockets = io.sockets.adapter.rooms.get(userRoom);
-            const chatRoomSockets = io.sockets.adapter.rooms.get(chatRoom);
+          // emit to the chat room (reaches participants currently in the chat)
+          io.to(`chat:${chatId}`).emit("new-message", message);
 
-            if (userRoomSockets) {
-              for (const socketId of userRoomSockets) {
-                if (!chatRoomSockets?.has(socketId)) {
-                  io.to(socketId).emit("new-message", message);
+          // also emit to other participants' personal rooms (reaches them if they are in the app but not in this specific chat)
+          for (const participantId of chat.participants) {
+            const participantIdStr = participantId.toString();
+            if (participantIdStr !== userId) {
+              const userRoom = `user:${participantIdStr}`;
+              const chatRoom = `chat:${chatId}`;
+
+              const chatRoomSockets = io.sockets.adapter.rooms.get(chatRoom);
+              const userRoomSockets = io.sockets.adapter.rooms.get(userRoom);
+
+              if (userRoomSockets) {
+                for (const socketId of userRoomSockets) {
+                  // Only emit if the user is NOT in the chat room (to avoid double delivery or notifications for active viewers)
+                  if (!chatRoomSockets?.has(socketId)) {
+                    io.to(socketId).emit("new-message", message);
+                  }
                 }
               }
             }
@@ -113,7 +130,7 @@ export const initializeSocket = (httpServer: HttpServer) => {
         } catch (error) {
           socket.emit("socket-error", { message: "Failed to send message" });
         }
-      }
+      },
     );
 
     socket.on("typing", async (data: { chatId: string; isTyping: boolean }) => {
@@ -129,10 +146,12 @@ export const initializeSocket = (httpServer: HttpServer) => {
         const chat = await Chat.findById(data.chatId);
         if (chat) {
           const otherParticipantId = chat.participants.find(
-            (p: any) => p.toString() !== userId
+            (p: any) => p.toString() !== userId,
           );
           if (otherParticipantId) {
-            socket.to(`user:${otherParticipantId}`).emit("typing", typingPayload);
+            socket
+              .to(`user:${otherParticipantId}`)
+              .emit("typing", typingPayload);
           }
         }
       } catch (error) {

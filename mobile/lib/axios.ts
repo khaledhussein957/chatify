@@ -1,12 +1,12 @@
 import axios from "axios";
 import { useCallback } from "react";
+import { useAuthStore } from "@/store/auth";
 
 const API_URL = "http://192.168.8.55:9000/api";
 
 // Axios instance
 const api = axios.create({
   baseURL: API_URL,
-  headers: { "Content-Type": "application/json" },
 });
 
 // Response interceptor registered once
@@ -30,8 +30,9 @@ api.interceptors.response.use(
 );
 
 // Custom hook to use API with JWT
-export const useApi = (token?: string) => {
-  // token can be passed from app state / AsyncStorage / context
+export const useApi = () => {
+  const token = useAuthStore((state) => state.token);
+
   const apiWithAuth = useCallback(
     async <T>(config: Parameters<typeof api.request>[0]) => {
       return api.request<T>({
