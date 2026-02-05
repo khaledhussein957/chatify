@@ -13,11 +13,13 @@ function MessageBubble({
   isFromMe,
   onLongPress,
   isSelected,
+  showSenderName,
 }: {
   message: Message;
   isFromMe: boolean;
   onLongPress?: () => void;
   isSelected?: boolean;
+  showSenderName?: boolean;
 }) {
   const [isViewerVisible, setIsViewerVisible] = useState(false);
 
@@ -49,6 +51,13 @@ function MessageBubble({
           message.deleted && styles.bubbleDeleted,
         ]}
       >
+        {/* Sender Name for Group Chats */}
+        {showSenderName && !isFromMe && !message.deleted && (
+          <Text style={styles.senderName}>
+            {typeof message.sender === "string" ? "Someone" : message.sender.name}
+          </Text>
+        )}
+
         {/* Media Content */}
         {message.content && !message.deleted && (
           <>
@@ -167,6 +176,12 @@ const styles = StyleSheet.create({
   },
   textOther: {
     color: COLORS.white,
+  },
+  senderName: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: COLORS.primary,
+    marginBottom: 2,
   },
   time: {
     fontSize: 10,

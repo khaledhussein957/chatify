@@ -2,6 +2,7 @@ import EmptyUI from "@/components/EmptyItem";
 import MessageBubble from "@/components/MessageBubble";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useMessages, useSendMessageWithContent, useUpdateTextMessage, useDeleteMessage } from "@/hooks/useMessage";
+import { useChats } from "@/hooks/useChat";
 import { useSocketStore } from "@/lib/socket";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -62,6 +63,9 @@ const ChatDetailScreen = () => {
 
   const { data: currentUser } = useCurrentUser();
   const { data: messages, isLoading } = useMessages(chatId);
+  const { data: chats } = useChats();
+
+  const chat = chats?.find((c) => c._id === chatId);
 
   const {
     joinChat,
@@ -73,8 +77,35 @@ const ChatDetailScreen = () => {
     typingUsers,
   } = useSocketStore();
 
-  const isOnline = participantId ? onlineUsers.has(participantId) : false;
-  const isTyping = typingUsers.get(chatId) === participantId;
+  const isGroup = chat?.isGroupChat || false;
+
+  const chatTypingMap = typingUsers.get(chatId);
+  const typingUserIds = chatTypingMap ? Array.from(chatTypingMap.keys()) : [];
+  const isTyping = typingUserIds.length > 0;
+
+  let typingTextString = "";
+  if (isTyping && chatTypingMap) {
+    const names = Array.from(chatTypingMap.values());
+    if (names.length === 1) {
+      typingTextString = `${names[0]} is typing...`;
+    } else if (names.length === 2) {
+      typingTextString = `${names[0]} and ${names[1]} are typing...`;
+    } else {
+      typingTextString = `${names[0]} and ${names.length - 1} others are typing...`;
+    }
+  }
+
+  let isOnline = false;
+  if (isGroup && chat) {
+    // Count online participants excluding current user
+    const onlineParticipantsCount = chat.participants.filter(p => {
+      const pId = typeof p === "string" ? p : p._id;
+      return pId !== currentUser?._id && onlineUsers.has(pId);
+    }).length;
+    isOnline = onlineParticipantsCount >= 1;
+  } else if (participantId) {
+    isOnline = onlineUsers.has(participantId);
+  }
 
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -326,7 +357,7 @@ const ChatDetailScreen = () => {
                   {name}
                 </Text>
                 <Text style={[styles.status, isTyping && styles.typing]}>
-                  {isTyping ? "typing..." : isOnline ? "Online" : "Offline"}
+                  {isTyping ? typingTextString : isOnline ? "Online" : "Offline"}
                 </Text>
               </View>
             </>
@@ -382,6 +413,7 @@ const ChatDetailScreen = () => {
                     key={message._id}
                     message={message}
                     isFromMe={senderId === currentUser?._id}
+                    showSenderName={isGroup}
                     onLongPress={() => handleLongPress(message)}
                     isSelected={selectedMessageId === message._id}
                   />

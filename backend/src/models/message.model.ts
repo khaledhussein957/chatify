@@ -4,7 +4,9 @@ export interface IMessage extends Document {
   chat: mongoose.Types.ObjectId;
   sender: mongoose.Types.ObjectId;
   text: string;
-  content?: string; // like image, video, etc.
+
+  content?: string; // Cloudinary secure_url
+  contentPublicId?: string; // 🔥 Cloudinary public_id
 
   deleted: boolean;
   deletedAt?: Date;
@@ -27,13 +29,17 @@ const MessageSchema = new Schema<IMessage>(
     },
     text: {
       type: String,
-      required: false,
       trim: true,
       default: "",
     },
+
     content: {
       type: String,
-      required: false,
+    },
+
+    // 🔥 ADD THIS
+    contentPublicId: {
+      type: String,
     },
 
     deleted: {
@@ -48,9 +54,7 @@ const MessageSchema = new Schema<IMessage>(
 );
 
 // indexes for faster queries
-MessageSchema.index({ chat: 1, createdAt: 1 }); // oldest one first
-// 1 - asc
-// -1 -> desc
+MessageSchema.index({ chat: 1, createdAt: 1 });
 
 const Message = mongoose.model<IMessage>("Message", MessageSchema);
 

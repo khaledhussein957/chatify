@@ -30,6 +30,7 @@ export const getOrCreateChat = async (
     const sortedParticipants = [userId, participantId].sort();
 
     let chat = await Chat.findOne({
+      isGroupChat: false,
       participants: { $all: sortedParticipants, $size: 2 },
     })
       .populate("participants", "name email avatar")
@@ -60,6 +61,54 @@ export const getOrCreateChat = async (
   }
 };
 
+export const getOrCreateGroupChat = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.userId;
+    const { name, participantIds } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!name || !Array.isArray(participantIds)) {
+      return res.status(400).json({ message: "Invalid payload" });
+    }
+
+    // Remove duplicates & ensure creator is included
+    const uniqueParticipants = Array.from(new Set([...participantIds, userId]));
+
+    if (uniqueParticipants.length < 3) {
+      return res
+        .status(400)
+        .json({ message: "Group chat must have at least 3 participants" });
+    }
+
+    const groupImage = name.charAt(0).toUpperCase();
+
+    const groupChat = await Chat.create({
+      name,
+      participants: uniqueParticipants,
+      isGroupChat: true,
+      admins: [userId],
+      groupImage,
+    });
+
+    const populatedGroupChat = await groupChat.populate(
+      "participants",
+      "name email avatar",
+    );
+
+    res.status(201).json(populatedGroupChat);
+  } catch (error) {
+    console.log(`Error creating group chat: ${error}`);
+    next(error);
+  }
+};
+
 export const getChats = async (
   req: AuthRequest,
   res: Response,
@@ -77,12 +126,28 @@ export const getChats = async (
       .sort({ lastMessageAt: -1 });
 
     const formattedChats = chats.map((chat) => {
+      if (chat.isGroupChat) {
+        return {
+          _id: chat._id,
+          isGroupChat: true,
+          name: chat.name,
+          groupImage: chat.groupImage,
+          participants: chat.participants,
+          admins: chat.admins,
+          lastMessage: chat.lastMessage,
+          lastMessageAt: chat.lastMessageAt,
+          createdAt: chat.createdAt,
+        };
+      }
+
+      // Private chat
       const otherParticipant = chat.participants.find(
-        (p) => p._id.toString() !== userId,
+        (p: any) => p._id.toString() !== userId,
       );
 
       return {
         _id: chat._id,
+        isGroupChat: false,
         participant: otherParticipant ?? null,
         lastMessage: chat.lastMessage,
         lastMessageAt: chat.lastMessageAt,

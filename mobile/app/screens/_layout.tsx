@@ -18,6 +18,14 @@ const ScreensLayout = () => {
           contentStyle: { backgroundColor: "transparent" }
         }} 
       />
+      <Stack.Screen 
+        name="select_participates"
+        options={{
+          headerShown: true,
+          headerStyle: { backgroundColor: "#0D0D0F" },
+          headerTintColor: "#fff",
+        }}
+      />
     </Stack>
   );
 };

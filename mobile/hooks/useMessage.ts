@@ -1,9 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/lib/axios";
 import type { Message } from "@/types";
-import { useAuthStore } from "@/store/auth";
-
-const API_URL = "http://192.168.8.55:9000/api";
 
 export const useMessages = (chatId: string) => {
   const { apiWithAuth } = useApi();
@@ -28,7 +25,7 @@ type FileUpload = {
 };
 
 export const useSendMessageWithContent = () => {
-  const token = useAuthStore((state) => state.token);
+  const { apiWithAuth } = useApi();
 
   return async (chatId: string, text: string, file?: FileUpload) => {
     const formData = new FormData();
@@ -44,65 +41,40 @@ export const useSendMessageWithContent = () => {
       });
     }
 
-    const response = await fetch(`${API_URL}/messages/send`, {
+    const { data } = await apiWithAuth<Message>({
       method: "POST",
-      body: formData,
+      url: "/messages/send",
+      data: formData,
       headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-        // "Content-Type": "multipart/form-data" // Do NOT set this, fetch adds boundary automatically
+        "Content-Type": "multipart/form-data",
       },
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Upload failed server response:", errorText);
-      throw new Error(`Upload failed: ${response.status}`);
-    }
-
-    return response.json();
+    return data;
   };
 };
 
 export const useUpdateTextMessage = () => {
-  const token = useAuthStore((state) => state.token);
+  const { apiWithAuth } = useApi();
 
   return async (messageId: string, text: string) => {
-    const response = await fetch(`${API_URL}/messages/update/${messageId}`, {
+    const { data } = await apiWithAuth<Message>({
       method: "PUT",
-      body: JSON.stringify({ text }),
-      headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-        "Content-Type": "application/json",
-      },
+      url: `/messages/update/${messageId}`,
+      data: { text },
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Update failed server response:", errorText);
-      throw new Error(`Update failed: ${response.status}`);
-    }
-
-    return response.json();
+    return data;
   };
 };
 
 export const useDeleteMessage = () => {
-  const token = useAuthStore((state) => state.token);
+  const { apiWithAuth } = useApi();
 
   return async (messageId: string) => {
-    const response = await fetch(`${API_URL}/messages/delete/${messageId}`, {
+    const { data } = await apiWithAuth<{ message: string }>({
       method: "DELETE",
-      headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
+      url: `/messages/delete/${messageId}`,
     });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Delete failed server response:", errorText);
-      throw new Error(`Delete failed: ${response.status}`);
-    }
-
-    return response.json();
+    return data;
   };
 };
