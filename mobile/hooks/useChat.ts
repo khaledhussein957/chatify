@@ -9,7 +9,10 @@ export const useChats = () => {
   return useQuery({
     queryKey: ["chats"],
     queryFn: async () => {
-      const { data } = await apiWithAuth<Chat[]>({ method: "GET", url: "/chats" });
+      const { data } = await apiWithAuth<Chat[]>({
+        method: "GET",
+        url: "/chats",
+      });
       return data;
     },
   });
@@ -24,6 +27,31 @@ export const useGetOrCreateChat = () => {
       const { data } = await apiWithAuth<Chat>({
         method: "POST",
         url: `/chats/with/${participantId}`,
+      });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+    },
+  });
+};
+
+export const useCreateGroupChat = () => {
+  const { apiWithAuth } = useApi();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      name,
+      participantIds,
+    }: {
+      name: string;
+      participantIds: string[];
+    }) => {
+      const { data } = await apiWithAuth<Chat>({
+        method: "POST",
+        url: "/chats/with/group",
+        data: { name, participantIds },
       });
       return data;
     },

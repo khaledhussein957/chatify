@@ -14,7 +14,7 @@ export let io: SocketServer;
 
 export const initializeSocket = (httpServer: HttpServer) => {
   const allowedOrigins = [
-    "http://localhost:8081", // Expo mobile
+    "http://localhost:8081",
     "http://192.168.8.55:9000",
     "http://192.168.8.55:8081",
   ].filter(Boolean) as string[];
@@ -30,7 +30,6 @@ export const initializeSocket = (httpServer: HttpServer) => {
       if (!ENV.JWT_SECRET) return next(new Error("Server misconfiguration"));
 
       const decoded = jwt.verify(token, ENV.JWT_SECRET) as { userId: string };
-
       const user = await User.findById(decoded.userId);
       if (!user) return next(new Error("User not found"));
 
@@ -41,40 +40,65 @@ export const initializeSocket = (httpServer: HttpServer) => {
     }
   });
 
-  io.on("connection", (socket) => {
+  io.on("connection", (socket: Socket) => {
     const userId = socket.data.userId;
 
-    // send list of currently online users to the newly connected client
+    // Notify the new client about current online users
     socket.emit("online-users", { userIds: Array.from(onlineUsers.keys()) });
 
-    // store user in the onlineUsers map
+    // Add to onlineUsers map
     const sockets = onlineUsers.get(userId) ?? new Set<string>();
     sockets.add(socket.id);
     onlineUsers.set(userId, sockets);
 
-    // notify others that this current user is online
+    // Notify all others the user is online
     socket.broadcast.emit("user-online", { userId });
 
+    // Join personal room
     socket.join(`user:${userId}`);
 
+    // Join a chat (private or group)
     socket.on("join-chat", async (chatId: string) => {
-      const chat = await Chat.findOne({ _id: chatId, participants: userId });
-      if (!chat) {
-        socket.emit("socket-error", { message: "Chat not found" });
-        return;
+      try {
+        const chat = await Chat.findById(chatId);
+        if (!chat) {
+          socket.emit("socket-error", { message: "Chat not found" });
+          return;
+        }
+
+        if (!chat.participants.some((p) => p.toString() === userId)) {
+          socket.emit("socket-error", { message: "You are not in this chat" });
+          return;
+        }
+
+        socket.join(`chat:${chatId}`);
+        socket.to(`chat:${chatId}`).emit("user-joined", {
+          userId,
+          chatId,
+          isGroupChat: chat.isGroupChat,
+        });
+        console.log(`User ${userId} joined chat ${chatId}`);
+      } catch (err) {
+        console.error("Error joining chat:", err);
+        socket.emit("socket-error", { message: "Failed to join chat" });
       }
-      socket.join(`chat:${chatId}`);
     });
 
+    // Leave chat
     socket.on("leave-chat", (chatId: string) => {
       socket.leave(`chat:${chatId}`);
     });
 
+    // Send message to a chat (supports group)
     socket.on(
       "send-message",
       async (data: { chatId: string; text: string }) => {
         try {
           const { chatId, text } = data;
+          if (!text || text.trim() === "") {
+            socket.emit("socket-error", { message: "Message cannot be empty" });
+            return;
+          }
 
           const chat = await Chat.findOne({
             _id: chatId,
@@ -82,13 +106,6 @@ export const initializeSocket = (httpServer: HttpServer) => {
           });
           if (!chat) {
             socket.emit("socket-error", { message: "Chat not found" });
-            return;
-          }
-
-          if (!text || text.trim() === "") {
-            socket.emit("socket-error", {
-              message: "Message text cannot be empty",
-            });
             return;
           }
 
@@ -104,22 +121,21 @@ export const initializeSocket = (httpServer: HttpServer) => {
 
           await message.populate("sender", "name avatar");
 
-          // emit to the chat room (reaches participants currently in the chat)
+          // Emit to all participants in the chat room
           io.to(`chat:${chatId}`).emit("new-message", message);
 
-          // also emit to other participants' personal rooms (reaches them if they are in the app but not in this specific chat)
+          // Emit to participants in personal rooms (if they are not in chat room)
           for (const participantId of chat.participants) {
-            const participantIdStr = participantId.toString();
-            if (participantIdStr !== userId) {
-              const userRoom = `user:${participantIdStr}`;
-              const chatRoom = `chat:${chatId}`;
-
-              const chatRoomSockets = io.sockets.adapter.rooms.get(chatRoom);
+            const participantStr = participantId.toString();
+            if (participantStr !== userId) {
+              const userRoom = `user:${participantStr}`;
+              const chatRoomSockets = io.sockets.adapter.rooms.get(
+                `chat:${chatId}`,
+              );
               const userRoomSockets = io.sockets.adapter.rooms.get(userRoom);
 
               if (userRoomSockets) {
                 for (const socketId of userRoomSockets) {
-                  // Only emit if the user is NOT in the chat room (to avoid double delivery or notifications for active viewers)
                   if (!chatRoomSockets?.has(socketId)) {
                     io.to(socketId).emit("new-message", message);
                   }
@@ -127,38 +143,32 @@ export const initializeSocket = (httpServer: HttpServer) => {
               }
             }
           }
-        } catch (error) {
+        } catch (err) {
+          console.error("Error sending message:", err);
           socket.emit("socket-error", { message: "Failed to send message" });
         }
       },
     );
 
+    // Typing indicator for private & group chats
     socket.on("typing", async (data: { chatId: string; isTyping: boolean }) => {
-      const typingPayload = {
-        userId,
-        chatId: data.chatId,
-        isTyping: data.isTyping,
-      };
-
-      socket.to(`chat:${data.chatId}`).emit("typing", typingPayload);
-
+      const { chatId, isTyping } = data;
       try {
-        const chat = await Chat.findById(data.chatId);
-        if (chat) {
-          const otherParticipantId = chat.participants.find(
-            (p: any) => p.toString() !== userId,
-          );
-          if (otherParticipantId) {
-            socket
-              .to(`user:${otherParticipantId}`)
-              .emit("typing", typingPayload);
-          }
-        }
-      } catch (error) {
-        // silently fail
+        const chat = await Chat.findById(chatId);
+        if (!chat) return;
+
+        const user = await User.findById(userId).select("name");
+        const payload = { userId, userName: user?.name, chatId, isTyping };
+        chat.participants.forEach((participantId) => {
+          const pid = participantId.toString();
+          if (pid !== userId) io.to(`user:${pid}`).emit("typing", payload);
+        });
+      } catch (err) {
+        console.error("Typing error:", err);
       }
     });
 
+    // Disconnect handler
     socket.on("disconnect", () => {
       const sockets = onlineUsers.get(userId);
       if (!sockets) return;
@@ -167,7 +177,15 @@ export const initializeSocket = (httpServer: HttpServer) => {
 
       if (sockets.size === 0) {
         onlineUsers.delete(userId);
-        socket.broadcast.emit("user-offline", { userId });
+
+        // Notify all chats the user belongs to
+        Chat.find({ participants: userId })
+          .then((chats) => {
+            chats.forEach((chat) => {
+              io.to(`chat:${chat._id}`).emit("user-offline", { userId });
+            });
+          })
+          .catch((err) => console.error("Disconnect notification error:", err));
       } else {
         onlineUsers.set(userId, sockets);
       }

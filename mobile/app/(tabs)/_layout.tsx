@@ -54,6 +54,20 @@ const TabsLayout = () => {
       />
 
       <Tabs.Screen
+        name="group"
+        options={{
+          title: "Groups",
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons
+              name={focused ? "people" : "people-outline"}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",

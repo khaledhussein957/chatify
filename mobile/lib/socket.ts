@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { io, Socket } from "socket.io-client";
 import { QueryClient } from "@tanstack/react-query";
 import { Chat, Message, MessageSender } from "@/types";
+import { useAuthStore } from "@/store/auth";
 
 const SOCKET_URL = "http://192.168.8.55:9000";
 
@@ -9,7 +10,7 @@ interface SocketState {
   socket: Socket | null;
   isConnected: boolean;
   onlineUsers: Set<string>;
-  typingUsers: Map<string, string>; // chatId -> userId
+  typingUsers: Map<string, Map<string, string>>; // chatId -> Map(userId -> userName)
   unreadChats: Set<string>;
   currentChatId: string | null;
   queryClient: QueryClient | null;
@@ -114,9 +115,8 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
       // mark as unread if not currently viewing this chat and message is from other user
       if (currentChatId !== message.chat) {
-        const chats = queryClient.getQueryData<Chat[]>(["chats"]);
-        const chat = chats?.find((c) => c._id === message.chat);
-        if (chat?.participant && senderId === chat.participant._id) {
+        const currentUserId = useAuthStore.getState().user?._id;
+        if (senderId !== currentUserId) {
           set((state) => ({
             unreadChats: new Set([...state.unreadChats, message.chat]),
           }));
@@ -135,17 +135,30 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       "typing",
       ({
         userId,
+        userName,
         chatId,
         isTyping,
       }: {
         userId: string;
+        userName: string;
         chatId: string;
         isTyping: boolean;
       }) => {
         set((state) => {
           const typingUsers = new Map(state.typingUsers);
-          if (isTyping) typingUsers.set(chatId, userId);
-          else typingUsers.delete(chatId);
+          const chatTyping = new Map(typingUsers.get(chatId) || new Map());
+
+          if (isTyping) {
+            chatTyping.set(userId, userName || "Someone");
+          } else {
+            chatTyping.delete(userId);
+          }
+
+          if (chatTyping.size > 0) {
+            typingUsers.set(chatId, chatTyping);
+          } else {
+            typingUsers.delete(chatId);
+          }
 
           return { typingUsers: typingUsers };
         });

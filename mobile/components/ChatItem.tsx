@@ -4,20 +4,44 @@ import { View, Text, Pressable, StyleSheet } from "react-native";
 import { format } from "date-fns";
 import { useSocketStore } from "@/lib/socket";
 import { COLORS } from "@/constants/theme";
+import { useCurrentUser } from "@/hooks/useAuth";
 
 const ChatItem = ({ chat, onPress }: { chat: Chat; onPress: () => void }) => {
   const participant = chat.participant;
   const { onlineUsers, typingUsers, unreadChats } = useSocketStore();
+  const { data: currentUser } = useCurrentUser();
 
-  const isOnline = onlineUsers.has(participant._id);
-  const isTyping = typingUsers.get(chat._id) === participant._id;
+  const isOnline = chat.isGroupChat
+    ? chat.participants.some((p) => {
+        const pId = typeof p === "string" ? p : p._id;
+        return pId !== currentUser?._id && onlineUsers.has(pId);
+      })
+    : participant
+    ? onlineUsers.has(participant._id)
+    : false;
+
+  const chatTypingMap = typingUsers.get(chat._id);
+  const isTyping = chatTypingMap && chatTypingMap.size > 0;
+
+  let typingText = "typing...";
+  if (isTyping && chatTypingMap && chat.isGroupChat) {
+    const names = Array.from(chatTypingMap.values());
+    typingText = names.length === 1 ? `${names[0]} is typing...` : "People are typing...";
+  }
+
   const hasUnread = unreadChats.has(chat._id);
+
+  const displayName = chat.isGroupChat ? chat.name : participant?.name;
+  const displayAvatar = chat.isGroupChat ? `https://ui-avatars.com/api/?name=${chat.name}&background=random` : participant?.avatar;
 
   return (
     <Pressable style={styles.container} onPress={onPress}>
       {/* Avatar & online indicator */}
       <View style={styles.avatarWrapper}>
-        <Image source={participant.avatar} style={styles.avatar} />
+        <Image 
+          source={displayAvatar} 
+          style={styles.avatar} 
+        />
         {isOnline && <View style={styles.onlineIndicator} />}
       </View>
 
@@ -25,7 +49,7 @@ const ChatItem = ({ chat, onPress }: { chat: Chat; onPress: () => void }) => {
       <View style={styles.info}>
         <View style={styles.row}>
           <Text style={[styles.name, hasUnread && { color: COLORS.primary, fontWeight: "600" }]}>
-            {participant.name}
+            {displayName}
           </Text>
 
           <View style={styles.row}>
@@ -40,7 +64,7 @@ const ChatItem = ({ chat, onPress }: { chat: Chat; onPress: () => void }) => {
 
         <View style={[styles.row, { marginTop: 4, justifyContent: "space-between" }]}>
           {isTyping ? (
-            <Text style={styles.typingText}>typing...</Text>
+            <Text style={styles.typingText}>{typingText}</Text>
           ) : (
             <Text
               style={[

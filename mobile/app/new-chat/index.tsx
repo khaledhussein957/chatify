@@ -4,7 +4,7 @@ import { useUsers } from "@/hooks/useUser";
 import { useSocketStore } from "@/lib/socket";
 import { User } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS } from "@/constants/theme";
 
 const NewChatScreen = () => {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: allUsers, isLoading } = useUsers();
@@ -44,15 +45,14 @@ const NewChatScreen = () => {
             pathname: "/chat/[id]",
             params: {
               id: chat._id,
-              participantId: chat.participant._id,
-              name: chat.participant.name,
-              avatar: chat.participant.avatar,
+              participantId: chat.participant?._id,
+              name: chat.participant?.name,
+              avatar: chat.participant?.avatar,
             },
           });
         }, 100);
       },
       onError: (error) => {
-        // Consider showing an alert or toast
         console.error("Failed to create chat:", error);
       },
     });
@@ -66,13 +66,13 @@ const NewChatScreen = () => {
       <View
         style={{
           flex: 1,
-          backgroundColor: COLORS.background + "40",
+          backgroundColor: COLORS.surfaceLight,
           justifyContent: "flex-end",
         }}
       >
         <View
           style={{
-            backgroundColor: COLORS.surfaceCard,
+            backgroundColor: COLORS.background,
             borderTopLeftRadius: 32,
             borderTopRightRadius: 32,
             height: "95%",
@@ -88,7 +88,7 @@ const NewChatScreen = () => {
               paddingVertical: 12,
               borderBottomWidth: 1,
               borderBottomColor: COLORS.surfaceLight,
-              backgroundColor: COLORS.surfaceCard,
+              backgroundColor: COLORS.background,
             }}
           >
             <Pressable
@@ -127,7 +127,7 @@ const NewChatScreen = () => {
             style={{
               paddingHorizontal: 20,
               paddingVertical: 12,
-              backgroundColor: COLORS.surfaceCard,
+              backgroundColor: COLORS.background,
             }}
           >
             <View
@@ -160,7 +160,7 @@ const NewChatScreen = () => {
           </View>
 
           {/* USERS LIST */}
-          <View style={{ flex: 1, backgroundColor: COLORS.surfaceCard }}>
+          <View style={{ flex: 1, backgroundColor: COLORS.background }}>
             {isCreatingChat || isLoading ? (
               <View
                 style={{

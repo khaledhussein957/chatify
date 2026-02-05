@@ -26,13 +26,22 @@ export const getMessages = async (
       return;
     }
 
-    const messages = await Message.find({
-      chat: chatId,
-    })
+    const messages = await Message.find({ chat: chatId })
       .populate("sender", "name email avatar")
-      .sort({ createdAt: 1 }); // oldest first
+      .sort({ createdAt: 1 });
 
-    res.json(messages);
+    const formatted = messages.map((m) => {
+      if (m.deleted) {
+        return {
+          ...m.toObject(),
+          text: "🚫 This message was deleted",
+          content: undefined,
+        };
+      }
+      return m;
+    });
+
+    res.json(formatted);
   } catch (error) {
     console.log(`Error in get messages: ${error}`);
     next(error);
@@ -55,6 +64,7 @@ export const sendMessageWithContent = async (
     }
 
     let contentUrl: string | undefined = undefined;
+    let contentPublicId: string | undefined = undefined;
 
     // if a file was uploaded via multer, upload it to Cloudinary
     if (req.file) {
@@ -67,6 +77,7 @@ export const sendMessageWithContent = async (
       });
 
       contentUrl = uploadResult.secure_url as string;
+      contentPublicId = uploadResult.public_id as string; // ✅ save it
       console.log("File uploaded successfully:", contentUrl);
 
       // remove local file after upload
@@ -77,11 +88,16 @@ export const sendMessageWithContent = async (
       }
     }
 
+    if (!text && !req.file) {
+      return res.status(400).json({ message: "Message cannot be empty" });
+    }
+
     const message = new Message({
       chat: chatId,
       sender: userId,
       text: text || "",
       content: contentUrl,
+      contentPublicId,
     });
 
     await message.save();
@@ -196,9 +212,13 @@ export const deleteMessage = async (
     }
 
     // if it's content message, delete it from cloudinary
-    if (message.content) {
-      await cloudinary.uploader.destroy(message.content);
-      console.log("File deleted successfully");
+    if (message.contentPublicId) {
+      try {
+        await cloudinary.uploader.destroy(message.contentPublicId);
+        console.log("File deleted successfully from Cloudinary");
+      } catch (error) {
+        console.error("❌ Failed to delete Cloudinary file:", error);
+      }
     }
 
     message.deleted = true;
