@@ -1,10 +1,10 @@
 import { Socket, Server as SocketServer } from "socket.io";
 import { Server as HttpServer } from "http";
 import jwt from "jsonwebtoken";
-
-import Message from "../models/message.model";
 import Chat from "../models/chat.model";
+import Message from "../models/message.model";
 import User from "../models/user.model";
+import Status from "../models/status.model";
 import ENV from "../configs/env";
 
 // store online users in memory: userId -> socketIds
@@ -43,43 +43,34 @@ export const initializeSocket = (httpServer: HttpServer) => {
   io.on("connection", (socket: Socket) => {
     const userId = socket.data.userId;
 
-    // Notify the new client about current online users
+    // Online users
     socket.emit("online-users", { userIds: Array.from(onlineUsers.keys()) });
-
-    // Add to onlineUsers map
     const sockets = onlineUsers.get(userId) ?? new Set<string>();
     sockets.add(socket.id);
     onlineUsers.set(userId, sockets);
-
-    // Notify all others the user is online
     socket.broadcast.emit("user-online", { userId });
 
-    // Join personal room
     socket.join(`user:${userId}`);
 
-    // Join a chat (private or group)
+    // Join chat
     socket.on("join-chat", async (chatId: string) => {
       try {
         const chat = await Chat.findById(chatId);
-        if (!chat) {
-          socket.emit("socket-error", { message: "Chat not found" });
-          return;
-        }
-
+        if (!chat)
+          return socket.emit("socket-error", { message: "Chat not found" });
         if (!chat.participants.some((p) => p.toString() === userId)) {
-          socket.emit("socket-error", { message: "You are not in this chat" });
-          return;
+          return socket.emit("socket-error", {
+            message: "You are not in this chat",
+          });
         }
-
         socket.join(`chat:${chatId}`);
         socket.to(`chat:${chatId}`).emit("user-joined", {
           userId,
           chatId,
           isGroupChat: chat.isGroupChat,
         });
-        console.log(`User ${userId} joined chat ${chatId}`);
       } catch (err) {
-        console.error("Error joining chat:", err);
+        console.error("Join chat error:", err);
         socket.emit("socket-error", { message: "Failed to join chat" });
       }
     });
@@ -87,9 +78,10 @@ export const initializeSocket = (httpServer: HttpServer) => {
     // Leave chat
     socket.on("leave-chat", (chatId: string) => {
       socket.leave(`chat:${chatId}`);
+      socket.to(`chat:${chatId}`).emit("user-left", { userId, chatId });
     });
 
-    // Send message to a chat (supports group)
+    // Send message (text only)
     socket.on(
       "send-message",
       async (data: { chatId: string; text: string }) => {
@@ -121,10 +113,10 @@ export const initializeSocket = (httpServer: HttpServer) => {
 
           await message.populate("sender", "name avatar");
 
-          // Emit to all participants in the chat room
+          // Emit to chat room
           io.to(`chat:${chatId}`).emit("new-message", message);
 
-          // Emit to participants in personal rooms (if they are not in chat room)
+          // Emit to participants not currently in the chat room
           for (const participantId of chat.participants) {
             const participantStr = participantId.toString();
             if (participantStr !== userId) {
@@ -150,42 +142,57 @@ export const initializeSocket = (httpServer: HttpServer) => {
       },
     );
 
-    // Typing indicator for private & group chats
+    // Typing indicator
     socket.on("typing", async (data: { chatId: string; isTyping: boolean }) => {
-      const { chatId, isTyping } = data;
       try {
+        const { chatId, isTyping } = data;
         const chat = await Chat.findById(chatId);
         if (!chat) return;
-
         const user = await User.findById(userId).select("name");
         const payload = { userId, userName: user?.name, chatId, isTyping };
-        chat.participants.forEach((participantId) => {
-          const pid = participantId.toString();
-          if (pid !== userId) io.to(`user:${pid}`).emit("typing", payload);
-        });
+        socket.to(`chat:${chatId}`).emit("typing", payload);
       } catch (err) {
         console.error("Typing error:", err);
       }
     });
 
-    // Disconnect handler
+    // View status
+    socket.on("view-status", async (statusId: string) => {
+      try {
+        const status = await Status.findById(statusId);
+        if (!status) return;
+
+        // Don't count owner viewing their own status
+        if (status.user.toString() === userId) return;
+
+        if (!status.viewers.includes(userId)) {
+          status.viewers.push(userId);
+          await status.save();
+
+          // Notify owner in real-time
+          io.to(`user:${status.user.toString()}`).emit("status-viewed", {
+            statusId,
+            viewerId: userId,
+          });
+        }
+      } catch (err) {
+        console.error("Error handling view-status:", err);
+      }
+    });
+
+    // Disconnect
     socket.on("disconnect", () => {
       const sockets = onlineUsers.get(userId);
       if (!sockets) return;
 
       sockets.delete(socket.id);
-
       if (sockets.size === 0) {
         onlineUsers.delete(userId);
-
-        // Notify all chats the user belongs to
-        Chat.find({ participants: userId })
-          .then((chats) => {
-            chats.forEach((chat) => {
-              io.to(`chat:${chat._id}`).emit("user-offline", { userId });
-            });
-          })
-          .catch((err) => console.error("Disconnect notification error:", err));
+        Chat.find({ participants: userId }).then((chats) => {
+          chats.forEach((chat) =>
+            io.to(`chat:${chat._id}`).emit("user-offline", { userId }),
+          );
+        });
       } else {
         onlineUsers.set(userId, sockets);
       }

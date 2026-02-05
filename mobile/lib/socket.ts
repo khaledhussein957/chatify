@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { io, Socket } from "socket.io-client";
 import { QueryClient } from "@tanstack/react-query";
-import { Chat, Message, MessageSender } from "@/types";
+import { Chat, Message, MessageSender, Status } from "@/types";
 import { useAuthStore } from "@/store/auth";
 
 const SOCKET_URL = "http://192.168.8.55:9000";
@@ -129,6 +129,64 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         typingUsers.delete(message.chat);
         return { typingUsers: typingUsers };
       });
+    });
+
+    // Status events
+    socket.on("new-status", (status: Status) => {
+      console.log("Received new-status:", status._id);
+      queryClient.setQueryData<Status[]>(["statuses"], (old) => {
+        if (!old) return [status];
+        if (old.some((s) => s._id === status._id)) return old;
+        return [status, ...old];
+      });
+      if (status.user?._id) {
+        queryClient.setQueryData<Status[]>(
+          ["statuses", status.user._id],
+          (old) => {
+            if (!old) return [status];
+            if (old.some((s) => s._id === status._id)) return old;
+            return [status, ...old];
+          },
+        );
+      }
+    });
+
+    socket.on(
+      "status-viewed",
+      ({ statusId, viewerId }: { statusId: string; viewerId: string }) => {
+        console.log("Received status-viewed:", statusId);
+        queryClient.setQueryData<Status[]>(["statuses"], (old) => {
+          if (!old) return old;
+          return old.map((s) =>
+            s._id === statusId && !s.viewers.includes(viewerId)
+              ? { ...s, viewers: [...s.viewers, viewerId] }
+              : s,
+          );
+        });
+
+        queryClient.setQueriesData<Status[]>(
+          { queryKey: ["statuses"] },
+          (old) => {
+            if (!old) return old;
+            return old.map((s) =>
+              s._id === statusId && !s.viewers.includes(viewerId)
+                ? { ...s, viewers: [...s.viewers, viewerId] }
+                : s,
+            );
+          },
+        );
+      },
+    );
+
+    socket.on("status-deleted", ({ statusId }: { statusId: string }) => {
+      console.log("Received status-deleted:", statusId);
+      queryClient.setQueryData<Status[]>(["statuses"], (old) =>
+        old?.filter((s) => s._id !== statusId),
+      );
+      queryClient.setQueriesData<Status[]>(
+        { queryKey: ["statuses"] },
+        (old) => old?.filter((s) => s._id !== statusId),
+      );
     });
 
     socket.on(

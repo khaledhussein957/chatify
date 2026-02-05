@@ -45,3 +45,22 @@ export interface Chat {
   lastMessageAt: string;
   createdAt: string;
 }
+
+export interface StatusUser {
+  _id: string;
+  name: string;
+  avatar?: string;
+}
+
+export interface Status {
+  _id: string;
+  user: StatusUser;
+  text?: string;
+  mediaUrl?: string;
+  mediaType?: "image" | "video";
+  duration?: number;
+  viewers: string[];
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+}

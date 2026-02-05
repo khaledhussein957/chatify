@@ -9,6 +9,7 @@ import authRoute from "./routes/auth.route";
 import chatRoute from "./routes/chat.route";
 import messageRoute from "./routes/message.route";
 import userRoute from "./routes/user.route";
+import statusRoute from "./routes/status.route";
 
 import { errorHandler } from "./middlewares/errorHandler.middleware";
 
@@ -30,6 +31,7 @@ app.get("/api/health", (req, res) => {
 app.use("/api/auth", authRoute);
 app.use("/api/chats", chatRoute);
 app.use("/api/messages", messageRoute);
+app.use("/api/status", statusRoute);
 app.use("/api/users", userRoute);
 
 // Error Handling Middleware
