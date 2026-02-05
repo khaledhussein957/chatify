@@ -68,6 +68,20 @@ const TabsLayout = () => {
       />
 
       <Tabs.Screen
+        name="status"
+        options={{
+          title: "Status",
+          tabBarIcon: ({ color, focused, size }) => (
+            <Ionicons
+              name={focused ? "camera" : "camera-outline"}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",
