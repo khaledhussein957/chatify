@@ -184,7 +184,10 @@ export const deleteChat = async (
     if (!chat.participants.some((p: any) => p.toString() === userId)) {
       return res.status(403).json({ message: "Unauthorized" });
     }
-    if (chat.isGroupChat && !chat.admins.includes(userId as any)) {
+    if (
+      chat.isGroupChat &&
+      !(chat.admins ?? []).some((admin: any) => admin.toString() === userId)
+    ) {
       return res
         .status(403)
         .json({ message: "Only admins can delete group chat" });
