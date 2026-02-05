@@ -47,7 +47,8 @@ Utilizes Expo Router's directory-based navigation:
 - **`(auth)/`**: Handles User Onboarding (Login, Register, OTP Verification).
 - **`(tabs)/`**: The main app navigation (Home/Chats, Search, Profile).
 - **`chat/`**: Individual chat screen for real-time messaging.
-- **`new-chat/`**: Interface to start new conversations.
+- **`new-chat/`**: Interface to start new 1:1 conversations.
+- **`screens/select_participates.tsx`**: Flow to create group chats by selecting multiple participants with a guided, modal-based group naming step.
 - **`store/`**: Centralized state for authentication and app-wide settings.
 
 ---
@@ -63,6 +64,7 @@ Utilizes Expo Router's directory-based navigation:
 ### 💬 Messaging
 
 - **Real-time:** Instant message delivery using WebSockets.
+- **Group Chats:** Create named group conversations by selecting two or more participants and confirming with a group name.
 - **Message Actions:** Integrated header context bar for editing and deleting messages with long-press selection.
 - **Soft Delete:** Support for deleting messages with a "🚫 This message was deleted" placeholder, maintained for both sender and receiver.
 - **Time Limits:** Enforced 5-minute time window for editing sent messages to maintain conversation integrity.
