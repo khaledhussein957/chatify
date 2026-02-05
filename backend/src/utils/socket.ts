@@ -156,22 +156,6 @@ export const initializeSocket = (httpServer: HttpServer) => {
       }
     });
 
-    // User status
-    socket.on("new-status", async (statusId: string) => {
-      try {
-        const status = await Status.findById(statusId).populate(
-          "user",
-          "name avatar",
-        );
-        if (!status) return;
-        onlineUsers.forEach((_sockets, uid) => {
-          io.to(`user:${uid}`).emit("status-updated", status);
-        });
-      } catch (err) {
-        console.error("Status event error:", err);
-      }
-    });
-
     // View status
     socket.on("view-status", async (statusId: string) => {
       try {

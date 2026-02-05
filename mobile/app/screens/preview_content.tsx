@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -45,9 +45,15 @@ const PreviewContentScreen = () => {
     isPending: isPosting,
   } = useCreateStatus();
 
-  if (!uri || !mimeType || !fileName) {
-    // Nothing to preview; just go back
-    router.back();
+  const shouldRedirect = !uri || !mimeType || !fileName;
+
+  useEffect(() => {
+    if (shouldRedirect) {
+      router.back();
+    }
+  }, [shouldRedirect, router]);
+
+  if (shouldRedirect) {
     return null;
   }
 

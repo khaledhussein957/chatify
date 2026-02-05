@@ -20,9 +20,10 @@ const StatusCard: React.FC<StatusCardProps> = ({
 }) => {
   const initials = name
     .split(" ")
+    .filter((n) => n.length > 0)
     .map((n) => n[0])
     .join("")
-    .toUpperCase();
+    .toUpperCase() || "?";
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>

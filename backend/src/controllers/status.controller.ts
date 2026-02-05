@@ -54,8 +54,16 @@ export const createStatus = async (
 
       // 🎥 video rule
       if (isVideo) {
-        const parsedDuration = Number(duration);
+        const parsedDuration = upload.duration;
         if (!parsedDuration || parsedDuration > 60) {
+          // Clean up the uploaded media
+          try {
+            await cloudinary.uploader.destroy(mediaPublicId!, {
+              resource_type: "video",
+            });
+          } catch (cleanupErr) {
+            console.error("Failed to cleanup rejected video:", cleanupErr);
+          }
           return res.status(400).json({
             message: "Video duration must be 60 seconds or less",
           });
@@ -128,27 +136,27 @@ export const viewStatus = async (
 
     // Don't count the owner's own views
     if (status.user.toString() === userId) {
-      return res.status(200).json({ message: "Viewed", viewers: status.viewers });
+      return res
+        .status(200)
+        .json({ message: "Viewed", viewers: status.viewers });
     }
 
-    // Ensure viewers array only contains ObjectIds
-    const viewerObjectId = userId; // if your schema uses ObjectId, this is fine
+    const updated = await Status.findOneAndUpdate(
+      { _id: statusId, viewers: { $ne: userId } },
+      { $addToSet: { viewers: userId } },
+      { new: true },
+    );
 
-    // push userId to viewers if not already
-    if (!status.viewers.includes(viewerObjectId as any)) {
-      status.viewers.push(viewerObjectId as any); // typecast to ObjectId
-      await status.save();
-
-      // notify status owner in real-time
-      if (io) {
-        io.to(`user:${status.user.toString()}`).emit("status-viewed", {
-          statusId,
-          viewerId: userId,
-        });
-      }
+    if (updated && io) {
+      io.to(`user:${status.user.toString()}`).emit("status-viewed", {
+        statusId,
+        viewerId: userId,
+      });
     }
 
-    res.status(200).json({ message: "Viewed", viewers: status.viewers });
+    const finalStatus = updated || status;
+
+    res.status(200).json({ message: "Viewed", viewers: finalStatus.viewers });
   } catch (err) {
     console.error("❌ Error in viewStatus:", err);
     next(err);
@@ -161,11 +169,12 @@ export const getStatusViewers = async (
   next: NextFunction,
 ) => {
   try {
+    const userId = req.userId;
     const { statusId } = req.params;
-    const status = await Status.findById(statusId).populate(
-      "viewers",
-      "name avatar",
-    );
+    const status = await Status.findOne({
+      _id: statusId,
+      user: userId, // Only owner can see viewers
+    }).populate("viewers", "name avatar");
     if (!status) return res.status(404).json({ message: "Status not found" });
 
     res.status(200).json({ viewers: status.viewers });

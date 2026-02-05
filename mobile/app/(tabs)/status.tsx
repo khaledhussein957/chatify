@@ -19,10 +19,13 @@ import StatusCard from "@/components/StatusCard";
 import { useCreateStatus, useStatuses } from "@/hooks/useStatus";
 import type { Status } from "@/types";
 import * as ImagePicker from "expo-image-picker";
+import { useAlert } from "@/components/AlertMessageController";
 
 const StatusScreen = () => {
   const router = useRouter();
   const currentUser = useAuthStore((state) => state.user);
+
+  const alert = useAlert();
 
   const { data: statuses, isLoading, refetch, isRefetching } = useStatuses();
   const {
@@ -102,7 +105,7 @@ const StatusScreen = () => {
             ? Math.round(asset.duration / 1000)
             : Math.round(asset.duration);
         if (durationSeconds > 60) {
-          console.warn("Selected video is longer than 60 seconds.");
+          alert.error("Selected video is longer than 60 seconds.");
           return;
         }
       }

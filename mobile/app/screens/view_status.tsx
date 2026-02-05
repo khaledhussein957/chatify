@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Dimensions,
+  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -47,7 +48,7 @@ const ViewStatusScreen = () => {
         markViewed(currentStatus._id);
       }
     }
-  }, [currentStatus?._id]);
+  }, [currentStatus?._id, currentStatus?.viewers, currentUser?._id, markViewed]);
 
   // Reset video playback when status changes
   useEffect(() => {
@@ -169,12 +170,13 @@ const ViewStatusScreen = () => {
                   </View>
                 </View>
               ) : (
-                <TouchableOpacity
-                  style={styles.statusTapArea}
-                  activeOpacity={1}
+                <View style={styles.statusTapArea}>
+                {/* Add a tap layer behind content for next/prev */}
+                <Pressable
+                  style={StyleSheet.absoluteFill}
                   onPress={handleNext}
                   onLongPress={handlePrev}
-                >
+                />
                   {/* LEFT ARROW */}
                   <TouchableOpacity
                     style={styles.navArrowLeft}
@@ -231,7 +233,7 @@ const ViewStatusScreen = () => {
                       {currentStatus.viewers.length}
                     </Text>
                   </View>
-                </TouchableOpacity>
+                </View>
               )}
             </>
           )}

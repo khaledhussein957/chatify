@@ -151,23 +151,6 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       }
     });
 
-    socket.on("status-updated", (status: Status) => {
-      console.log("Received status-updated:", status._id);
-      queryClient.setQueryData<Status[]>(["statuses"], (old) => {
-        if (!old) return [status];
-        return old.map((s) => (s._id === status._id ? status : s));
-      });
-      if (status.user?._id) {
-        queryClient.setQueryData<Status[]>(
-          ["statuses", status.user._id],
-          (old) => {
-            if (!old) return [status];
-            return old.map((s) => (s._id === status._id ? status : s));
-          },
-        );
-      }
-    });
-
     socket.on(
       "status-viewed",
       ({ statusId, viewerId }: { statusId: string; viewerId: string }) => {
