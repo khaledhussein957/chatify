@@ -2,6 +2,9 @@ import type { NextFunction, Response } from "express";
 import type { AuthRequest } from "../middlewares/auth.middleware";
 import Chat from "../models/chat.model";
 import { Types } from "mongoose";
+import Message from "../models/message.model";
+import { io } from "../utils/socket";
+import cloudinary from "../configs/cloudinary";
 
 export const getOrCreateChat = async (
   req: AuthRequest,
@@ -158,6 +161,64 @@ export const getChats = async (
     res.json(formattedChats);
   } catch (error) {
     console.log(`Error in get chats: ${error}`);
+    next(error);
+  }
+};
+
+export const deleteChat = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.userId;
+    const { chatId } = req.params;
+
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!chatId || !Types.ObjectId.isValid(chatId.toString()))
+      return res.status(400).json({ message: "Invalid chat ID" });
+
+    const chat = await Chat.findById(chatId);
+    if (!chat) return res.status(404).json({ message: "Chat not found" });
+
+    if (!chat.participants.some((p: any) => p.toString() === userId)) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+    if (chat.isGroupChat && !chat.admins.includes(userId as any)) {
+      return res
+        .status(403)
+        .json({ message: "Only admins can delete group chat" });
+    }
+
+    const messages = await Message.find({
+      chat: new Types.ObjectId(chatId as any),
+    });
+
+    for (const message of messages) {
+      if (message.contentPublicId) {
+        try {
+          await cloudinary.uploader.destroy(message.contentPublicId, {
+            resource_type: "auto",
+          });
+        } catch (err) {
+          console.error("Failed to delete Cloudinary content:", err);
+        }
+      }
+    }
+
+    await Message.deleteMany({ chat: new Types.ObjectId(chatId as any) });
+
+    await chat.deleteOne();
+
+    if (io) {
+      chat.participants.forEach((p: any) => {
+        io.to(`user:${p.toString()}`).emit("chat-deleted", { chatId });
+      });
+    }
+
+    res.status(200).json({ message: "Chat deleted successfully" });
+  } catch (error) {
+    console.log(`Error in delete chat: ${error}`);
     next(error);
   }
 };

@@ -60,3 +60,20 @@ export const useCreateGroupChat = () => {
     },
   });
 };
+
+export const useDeleteChat = () => {
+  const { apiWithAuth } = useApi();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (chatId: string) => {
+      await apiWithAuth({
+        method: "DELETE",
+        url: `/chats/${chatId}`,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+    },
+  });
+};
