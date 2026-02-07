@@ -6,12 +6,14 @@ import {
   deleteAccount,
   updateProfile,
   updateProfileAvatar,
+  changePhoneNumber,
 } from "../controllers/user.controller";
 
 import { protectRoute } from "../middlewares/auth.middleware";
 import {
   validateChangePassword,
   validateUpdateProfile,
+  validateUpdatePhone,
 } from "../middlewares/userValidate.middleware";
 import upload from "../middlewares/upload";
 
@@ -24,6 +26,12 @@ router.put(
   protectRoute,
   validateChangePassword,
   changePassword,
+);
+router.put(
+  "/update-phone",
+  protectRoute,
+  validateUpdatePhone,
+  changePhoneNumber,
 );
 router.put(
   "/update-profile",

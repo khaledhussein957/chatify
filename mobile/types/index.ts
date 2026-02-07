@@ -2,8 +2,11 @@ export interface User {
   _id: string;
   name: string;
   email: string;
+  phone: string;
   avatar?: string;
   bio?: string;
+  deviceId?: string;
+  isVerified: boolean;
 }
 
 export interface MessageSender {

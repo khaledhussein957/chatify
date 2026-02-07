@@ -46,6 +46,24 @@ export const useChangePassword = () => {
 };
 
 // ----------------------
+// Change phone number
+// ----------------------
+export const useChangePhoneNumber = () => {
+  const { apiWithAuth } = useApi();
+
+  return useMutation({
+    mutationFn: async (params: { oldPhoe: string; newPhone: string }) => {
+      const { data } = await apiWithAuth<{ message: string }>({
+        method: "PUT",
+        url: "/users/change-phone-number",
+        data: params,
+      });
+      return data;
+    },
+  });
+};
+
+// ----------------------
 // Update profile (name, email, etc.)
 // ----------------------
 export const useUpdateProfile = () => {

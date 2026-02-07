@@ -10,7 +10,6 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
 import { useForm, Controller } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
 import Joi from "joi";
@@ -18,44 +17,28 @@ import { COLORS } from "@/constants/theme";
 import { styles } from "@/assets/styles/auth.style";
 import { router } from "expo-router";
 import { useUserRegister } from "@/hooks/useAuth";
-import { useState } from "react";
 import { useAlert } from "@/components/AlertMessageController"; // ✅ import alert
+import { validatePhoneNumber } from "@/lib/phoneValidate";
 
 // Joi schema for register validation
 const registerSchema = Joi.object({
-  name: Joi.string().min(3).required().messages({
-    "string.empty": "Name is required",
-    "string.min": "Name must be at least 3 characters",
-  }),
-  email: Joi.string()
-    .email({ tlds: { allow: false } })
-    .required()
-    .messages({
-      "string.empty": "Email is required",
-      "string.email": "Enter a valid email",
-    }),
-  password: Joi.string().min(8).required().messages({
-    "string.empty": "Password is required",
-    "string.min": "Password must be at least 8 characters",
+  phone: Joi.string().required().messages({
+    "string.empty": "Phone is required",
   }),
 });
 
 type RegisterFormData = {
-  name: string;
-  email: string;
-  password: string;
+  phone: string;
 };
 
 const RegisterScreen = () => {
-  const [showPassword, setShowPassword] = useState(false);
-
   const {
     control,
     handleSubmit,
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>({
     resolver: joiResolver(registerSchema),
-    defaultValues: { name: "", email: "", password: "" },
+    defaultValues: { phone: "" },
   });
 
   const { mutateAsync: register, isPending: isRegistering } = useUserRegister();
@@ -64,13 +47,22 @@ const RegisterScreen = () => {
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
+      const validation = validatePhoneNumber(data.phone);
+      if (!validation?.valid) {
+        alert.error(validation?.message || "Invalid phone number");
+        return;
+      }
+
       await register(data);
 
       // Show success alert
       alert.success("✅ Registration successful!");
 
       if (router.canDismiss()) router.dismissAll();
-      router.replace("/(tabs)");
+      router.replace({
+        pathname: "/(auth)/verify",
+        params: { phone: data.phone },
+      });
     } catch (error: any) {
       console.error("Register Error:", error);
 
@@ -109,94 +101,27 @@ const RegisterScreen = () => {
 
             {/* FORM */}
             <View style={{ flex: 1 }}>
-              {/* Name */}
+              {/* Phone */}
               <Controller
                 control={control}
-                name="name"
+                name="phone"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Name</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter your name"
-                      placeholderTextColor={COLORS.grey}
-                      autoCapitalize="words"
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      value={value}
-                    />
-                    {errors.name && (
-                      <Text style={styles.errorText}>
-                        {errors.name.message}
-                      </Text>
-                    )}
-                  </View>
-                )}
-              />
-
-              {/* Email */}
-              <Controller
-                control={control}
-                name="email"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Email</Text>
-                    <TextInput
-                      style={styles.input}
-                      placeholder="Enter your email"
-                      placeholderTextColor={COLORS.grey}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      onChangeText={onChange}
-                      onBlur={onBlur}
-                      value={value}
-                    />
-                    {errors.email && (
-                      <Text style={styles.errorText}>
-                        {errors.email.message}
-                      </Text>
-                    )}
-                  </View>
-                )}
-              />
-
-              {/* Password */}
-              <Controller
-                control={control}
-                name="password"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Password</Text>
+                    <Text style={styles.label}>Phone</Text>
                     <View>
                       <TextInput
                         style={styles.input}
-                        placeholder="Enter your password"
+                        placeholder="Enter your phone"
                         placeholderTextColor={COLORS.grey}
-                        secureTextEntry={!showPassword}
                         autoCapitalize="none"
                         onChangeText={onChange}
                         onBlur={onBlur}
                         value={value}
                       />
-                      <Pressable
-                        style={{
-                          position: "absolute",
-                          right: 16,
-                          top: 14,
-                          padding: 4,
-                        }}
-                        onPress={() => setShowPassword((prev) => !prev)}
-                      >
-                        <Ionicons
-                          name={showPassword ? "eye" : "eye-off"}
-                          size={20}
-                          color={COLORS.grey}
-                        />
-                      </Pressable>
                     </View>
-                    {errors.password && (
+                    {errors.phone && (
                       <Text style={styles.errorText}>
-                        {errors.password.message}
+                        {errors.phone.message}
                       </Text>
                     )}
                   </View>

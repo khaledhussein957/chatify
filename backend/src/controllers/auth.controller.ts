@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import bcrypt from "bcryptjs";
+import { randomInt } from "crypto";
 
 import User from "../models/user.model";
 
@@ -7,12 +8,14 @@ import { AuthRequest } from "../middlewares/auth.middleware";
 
 import { isValidStrongPassword } from "../utils/validStrongPassword";
 import { generateToken } from "../utils/generateToken";
+import { validatePhoneNumber } from "../utils/phoneValidate";
+import sendOtp from "../utils/otp";
+import { generateStrongPassword } from "../utils/passwordGenerator";
 
 import {
   forgotPasswordEmail,
   sendPasswordResetSuccessEmail,
 } from "../emails/emailHandler";
-import { randomInt } from "crypto";
 
 export const getMe = async (req: AuthRequest, res: Response) => {
   try {
@@ -32,57 +35,220 @@ export const getMe = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// Helper: generate 6-digit code
+const generateCode = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
+
 export const register = async (req: Request, res: Response) => {
   try {
-    const { name, email, password } = req.body;
-    if (!name || !email || !password)
-      return res.status(400).json({ message: "❌ All fields are required" });
+    const { phone } = req.body;
 
-    // email format validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email))
-      return res.status(400).json({ message: "❌ Invalid email format" });
-
-    const isStrongPassword = isValidStrongPassword(password);
-    if (!isStrongPassword)
+    if (!phone) {
       return res
         .status(400)
-        .json({ message: "❌ Password is not strong enough" });
+        .json({ success: false, message: "Phone number is required" });
+    }
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser)
-      return res.status(409).json({ message: "❌ User already exists" });
+    let user = await User.findOne({ phone });
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const code = generateCode();
+    const expires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
 
-    // first letter of name capitalized as avatar
-    const avatar = name.charAt(0).toUpperCase();
+    // validate phone number
+    const validation = validatePhoneNumber(phone);
+    if (!validation?.valid) {
+      return res
+        .status(400)
+        .json({ success: false, message: validation?.message });
+    }
 
-    const newUser = new User({
-      name,
-      email,
-      password: hashedPassword,
-      avatar,
+    // Check OTP rate limiting (5 OTPs per month)
+    const now = new Date();
+    const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    if (user) {
+      // Reset counter if it's a new month
+      if (
+        !user.otpSentMonth ||
+        user.otpSentMonth.getMonth() !== now.getMonth() ||
+        user.otpSentMonth.getFullYear() !== now.getFullYear()
+      ) {
+        user.otpSentCount = 0;
+        user.otpSentMonth = currentMonth;
+      }
+
+      // Check if user has exceeded monthly limit
+      if (user.otpSentCount >= 5) {
+        return res.status(429).json({
+          success: false,
+          message:
+            "Monthly OTP limit reached (5 OTPs per month). Please try again next month.",
+        });
+      }
+    }
+
+    if (!user) {
+      user = await User.create({
+        phone,
+        verificationCode: code,
+        codeExpires: expires,
+        otpSentCount: 1,
+        otpSentMonth: currentMonth,
+      });
+    } else {
+      // Check if previous code is still valid
+      if (user.codeExpires && user.codeExpires > new Date()) {
+        const secondsLeft = Math.ceil(
+          (user.codeExpires.getTime() - Date.now()) / 1000,
+        );
+        return res.status(400).json({
+          success: false,
+          message: `Verification code is still valid. Please wait ${secondsLeft} seconds before requesting a new code.`,
+        });
+      }
+
+      user.verificationCode = code;
+      user.codeExpires = expires;
+      user.otpSentCount += 1;
+      await user.save();
+    }
+
+    // Send OTP via SMS
+    const smsMessage = `Your verification code of Chatify is ${code}`;
+    try {
+      const smsResponse = await sendOtp({ smsMessage, phoneNumber: phone });
+      if (!smsResponse.status) {
+        return res
+          .status(500)
+          .json({ success: false, message: "Failed to send OTP" });
+      }
+    } catch (error) {
+      console.error("Error sending OTP:", error);
+      return res
+        .status(500)
+        .json({ success: false, message: "Error sending OTP" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Verification code sent",
+      userId: user._id,
     });
+  } catch (error) {
+    console.log("Error in register:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
 
-    await newUser.save();
+export const verifyCode = async (req: Request, res: Response) => {
+  try {
+    const { phone, code, deviceId } = req.body;
+    if (!phone || !code)
+      return res.status(400).json({ message: "Phone and code required" });
 
-    const token = generateToken(newUser._id.toString());
+    const user = await User.findOne({ phone });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    res.status(201).json({
-      message: "✅ User registered successfully",
+    if (!user.codeExpires || user.codeExpires < new Date()) {
+      return res.status(400).json({ message: "Code expired" });
+    }
+    if (user.verificationCode !== code) {
+      return res.status(400).json({ message: "Invalid code" });
+    }
+
+    // Logout previous device and set new deviceId
+    if (deviceId) {
+      user.deviceId = deviceId;
+    }
+
+    // Auto-generate password if user doesn't have one
+    if (!user.password) {
+      const generatedPassword = generateStrongPassword();
+      const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+      user.password = hashedPassword;
+
+      // Send password via SMS
+      const passwordMessage = `Your Chatify account password is: ${generatedPassword}. Please save it securely.`;
+      try {
+        await sendOtp({ smsMessage: passwordMessage, phoneNumber: user.phone });
+        console.log("✅ Password sent via SMS to:", user.phone);
+      } catch (error) {
+        console.error("Error sending password SMS:", error);
+        // Continue even if SMS fails - user can reset password later
+      }
+    }
+
+    user.isVerified = true;
+    user.verificationCode = undefined;
+    user.codeExpires = undefined;
+    await user.save();
+
+    // generate token
+    const token = generateToken(user._id.toString());
+
+    return res.status(200).json({
+      message: "Phone verified",
       token,
       user: {
-        _id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-        bio: newUser.bio,
-        avatar: newUser.avatar,
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        bio: user.bio,
+        avatar: user.avatar,
       },
     });
   } catch (error) {
-    console.log(`❌ Error in register: ${error}`);
-    return res.status(500).json({ message: "Internal server error" });
+    console.log("Error in verifyCode:", error);
+    return res.status(500).json({ message: "Server error", error });
+  }
+};
+export const resendOtp = async (req: Request, res: Response) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) return res.status(400).json({ message: "Phone required" });
+
+    const user = await User.findOne({ phone });
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (
+      user.verificationCode ||
+      !user.codeExpires ||
+      user.codeExpires < new Date()
+    ) {
+      return res.status(400).json({ message: "Code expired" });
+    }
+
+    const code = generateCode();
+    const expires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
+
+    user.verificationCode = code;
+    user.codeExpires = expires;
+    await user.save();
+
+    // Send OTP via SMS
+    const smsMessage = `Your verification code of Chatify is ${code}`;
+    try {
+      const smsResponse = await sendOtp({ smsMessage, phoneNumber: phone });
+      if (!smsResponse.status) {
+        return res
+          .status(500)
+          .json({ success: false, message: "Failed to send OTP" });
+      }
+    } catch (error) {
+      console.error("Error sending OTP:", error);
+      return res
+        .status(500)
+        .json({ success: false, message: "Error sending OTP" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Verification code sent",
+      userId: user._id,
+    });
+  } catch (error) {
+    console.log("Error in resendOtp:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -100,7 +266,7 @@ export const login = async (req: Request, res: Response) => {
     const user = await User.findOne({ email });
 
     const isPasswordValid = user
-      ? await bcrypt.compare(password, user.password)
+      ? await bcrypt.compare(password, user.password!)
       : false;
     if (!user || !isPasswordValid)
       return res.status(401).json({ message: "❌ Invalid credentials" });
@@ -171,7 +337,7 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
     await user.save();
 
-    await forgotPasswordEmail(user.name, user.email, resetCode);
+    await forgotPasswordEmail(user.name!, user.email!, resetCode);
 
     res.status(200).json({ message: "✅ Reset code sent to email" });
   } catch (error) {
@@ -239,7 +405,7 @@ export const resendCode = async (req: Request, res: Response) => {
 
     await user.save();
 
-    await forgotPasswordEmail(user.name, user.email, resetCode);
+    await forgotPasswordEmail(user.name!, user.email!, resetCode);
 
     res.status(200).json({ message: "✅ Reset code resent to email" });
   } catch (error) {
@@ -290,7 +456,7 @@ export const resetPassword = async (req: Request, res: Response) => {
     user.resetPasswordRequestedAt = undefined;
 
     await user.save();
-    await sendPasswordResetSuccessEmail(user.email);
+    await sendPasswordResetSuccessEmail(user.email!);
 
     res.status(200).json({ message: "✅ Password reset successfully" });
   } catch (error) {

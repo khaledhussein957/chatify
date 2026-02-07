@@ -6,8 +6,12 @@ import type { AuthRequest } from "../middlewares/auth.middleware";
 import User from "../models/user.model";
 
 import cloudinary from "../configs/cloudinary";
+
 import { isValidStrongPassword } from "../utils/validStrongPassword";
 import { io } from "../utils/socket";
+import { validatePhoneNumber } from "../utils/phoneValidate";
+
+import { sendEmailLinkedSuccessEmail } from "../emails/emailHandler";
 
 export const getUsers = async (req: AuthRequest, res: Response) => {
   try {
@@ -64,7 +68,7 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
 
     const isPasswordValid = await bcrypt.compare(
       currentPassword,
-      user.password,
+      user.password!,
     );
     if (!isPasswordValid) {
       return res
@@ -83,47 +87,132 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
   }
 };
 
+export const changePhoneNumber = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
+
+    const { oldPhoe, newPhone } = req.body;
+    if (!oldPhoe || !newPhone) {
+      return res.status(400).json({
+        success: false,
+        message: "Old and new phone numbers are required",
+      });
+    }
+
+    const isCorrectPhone = validatePhoneNumber(oldPhoe);
+    if (!isCorrectPhone) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Old phone number is incorrect" });
+    }
+
+    const isCorrectNewPhone = validatePhoneNumber(newPhone);
+    if (!isCorrectNewPhone) {
+      return res
+        .status(400)
+        .json({ success: false, message: "New phone number is incorrect" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    if (user.phone !== oldPhoe) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Old phone number does not match" });
+    }
+
+    const existingUser = await User.findOne({ phone: newPhone });
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({ success: false, message: "New phone number already in use" });
+    }
+
+    user.phone = newPhone;
+    await user.save();
+
+    res
+      .status(200)
+      .json({ success: true, message: "Phone number updated successfully" });
+  } catch (error) {
+    console.log("Error in changePhoneNumber:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
 export const updateProfile = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
-    const { name, email } = req.body;
+    let { name, email } = req.body;
 
     if (!userId) {
       return res.status(401).json({ message: "❌ Unauthorized" });
     }
 
-    if (!name && !email)
+    if (name === undefined && email === undefined) {
       return res.status(400).json({ message: "❌ No data to update" });
+    }
 
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "❌ User not found" });
     }
 
-    if (email) {
-      // email format validation
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email))
-        return res.status(400).json({ message: "❌ Invalid email format" });
-
-      const existingUser = await User.findOne({ email });
-      if (existingUser && existingUser._id.toString() !== userId)
-        return res.status(409).json({ message: "❌ Email already in use" });
+    // Name validation
+    if (name !== undefined) {
+      name = name.trim();
+      if (!name) {
+        return res.status(400).json({ message: "❌ Name cannot be empty" });
+      }
+      user.name = name;
     }
 
-    user.name = name || user.name;
-    user.email = email || user.email;
+    // Email validation
+    if (email !== undefined) {
+      email = email.trim().toLowerCase();
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ message: "❌ Invalid email format" });
+      }
+
+      const existingUser = await User.findOne({
+        email,
+        _id: { $ne: userId },
+      });
+
+      if (existingUser) {
+        return res.status(409).json({ message: "❌ Email already in use" });
+      }
+
+      user.email = email;
+    }
 
     await user.save();
 
-    // Notify all connected clients about the user update
     io.emit("user-updated", {
       userId: user._id,
       name: user.name,
       avatar: user.avatar,
     });
 
-    res.status(200).json({
+    if (email) {
+      await sendEmailLinkedSuccessEmail(
+        user.name!,
+        user.email!,
+        user.deviceId!,
+      );
+    }
+
+    return res.status(200).json({
       message: "✅ Profile updated successfully",
       user: {
         _id: user._id,
@@ -133,8 +222,13 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
         bio: user.bio,
       },
     });
-  } catch (error) {
-    console.log(`❌ Error in update profile: ${error}`);
+  } catch (error: any) {
+    // Handle duplicate key error just in case
+    if (error.code === 11000) {
+      return res.status(409).json({ message: "❌ Email already in use" });
+    }
+
+    console.error("❌ Error in update profile:", error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };

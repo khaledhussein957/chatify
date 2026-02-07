@@ -12,6 +12,11 @@ const ENV = {
   SMTP_PASSWORD: process.env.SMTP_PASSWORD || "",
   SMTP_FROM_EMAIL: process.env.SMTP_FROM_EMAIL || "",
 
+  SMS_SEND_OTP: process.env.SMS_SEND_OTP || "",
+  SMS_LOGIN: process.env.SMS_LOGIN || "",
+  SMS_USER: process.env.SMS_USER || "",
+  SMS_PASS: process.env.SMS_PASS || "",
+
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || "",
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || "",
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || "",
