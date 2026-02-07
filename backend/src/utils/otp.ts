@@ -46,12 +46,6 @@ const sendOtp = async ({
       return { status: false, data: "Login failed, cannot send OTP" };
     }
 
-    console.log("✅ Token received:", {
-      token,
-      smsMessage,
-      phoneNumber,
-    });
-
     // 2️⃣ Send OTP using the token
     const response = await axios.post(
       ENV.SMS_SEND_OTP,

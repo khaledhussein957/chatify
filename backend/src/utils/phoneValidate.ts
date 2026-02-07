@@ -36,8 +36,10 @@ export const validatePhoneNumber = (phone: string) => {
     };
   } catch (error) {
     if (error instanceof SomaliPhoneError) {
-      console.log(error.code); // ERROR_CODES.INVALID_PREFIX
-      console.log(error.message); // Descriptive message
+      console.error("Phone validation error:", error.code, error.message);
+      return { valid: false, message: error.message };
     }
+    console.error("Unexpected phone validation error:", error);
+    return { valid: false, message: "Phone validation failed" };
   }
 };

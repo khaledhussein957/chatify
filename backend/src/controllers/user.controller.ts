@@ -66,9 +66,16 @@ export const changePassword = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "❌ User not found" });
     }
 
+    if (!user.password) {
+      return res.status(400).json({
+        message:
+          "❌ Password not set. Use a different method to update your credentials.",
+      });
+    }
+
     const isPasswordValid = await bcrypt.compare(
       currentPassword,
-      user.password!,
+      user.password,
     );
     if (!isPasswordValid) {
       return res
@@ -94,23 +101,23 @@ export const changePhoneNumber = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
 
-    const { oldPhoe, newPhone } = req.body;
-    if (!oldPhoe || !newPhone) {
+    const { oldPhone, newPhone } = req.body;
+    if (!oldPhone || !newPhone) {
       return res.status(400).json({
         success: false,
         message: "Old and new phone numbers are required",
       });
     }
 
-    const isCorrectPhone = validatePhoneNumber(oldPhoe);
-    if (!isCorrectPhone) {
+    const isCorrectPhone = validatePhoneNumber(oldPhone);
+    if (!isCorrectPhone?.valid) {
       return res
         .status(400)
         .json({ success: false, message: "Old phone number is incorrect" });
     }
 
     const isCorrectNewPhone = validatePhoneNumber(newPhone);
-    if (!isCorrectNewPhone) {
+    if (!isCorrectNewPhone?.valid) {
       return res
         .status(400)
         .json({ success: false, message: "New phone number is incorrect" });
@@ -123,7 +130,7 @@ export const changePhoneNumber = async (req: AuthRequest, res: Response) => {
         .json({ success: false, message: "User not found" });
     }
 
-    if (user.phone !== oldPhoe) {
+    if (user.phone !== oldPhone) {
       return res
         .status(400)
         .json({ success: false, message: "Old phone number does not match" });

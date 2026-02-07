@@ -210,12 +210,18 @@ export const resendOtp = async (req: Request, res: Response) => {
     const user = await User.findOne({ phone });
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    // Reject if a valid (non-expired) code already exists
     if (
-      user.verificationCode ||
-      !user.codeExpires ||
-      user.codeExpires < new Date()
+      user.verificationCode &&
+      user.codeExpires &&
+      user.codeExpires > new Date()
     ) {
-      return res.status(400).json({ message: "Code expired" });
+      const secondsLeft = Math.ceil(
+        (user.codeExpires.getTime() - Date.now()) / 1000,
+      );
+      return res.status(400).json({
+        message: `Verification code is still valid. Please wait ${secondsLeft} seconds before requesting a new code.`,
+      });
     }
 
     const code = generateCode();

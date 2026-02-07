@@ -52,7 +52,7 @@ export const useChangePhoneNumber = () => {
   const { apiWithAuth } = useApi();
 
   return useMutation({
-    mutationFn: async (params: { oldPhoe: string; newPhone: string }) => {
+    mutationFn: async (params: { oldPhone: string; newPhone: string }) => {
       const { data } = await apiWithAuth<{ message: string }>({
         method: "PUT",
         url: "/users/change-phone-number",
