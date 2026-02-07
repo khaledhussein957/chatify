@@ -1,4 +1,10 @@
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
@@ -11,18 +17,23 @@ import { router } from "expo-router";
 import { useAlert } from "@/components/AlertMessageController";
 
 const ACCOUNT_ITEMS = [
-  { icon: "person-outline", label: "Edit Profile", color: "#22C55E", route: "/screens/edit_profile" },
+  {
+    icon: "person-outline",
+    label: "Edit Profile",
+    color: "#22C55E",
+    route: "/screens/edit_profile",
+  },
   {
     icon: "lock-closed-outline",
     label: "Change Password",
     color: "#22C55E",
-    route: "/screens/change_password"
+    route: "/screens/change_password",
   },
   {
     icon: "trash-outline",
     label: "Delete Account",
     color: "#EF4444",
-    route: "/screens/delete_account"
+    route: "/screens/delete_account",
   },
 ];
 
@@ -30,16 +41,26 @@ const ProfileTab = () => {
   const logout = useLogout();
   const user = useAuthStore((state) => state.user);
   const updateUser = useAuthStore((state) => state.updateUser);
-  const { mutateAsync: updateAvatar, isPending: isUpdatingAvatar } = useUpdateProfileAvatar();
+  const { mutateAsync: updateAvatar, isPending: isUpdatingAvatar } =
+    useUpdateProfileAvatar();
   const alert = useAlert();
 
   const handleLogout = () => {
+    // Check if user has completed their profile (name and email)
+    if (!user?.name || !user?.email) {
+      alert.error(
+        "Please complete your profile (name and email) before logging out",
+      );
+      router.push("/screens/edit_profile");
+      return;
+    }
+
     logout();
   };
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ["images"],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
@@ -53,7 +74,7 @@ const ProfileTab = () => {
           name: asset.fileName || "avatar.jpg",
           type: asset.mimeType || "image/jpeg",
         });
-        
+
         // Update local user state with new avatar URL
         if (user && response.avatar) {
           updateUser({ ...user, avatar: response.avatar });
@@ -79,19 +100,37 @@ const ProfileTab = () => {
         {/* HEADER */}
         <View style={styles.header}>
           <View style={styles.avatarWrapper}>
-            <View style={[styles.avatarBorder, { overflow: "hidden", justifyContent: "center", alignItems: "center", backgroundColor: isAvatarUrl(user?.avatar) ? "transparent" : COLORS.primary }]}>
-             {isUpdatingAvatar ? (
+            <View
+              style={[
+                styles.avatarBorder,
+                {
+                  overflow: "hidden",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  backgroundColor: isAvatarUrl(user?.avatar)
+                    ? "transparent"
+                    : COLORS.primary,
+                },
+              ]}
+            >
+              {isUpdatingAvatar ? (
                 <ActivityIndicator color={COLORS.primary} />
               ) : isAvatarUrl(user?.avatar) ? (
                 <Image source={{ uri: user?.avatar }} style={styles.avatar} />
               ) : (
-                <Text style={{ fontSize: 40, color: "white", fontWeight: "bold" }}>
+                <Text
+                  style={{ fontSize: 40, color: "white", fontWeight: "bold" }}
+                >
                   {user?.avatar || user?.name?.charAt(0).toUpperCase()}
                 </Text>
               )}
             </View>
 
-            <Pressable style={styles.cameraButton} onPress={pickImage} disabled={isUpdatingAvatar}>
+            <Pressable
+              style={styles.cameraButton}
+              onPress={pickImage}
+              disabled={isUpdatingAvatar}
+            >
               <Ionicons
                 name="camera"
                 size={16}
@@ -100,9 +139,7 @@ const ProfileTab = () => {
             </Pressable>
           </View>
 
-          <Text style={styles.name}>
-            {user?.name}
-          </Text>
+          <Text style={styles.name}>{user?.name}</Text>
 
           <Text style={styles.email}>{user?.email}</Text>
 

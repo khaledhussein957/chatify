@@ -1,0 +1,222 @@
+import {
+  View,
+  Text,
+  Pressable,
+  ActivityIndicator,
+  Image,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useForm, Controller } from "react-hook-form";
+import { joiResolver } from "@hookform/resolvers/joi";
+import Joi from "joi";
+import { router, useLocalSearchParams } from "expo-router";
+import * as Application from "expo-application";
+import { useEffect, useState } from "react";
+
+import { styles } from "@/assets/styles/auth.style";
+import { COLORS } from "@/constants/theme";
+import { useVerifyCode, useResendCode } from "@/hooks/useAuth";
+import { useAlert } from "@/components/AlertMessageController";
+
+// Joi schema
+const verifySchema = Joi.object({
+  code: Joi.string().length(6).pattern(/^\d+$/).required().messages({
+    "string.empty": "Code is required",
+    "string.length": "Code must be 6 digits",
+    "string.pattern.base": "Code must contain only numbers",
+  }),
+});
+
+type VerifyFormData = {
+  code: string;
+};
+
+const VerifyAccountScreen = () => {
+  const { phone } = useLocalSearchParams<{ phone?: string }>();
+  const alert = useAlert();
+  const [deviceId, setDeviceId] = useState<string>("");
+
+  const { mutateAsync: verifyAccount, isPending: isLoading } = useVerifyCode();
+
+  const { mutateAsync: resendCode, isPending: isResending } = useResendCode();
+
+  const {
+    control,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<VerifyFormData>({
+    resolver: joiResolver(verifySchema),
+    defaultValues: { code: "" },
+  });
+
+  // Get device ID on component mount
+  useEffect(() => {
+    const getDeviceId = async () => {
+      try {
+        // Try to get Android ID or iOS identifier
+        const id =
+          (await Application.getAndroidId()) ||
+          (await Application.getIosIdForVendorAsync()) ||
+          `device-${Date.now()}`;
+        setDeviceId(id);
+      } catch (error) {
+        console.error("Error getting device ID:", error);
+        setDeviceId(`device-${Date.now()}`); // Fallback to timestamp
+      }
+    };
+    getDeviceId();
+  }, []);
+
+  const onSubmit = async (data: VerifyFormData) => {
+    if (!phone) {
+      alert.error("Phone number is missing");
+      return;
+    }
+
+    try {
+      const res = await verifyAccount({
+        phone: phone,
+        code: data.code,
+        deviceId: deviceId,
+      });
+
+      if (res?.token) {
+        alert.success("✅ Account verified successfully");
+
+        if (router.canDismiss()) router.dismissAll();
+        router.replace("/(tabs)");
+      } else {
+        alert.error("❌ Verification failed");
+      }
+    } catch (error: any) {
+      alert.error(
+        error?.response?.data?.message || "❌ Failed to verify account",
+      );
+    }
+  };
+
+  const handleResend = async () => {
+    if (!phone) {
+      alert.error("Phone number is missing");
+      return;
+    }
+
+    try {
+      const res = await resendCode({ phone });
+
+      if (res?.message) {
+        alert.success(res.message || "✅ Code resent successfully");
+      } else {
+        alert.error(res?.message || "❌ Failed to resend code");
+      }
+    } catch {
+      alert.error("❌ Failed to resend code");
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+        >
+          <ScrollView
+            contentContainerStyle={{
+              flexGrow: 1,
+              paddingHorizontal: 24,
+              paddingBottom: 40,
+            }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* IMAGE */}
+            <View style={styles.illustrationContainer}>
+              <Image
+                source={require("../../assets/images/social-signIn.png")}
+                style={styles.illustration}
+                resizeMode="contain"
+              />
+            </View>
+
+            {/* TITLE */}
+            <Text style={styles.title}>Verify Your Account</Text>
+            <Text style={styles.subtitle}>
+              Enter the 6-digit code sent to {phone}
+            </Text>
+
+            {/* CODE INPUT */}
+            <Controller
+              control={control}
+              name="code"
+              render={({ field: { onChange, onBlur, value } }) => (
+                <View style={styles.inputContainer}>
+                  <Text style={styles.label}>Verification Code</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        textAlign: "center",
+                        letterSpacing: 6,
+                        fontSize: 20,
+                      },
+                    ]}
+                    placeholder="123456"
+                    placeholderTextColor={COLORS.grey}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    value={value}
+                  />
+                  {errors.code && (
+                    <Text style={styles.errorText}>{errors.code.message}</Text>
+                  )}
+                </View>
+              )}
+            />
+
+            {/* VERIFY BUTTON */}
+            <Pressable
+              disabled={isSubmitting || isLoading}
+              style={styles.formButton}
+              onPress={handleSubmit(onSubmit)}
+            >
+              {isSubmitting || isLoading ? (
+                <ActivityIndicator color={COLORS.background} />
+              ) : (
+                <Text style={styles.formButtonText}>Verify</Text>
+              )}
+            </Pressable>
+
+            {/* RESEND */}
+            <Pressable
+              disabled={isLoading}
+              style={{ marginTop: 12, alignItems: "center" }}
+              onPress={handleResend}
+            >
+              <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
+                Resend Code
+              </Text>
+            </Pressable>
+
+            {/* BACK */}
+            <Pressable
+              style={{ marginTop: 20, alignItems: "center" }}
+              onPress={() => router.back()}
+            >
+              <Text style={{ color: COLORS.grey }}>Go Back</Text>
+            </Pressable>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
+  );
+};
+
+export default VerifyAccountScreen;

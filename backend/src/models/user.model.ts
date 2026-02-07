@@ -1,9 +1,9 @@
 import mongoose, { Schema, type Document } from "mongoose";
 
 export interface IUser extends Document {
-  name: string;
-  email: string;
-  password: string;
+  name?: string;
+  email?: string;
+  password?: string;
   bio?: string;
   avatar?: string;
 
@@ -12,15 +12,25 @@ export interface IUser extends Document {
   resetPasswordResendCount: number;
   resetPasswordRequestedAt?: Date;
 
+  phone: string;
+  verificationCode?: string;
+  codeExpires?: Date;
+  isVerified: boolean;
+  deviceId?: string;
+
+  // OTP rate limiting (5 OTPs per month)
+  otpSentCount: number;
+  otpSentMonth?: Date; // Track the month for OTP count
+
   createdAt: Date;
   updatedAt: Date;
 }
 
 const UserSchema: Schema = new Schema<IUser>(
   {
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
-    password: { type: String, required: true },
+    name: { type: String, required: false },
+    email: { type: String, required: false },
+    password: { type: String, required: false },
     bio: { type: String, required: false },
     avatar: { type: String, required: false },
 
@@ -32,6 +42,16 @@ const UserSchema: Schema = new Schema<IUser>(
       max: 3,
     },
     resetPasswordRequestedAt: Date,
+
+    phone: { type: String, required: true, unique: true },
+    verificationCode: { type: String, required: false },
+    codeExpires: { type: Date, required: false },
+    isVerified: { type: Boolean, default: false },
+    deviceId: { type: String, required: false },
+
+    // OTP rate limiting
+    otpSentCount: { type: Number, default: 0 },
+    otpSentMonth: { type: Date, required: false },
   },
   { timestamps: true },
 );

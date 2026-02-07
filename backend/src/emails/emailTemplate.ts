@@ -11,6 +11,89 @@ const escapeHtml = (value: string) =>
       })[ch] as string,
   );
 
+export const emailLinkedSuccessTemplate = (name: string, deviceId: string) => `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;">
+  <div style="max-width:520px;margin:40px auto;padding:0 16px;">
+    
+    <div style="
+      background:#1A1A1D;
+      padding:36px;
+      border-radius:12px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.25);
+    ">
+
+      <h2 style="
+        color:#22C55E;
+        margin:0 0 6px 0;
+        font-size:20px;
+        font-weight:700;
+      ">
+        Chatify
+      </h2>
+
+      <p style="
+        color:#9CA3AF;
+        font-size:13px;
+        margin:0 0 20px 0;
+      ">
+        Account updated successfully
+      </p>
+
+      <p style="
+        color:#D1D5DB;
+        font-size:14px;
+        margin:0 0 16px 0;
+      ">
+        Hi ${escapeHtml(name)},
+      </p>
+
+      <p style="
+        color:#D1D5DB;
+        font-size:14px;
+        line-height:1.7;
+        margin:0 0 24px 0;
+      ">
+        Your email address has been successfully linked to your
+        <strong>Chatify</strong> account.
+      </p>
+
+      <div style="
+        background:#0F172A;
+        padding:18px;
+        border-radius:10px;
+        border:1px solid #22C55E33;
+        margin:0 0 24px 0;
+      ">
+        <p style="margin:0 0 8px 0;color:#9CA3AF;font-size:12px;">
+          Account details
+        </p>
+
+        <p style="margin:0;color:#D1D5DB;font-size:14px;">
+          <strong>Name:</strong> ${escapeHtml(name)}
+        </p>
+
+        <p style="margin:6px 0 0 0;color:#D1D5DB;font-size:14px;">
+          <strong>Device ID:</strong> ${escapeHtml(deviceId)}
+        </p>
+      </div>
+
+      <p style="
+        color:#9CA3AF;
+        font-size:12px;
+        line-height:1.6;
+        margin:0;
+      ">
+        If you did not make this change, please contact Chatify support immediately.
+      </p>
+
+    </div>
+  </div>
+</body>
+</html>
+`;
+
 export const resetCodeTemplate = (name: string, code: string) => `
 <!DOCTYPE html>
 <html>

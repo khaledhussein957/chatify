@@ -1,12 +1,38 @@
 import ENV from "../configs/env";
 import { getTransporter } from "../configs/nodeMailer";
 
-import { resetCodeTemplate, resetSuccessTemplate } from "./emailTemplate";
+import {
+  resetCodeTemplate,
+  resetSuccessTemplate,
+  emailLinkedSuccessTemplate,
+} from "./emailTemplate";
+
+export const sendEmailLinkedSuccessEmail = async (
+  name: string,
+  email: string,
+  deviceId: string,
+) => {
+  const transporter = await getTransporter();
+
+  const info = await transporter.sendMail({
+    from: `Chatify <${ENV.SMTP_FROM_EMAIL}>`,
+    to: email,
+    subject: "Chatify – Email Linked Successfully",
+    html: emailLinkedSuccessTemplate(name, deviceId),
+  });
+
+  if (!info.messageId) {
+    console.error("Error sending email linked success email", info);
+    throw new Error("Failed to send email linked success email");
+  }
+
+  console.log("Email linked success email sent", info.messageId);
+};
 
 export const forgotPasswordEmail = async (
   name: string,
   email: string,
-  resetCode: string
+  resetCode: string,
 ) => {
   const transporter = await getTransporter();
 
@@ -24,7 +50,6 @@ export const forgotPasswordEmail = async (
 
   console.log("Reset code sent successfully", info.messageId);
 };
-
 
 export const sendPasswordResetSuccessEmail = async (email: string) => {
   const transporter = await getTransporter();

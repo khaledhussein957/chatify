@@ -15,6 +15,21 @@ export const styles = StyleSheet.create({
     marginTop: height * 0.08,
   },
 
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    fontFamily: "JetBrainsMono-Medium",
+    color: COLORS.primary,
+    marginBottom: 6,
+  },
+
+  subtitle: {
+    fontSize: 14,
+    color: COLORS.grey,
+    letterSpacing: 1,
+    textTransform: "lowercase",
+  },
+
   logoContainer: {
     width: 64,
     height: 64,

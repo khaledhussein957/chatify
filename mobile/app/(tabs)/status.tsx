@@ -24,14 +24,10 @@ import { useAlert } from "@/components/AlertMessageController";
 const StatusScreen = () => {
   const router = useRouter();
   const currentUser = useAuthStore((state) => state.user);
-
   const alert = useAlert();
 
   const { data: statuses, isLoading, refetch, isRefetching } = useStatuses();
-  const {
-    mutate: createStatus,
-    isPending: isCreating,
-  } = useCreateStatus();
+  const { mutate: createStatus, isPending: isCreating } = useCreateStatus();
 
   const [isCreateModalVisible, setIsCreateModalVisible] = useState(false);
   const [isTypeModalVisible, setIsTypeModalVisible] = useState(false);
@@ -61,9 +57,7 @@ const StatusScreen = () => {
     return Array.from(map.values());
   }, [statuses]);
 
-  const myStatuses = groupedByUser.find(
-    (g) => g.userId === currentUser?._id,
-  );
+  const myStatuses = groupedByUser.find((g) => g.userId === currentUser?._id);
   const others = groupedByUser.filter((g) => g.userId !== currentUser?._id);
 
   const handleOpenUserStatuses = (userId: string) => {
@@ -97,7 +91,6 @@ const StatusScreen = () => {
     if (!result.canceled && result.assets[0]) {
       const asset = result.assets[0];
 
-      // Normalize duration and enforce <= 60 seconds for video
       let durationSeconds: number | undefined;
       if (asset.type === "video" && typeof asset.duration === "number") {
         durationSeconds =
@@ -111,13 +104,10 @@ const StatusScreen = () => {
       }
 
       const mime =
-        asset.mimeType ||
-        (asset.type === "video" ? "video/mp4" : "image/jpeg");
+        asset.mimeType || (asset.type === "video" ? "video/mp4" : "image/jpeg");
       const fileName =
         asset.fileName ||
-        `status_${Date.now()}${
-          asset.type === "video" ? ".mp4" : ".jpg"
-        }`;
+        `status_${Date.now()}${asset.type === "video" ? ".mp4" : ".jpg"}`;
 
       router.push({
         pathname: "/screens/preview_content",
@@ -143,15 +133,10 @@ const StatusScreen = () => {
           {isRefetching && (
             <ActivityIndicator size="small" color={COLORS.primary} />
           )}
-          <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => refetch()}
-          >
-            <Ionicons name="refresh" size={18} color={COLORS.foreground} />
-          </TouchableOpacity>
         </View>
       </View>
 
+      {/* STATUS LIST */}
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={COLORS.primary} />
@@ -179,7 +164,6 @@ const StatusScreen = () => {
                     : setIsCreateModalVisible(true)
                 }
               />
-
               <Text style={styles.sectionLabel}>Recent updates</Text>
             </View>
           }
@@ -209,7 +193,7 @@ const StatusScreen = () => {
         />
       )}
 
-      {/* CREATE STATUS MODAL (TEXT ONLY) */}
+      {/* CREATE STATUS MODAL */}
       <Modal
         transparent
         animationType="slide"
@@ -219,10 +203,7 @@ const StatusScreen = () => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>New Status</Text>
-            <Text style={styles.modalSubtitle}>
-              Share a text update.
-            </Text>
-
+            <Text style={styles.modalSubtitle}>Share a text update.</Text>
             <View style={styles.modalInputWrapper}>
               <TextInput
                 style={styles.modalInput}
@@ -251,7 +232,7 @@ const StatusScreen = () => {
                 style={[
                   styles.modalButton,
                   styles.modalCreateButton,
-                  (!statusText.trim() ? styles.modalButtonDisabled : null),
+                  !statusText.trim() && styles.modalButtonDisabled,
                 ]}
                 onPress={handleCreateStatus}
                 disabled={!statusText.trim() || isCreating}
@@ -267,7 +248,7 @@ const StatusScreen = () => {
         </View>
       </Modal>
 
-      {/* TYPE SELECTION MODAL */}
+      {/* TYPE SELECTION MODAL WITH ICONS */}
       <Modal
         transparent
         animationType="fade"
@@ -281,34 +262,42 @@ const StatusScreen = () => {
               Choose what kind of status you want to share.
             </Text>
 
-            <TouchableOpacity
-              style={styles.typeButton}
-              onPress={() => {
-                setIsTypeModalVisible(false);
-                setIsCreateModalVisible(true);
-              }}
-              disabled={isCreating}
-            >
-              <Ionicons name="create-outline" size={20} color={COLORS.foreground} />
-              <Text style={styles.typeButtonText}>Text status</Text>
-            </TouchableOpacity>
+            <View style={styles.iconRow}>
+              <TouchableOpacity
+                style={styles.iconCircle}
+                onPress={() => {
+                  setIsTypeModalVisible(false);
+                  setIsCreateModalVisible(true);
+                }}
+                disabled={isCreating}
+              >
+                <Ionicons
+                  name="create-outline"
+                  size={28}
+                  color={COLORS.foreground}
+                />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.typeButton}
-              onPress={async () => {
-                setIsTypeModalVisible(false);
-                await handlePickMediaAndPreview();
-              }}
-              disabled={isCreating}
-            >
-              <Ionicons name="image-outline" size={20} color={COLORS.foreground} />
-              <Text style={styles.typeButtonText}>Photo or video status</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.iconCircle}
+                onPress={async () => {
+                  setIsTypeModalVisible(false);
+                  await handlePickMediaAndPreview();
+                }}
+                disabled={isCreating}
+              >
+                <Ionicons
+                  name="image-outline"
+                  size={28}
+                  color={COLORS.foreground}
+                />
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
 
-      {/* FLOATING ACTION BUTTON TO ADD STATUS */}
+      {/* FAB */}
       <TouchableOpacity
         style={styles.fab}
         onPress={() => setIsTypeModalVisible(true)}
@@ -325,10 +314,7 @@ const StatusScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
+  container: { flex: 1, backgroundColor: COLORS.background },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -336,16 +322,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  headerTitle: {
-    color: COLORS.foreground,
-    fontSize: 22,
-    fontWeight: "700",
-  },
-  headerActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
+  headerTitle: { color: COLORS.foreground, fontSize: 22, fontWeight: "700" },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   iconButton: {
     width: 32,
     height: 32,
@@ -354,11 +332,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: COLORS.surfaceLight,
   },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
   sectionLabel: {
     color: COLORS.grey,
     fontSize: 12,
@@ -367,20 +341,15 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     paddingHorizontal: 16,
   },
-  emptyContainer: {
-    paddingHorizontal: 24,
-    paddingTop: 40,
-  },
+  emptyContainer: { paddingHorizontal: 24, paddingTop: 40 },
   emptyTitle: {
     color: COLORS.foreground,
     fontSize: 18,
     fontWeight: "600",
     marginBottom: 4,
   },
-  emptySubtitle: {
-    color: COLORS.grey,
-    fontSize: 14,
-  },
+  emptySubtitle: { color: COLORS.grey, fontSize: 14 },
+
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
@@ -393,6 +362,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: COLORS.background,
     padding: 20,
+    alignItems: "center",
   },
   modalTitle: {
     fontSize: 18,
@@ -400,11 +370,7 @@ const styles = StyleSheet.create({
     color: COLORS.foreground,
     marginBottom: 4,
   },
-  modalSubtitle: {
-    fontSize: 14,
-    color: COLORS.grey,
-    marginBottom: 16,
-  },
+  modalSubtitle: { fontSize: 14, color: COLORS.grey, marginBottom: 16 },
   modalInputWrapper: {
     backgroundColor: COLORS.surfaceLight,
     borderRadius: 12,
@@ -415,10 +381,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     minHeight: 80,
   },
-  modalInput: {
-    fontSize: 16,
-    color: COLORS.foreground,
-  },
+  modalInput: { fontSize: 16, color: COLORS.foreground },
   modalButtonsRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
@@ -432,38 +395,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
   },
-  modalCancelButton: {
-    backgroundColor: COLORS.surfaceLight,
-  },
-  modalCreateButton: {
-    backgroundColor: COLORS.primary,
-  },
-  modalButtonDisabled: {
-    opacity: 0.5,
-  },
-  modalCancelText: {
-    color: COLORS.foreground,
-    fontWeight: "500",
-  },
-  modalCreateText: {
-    color: COLORS.background,
-    fontWeight: "600",
-  },
-  typeButton: {
+  modalCancelButton: { backgroundColor: COLORS.surfaceLight },
+  modalCreateButton: { backgroundColor: COLORS.primary },
+  modalButtonDisabled: { opacity: 0.5 },
+  modalCancelText: { color: COLORS.foreground, fontWeight: "500" },
+  modalCreateText: { color: COLORS.background, fontWeight: "600" },
+
+  // Icon Row for TYPE Modal
+  iconRow: {
     flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
+    justifyContent: "space-around",
+    width: "100%",
+    marginTop: 20,
+  },
+  iconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: COLORS.surfaceLight,
-    marginTop: 8,
-    gap: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: COLORS.background,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  typeButtonText: {
-    color: COLORS.foreground,
-    fontSize: 15,
-    fontWeight: "500",
-  },
+
   fab: {
     position: "absolute",
     right: 24,

@@ -17,7 +17,14 @@ import { initializeSocket } from "./utils/socket";
 
 const app = Express();
 
-app.use(cors());
+app.use(
+  cors({
+    origin: "*",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  }),
+);
 
 // Middlewares
 app.use(Express.json());
