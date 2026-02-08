@@ -1,9 +1,58 @@
-import {
-  isValidSomaliMobile,
-  getOperator,
-  getOperatorInfo,
-  SomaliPhoneError,
-} from "sophone";
+const OPERATORS = {
+  Hormuud: {
+    name: "Hormuud Telecom Somalia",
+    prefixes: ["61", "77"],
+  },
+  Somtel: {
+    name: "Somtel Somalia",
+    prefixes: ["62", "65", "68"],
+  },
+  Telesom: {
+    name: "Telesom Somalia",
+    prefixes: ["63"],
+  },
+  Golis: {
+    name: "Golis Telecom Somalia",
+    prefixes: ["79", "90"],
+  },
+  Somafone: {
+    name: "Somafone",
+    prefixes: ["69"],
+  },
+  NationLink: {
+    name: "NationLink Telecom",
+    prefixes: ["66"],
+  },
+};
+
+const normalizePhone = (phone: string): string => {
+  let cleaned = phone.replace(/[^\d]/g, "");
+  if (cleaned.startsWith("252")) {
+    cleaned = cleaned.slice(3);
+  }
+  if (cleaned.startsWith("0")) {
+    cleaned = cleaned.slice(1);
+  }
+  return cleaned;
+};
+
+export const isValidSomaliMobile = (phone: string): boolean => {
+  const normalized = normalizePhone(phone);
+  if (normalized.length !== 9) return false;
+  const prefix = normalized.slice(0, 2);
+  return Object.values(OPERATORS).some((op) => op.prefixes.includes(prefix));
+};
+
+export const getOperator = (phone: string): string | null => {
+  const normalized = normalizePhone(phone);
+  const prefix = normalized.slice(0, 2);
+  for (const [name, info] of Object.entries(OPERATORS)) {
+    if (info.prefixes.includes(prefix)) {
+      return name;
+    }
+  }
+  return null;
+};
 
 export const validatePhoneNumber = (phone: string) => {
   try {
@@ -11,18 +60,12 @@ export const validatePhoneNumber = (phone: string) => {
       return { valid: false, message: "Invalid phone number format" };
     }
 
-    const operator = getOperator(phone);
-    if (!operator) {
+    const operatorName = getOperator(phone);
+    if (!operatorName) {
       return { valid: false, message: "Unknown mobile operator" };
     }
 
-    const operatorInfo = getOperatorInfo(phone);
-    if (!operatorInfo) {
-      return {
-        valid: false,
-        message: "Could not retrieve operator information",
-      };
-    }
+    const operatorInfo = (OPERATORS as any)[operatorName];
 
     console.log(
       `Phone number ${phone} is valid and belongs to ${operatorInfo.name}`,
@@ -34,17 +77,10 @@ export const validatePhoneNumber = (phone: string) => {
       country: operatorInfo.prefixes,
       message: "Valid phone number",
     };
-  } catch (error) {
-    if (error instanceof SomaliPhoneError) {
-      console.log(error.code); // ERROR_CODES.INVALID_PREFIX
-      console.log(error.message); // Descriptive message
-    }
+  } catch {
     return {
       valid: false,
-      message:
-        error instanceof SomaliPhoneError
-          ? error.message
-          : "Phone validation failed",
+      message: "Phone validation failed",
     };
   }
 };

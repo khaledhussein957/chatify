@@ -55,10 +55,11 @@ const RegisterScreen = () => {
         return;
       }
 
-      await register(data);
+      const res = await register(data);
 
       // Show success alert
-      alert.success("✅ Registration successful!");
+      // @ts-ignore
+      alert.success(res.message);
 
       if (router.canDismiss()) router.dismissAll();
       router.replace({
