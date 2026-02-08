@@ -76,7 +76,7 @@ export const useUpdateProfile = () => {
         url: "/users/update-profile",
         data: params,
       });
-      return data.user;
+      return data;
     },
   });
 };

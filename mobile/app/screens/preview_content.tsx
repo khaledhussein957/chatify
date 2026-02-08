@@ -7,6 +7,8 @@ import {
   TextInput,
   ActivityIndicator,
   Dimensions,
+  Platform,
+  KeyboardAvoidingView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -14,12 +16,13 @@ import { Image } from "expo-image";
 import { ResizeMode, Video } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 
-import { COLORS } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
 import { useCreateStatus } from "@/hooks/useStatus";
 
 const { width } = Dimensions.get("window");
 
 const PreviewContentScreen = () => {
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams<{
     uri?: string;
@@ -40,10 +43,7 @@ const PreviewContentScreen = () => {
 
   const [caption, setCaption] = useState("");
 
-  const {
-    mutate: createStatus,
-    isPending: isPosting,
-  } = useCreateStatus();
+  const { mutate: createStatus, isPending: isPosting } = useCreateStatus();
 
   const shouldRedirect = !uri || !mimeType || !fileName;
 
@@ -80,80 +80,115 @@ const PreviewContentScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-      {/* HEADER */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          disabled={isPosting}
-        >
-          <Ionicons name="close" size={22} color={COLORS.foreground} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Preview</Text>
-        <View style={{ width: 32 }} />
-      </View>
-
-      {/* CONTENT PREVIEW */}
-      <View style={styles.content}>
-        {isVideo ? (
-          <Video
-            source={{ uri }}
-            style={styles.media}
-            resizeMode={ResizeMode.COVER}
-            isLooping
-            shouldPlay
-            useNativeControls
-          />
-        ) : (
-          <Image
-            source={{ uri }}
-            style={styles.media}
-            contentFit="cover"
-          />
-        )}
-      </View>
-
-      {/* CAPTION + ACTIONS */}
-      <View style={styles.bottomSheet}>
-        <View style={styles.captionWrapper}>
-          <TextInput
-            style={styles.captionInput}
-            placeholder="Add a caption..."
-            placeholderTextColor={COLORS.grey}
-            value={caption}
-            onChangeText={setCaption}
-            multiline
-            maxLength={200}
-          />
-        </View>
-
-        <View style={styles.actionsRow}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: colors.background }]}
+      edges={["top", "bottom"]}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
+        {/* HEADER */}
+        <View style={styles.header}>
           <TouchableOpacity
-            style={[styles.actionButton, styles.cancelButton]}
+            style={styles.backButton}
             onPress={() => router.back()}
             disabled={isPosting}
           >
-            <Text style={styles.cancelText}>Cancel</Text>
+            <Ionicons name="close" size={22} color={colors.foreground} />
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.actionButton,
-              styles.postButton,
-              isPosting && { opacity: 0.5 },
-            ]}
-            onPress={handlePost}
-            disabled={isPosting}
-          >
-            {isPosting ? (
-              <ActivityIndicator color={COLORS.background} />
-            ) : (
-              <Text style={styles.postText}>Post</Text>
-            )}
-          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+            Preview
+          </Text>
+          <View style={{ width: 32 }} />
         </View>
-      </View>
+
+        {/* CONTENT PREVIEW */}
+        <View style={styles.content}>
+          {isVideo ? (
+            <Video
+              source={{ uri }}
+              style={styles.media}
+              resizeMode={ResizeMode.COVER}
+              isLooping
+              shouldPlay
+              useNativeControls
+            />
+          ) : (
+            <Image source={{ uri }} style={styles.media} contentFit="cover" />
+          )}
+        </View>
+
+        {/* CAPTION + ACTIONS */}
+        <View
+          style={[
+            styles.bottomSheet,
+            {
+              borderTopColor: colors.surfaceLight,
+              backgroundColor: colors.background,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.captionWrapper,
+              { backgroundColor: colors.surfaceLight },
+            ]}
+          >
+            <TextInput
+              style={[styles.captionInput, { color: colors.foreground }]}
+              placeholder="Add a caption..."
+              placeholderTextColor={colors.grey}
+              value={caption}
+              onChangeText={setCaption}
+              multiline
+              maxLength={200}
+            />
+          </View>
+
+          <View style={styles.actionsRow}>
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                styles.cancelButton,
+                { backgroundColor: colors.surfaceLight },
+              ]}
+              onPress={() => router.back()}
+              disabled={isPosting}
+            >
+              <Text style={[styles.cancelText, { color: colors.foreground }]}>
+                Cancel
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.actionButton,
+                styles.postButton,
+                { backgroundColor: colors.primary },
+                isPosting && { opacity: 0.5 },
+              ]}
+              onPress={handlePost}
+              disabled={isPosting}
+            >
+              {isPosting ? (
+                <ActivityIndicator
+                  color={isDark ? colors.background : colors.white}
+                />
+              ) : (
+                <Text
+                  style={[
+                    styles.postText,
+                    { color: isDark ? colors.background : colors.white },
+                  ]}
+                >
+                  Post
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
@@ -161,7 +196,6 @@ const PreviewContentScreen = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: "row",
@@ -176,10 +210,8 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: COLORS.surfaceLight,
   },
   headerTitle: {
-    color: COLORS.foreground,
     fontSize: 18,
     fontWeight: "600",
   },
@@ -193,25 +225,20 @@ const styles = StyleSheet.create({
     height: width * 1.2,
     borderRadius: 24,
     overflow: "hidden",
-    backgroundColor: COLORS.surfaceCard,
   },
   bottomSheet: {
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 20,
     borderTopWidth: 1,
-    borderTopColor: COLORS.surfaceLight,
-    backgroundColor: COLORS.background,
   },
   captionWrapper: {
-    backgroundColor: COLORS.surfaceLight,
     borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginBottom: 12,
   },
   captionInput: {
-    color: COLORS.foreground,
     fontSize: 15,
     minHeight: 40,
   },
@@ -228,18 +255,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
   },
-  cancelButton: {
-    backgroundColor: COLORS.surfaceLight,
-  },
-  postButton: {
-    backgroundColor: COLORS.primary,
-  },
+  cancelButton: {},
+  postButton: {},
   cancelText: {
-    color: COLORS.foreground,
     fontWeight: "500",
   },
   postText: {
-    color: COLORS.background,
     fontWeight: "600",
   },
 });

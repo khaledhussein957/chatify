@@ -12,15 +12,16 @@ import {
 import { Image } from "expo-image";
 import { useRouter, Stack } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useUsers } from "@/hooks/useUser";
 import { useCreateGroupChat } from "@/hooks/useChat";
 import { useAuthStore } from "@/store/auth";
 import { useAlert } from "@/components/AlertMessageController";
-import { COLORS } from "@/constants/theme";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useTheme } from "@/hooks/useTheme";
 
 export default function SelectParticipatesScreen() {
   const router = useRouter();
+  const { colors, isDark } = useTheme();
   const { data: users, isLoading } = useUsers();
   const { mutate: createGroup, isPending } = useCreateGroupChat();
   const currentUser = useAuthStore((state) => state.user);
@@ -35,7 +36,7 @@ export default function SelectParticipatesScreen() {
     setSelectedUsers((prev) =>
       prev.includes(userId)
         ? prev.filter((id) => id !== userId)
-        : [...prev, userId]
+        : [...prev, userId],
     );
   };
 
@@ -59,10 +60,10 @@ export default function SelectParticipatesScreen() {
         },
         onError: (error: any) => {
           alert.error(
-            error?.response?.data?.message || "Failed to create group"
+            error?.response?.data?.message || "Failed to create group",
           );
         },
-      }
+      },
     );
   };
 
@@ -79,7 +80,7 @@ export default function SelectParticipatesScreen() {
 
   return (
     <SafeAreaView
-      style={{ flex: 1, backgroundColor: COLORS.background }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       edges={["top"]}
     >
       <Stack.Screen options={{ headerShown: false }} />
@@ -87,13 +88,13 @@ export default function SelectParticipatesScreen() {
       <View
         style={{
           flex: 1,
-          backgroundColor: COLORS.surfaceLight,
+          backgroundColor: colors.surfaceLight,
           justifyContent: "flex-end",
         }}
       >
         <View
           style={{
-            backgroundColor: COLORS.background,
+            backgroundColor: colors.background,
             borderTopLeftRadius: 32,
             borderTopRightRadius: 32,
             height: "95%",
@@ -108,8 +109,8 @@ export default function SelectParticipatesScreen() {
               paddingHorizontal: 20,
               paddingVertical: 12,
               borderBottomWidth: 1,
-              borderBottomColor: COLORS.surfaceLight,
-              backgroundColor: COLORS.background,
+              borderBottomColor: colors.surfaceLight,
+              backgroundColor: colors.background,
             }}
           >
             <TouchableOpacity
@@ -121,23 +122,23 @@ export default function SelectParticipatesScreen() {
                 justifyContent: "center",
                 alignItems: "center",
                 marginRight: 12,
-                backgroundColor: COLORS.surfaceLight,
+                backgroundColor: colors.surfaceLight,
               }}
             >
-              <Ionicons name="close" size={20} color={COLORS.primary} />
+              <Ionicons name="close" size={20} color={colors.primary} />
             </TouchableOpacity>
 
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  color: COLORS.foreground,
+                  color: colors.foreground,
                   fontSize: 20,
                   fontWeight: "600",
                 }}
               >
                 New group
               </Text>
-              <Text style={{ color: COLORS.grey, fontSize: 12, marginTop: 2 }}>
+              <Text style={{ color: colors.grey, fontSize: 12, marginTop: 2 }}>
                 Select participants
               </Text>
             </View>
@@ -148,29 +149,29 @@ export default function SelectParticipatesScreen() {
             style={{
               paddingHorizontal: 20,
               paddingVertical: 8,
-              backgroundColor: COLORS.background,
+              backgroundColor: colors.background,
             }}
           >
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                backgroundColor: COLORS.surfaceLight,
+                backgroundColor: colors.surfaceLight,
                 borderRadius: 24,
                 paddingHorizontal: 12,
                 paddingVertical: 6,
                 borderWidth: 1,
-                borderColor: COLORS.surfaceLight,
+                borderColor: colors.surfaceLight,
               }}
             >
-              <Ionicons name="search" size={18} color={COLORS.grey} />
+              <Ionicons name="search" size={18} color={colors.grey} />
               <TextInput
                 placeholder="Search participants"
-                placeholderTextColor={COLORS.grey}
+                placeholderTextColor={colors.grey}
                 style={{
                   flex: 1,
                   marginLeft: 8,
-                  color: COLORS.foreground,
+                  color: colors.foreground,
                   fontSize: 16,
                 }}
                 value={searchQuery}
@@ -182,17 +183,19 @@ export default function SelectParticipatesScreen() {
 
           {/* SECTION HEADER */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Select Participants</Text>
-            <Text style={styles.sectionCount}>
+            <Text style={[styles.sectionTitle, { color: colors.grey }]}>
+              Select Participants
+            </Text>
+            <Text style={[styles.sectionCount, { color: colors.primary }]}>
               {selectedUsers.length} selected
             </Text>
           </View>
 
           {/* USERS LIST */}
-          <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+          <View style={{ flex: 1, backgroundColor: colors.background }}>
             {isLoading ? (
               <View style={styles.center}>
-                <ActivityIndicator size="large" color={COLORS.primary} />
+                <ActivityIndicator size="large" color={colors.primary} />
               </View>
             ) : !filteredUsers || filteredUsers.length === 0 ? (
               <View
@@ -203,19 +206,15 @@ export default function SelectParticipatesScreen() {
                   paddingHorizontal: 20,
                 }}
               >
-                <Ionicons
-                  name="person-outline"
-                  size={64}
-                  color={COLORS.grey}
-                />
+                <Ionicons name="person-outline" size={64} color={colors.grey} />
                 <Text
-                  style={{ color: COLORS.grey, fontSize: 18, marginTop: 12 }}
+                  style={{ color: colors.grey, fontSize: 18, marginTop: 12 }}
                 >
                   No users found
                 </Text>
                 <Text
                   style={{
-                    color: COLORS.grey,
+                    color: colors.grey,
                     fontSize: 14,
                     marginTop: 4,
                     textAlign: "center",
@@ -233,8 +232,12 @@ export default function SelectParticipatesScreen() {
                   <TouchableOpacity
                     style={[
                       styles.userItem,
-                      selectedUsers.includes(item._id) &&
-                        styles.selectedUserItem,
+                      { borderBottomColor: colors.surfaceLight },
+                      selectedUsers.includes(item._id) && {
+                        backgroundColor: isDark
+                          ? "rgba(34, 197, 94, 0.1)"
+                          : "rgba(34, 197, 94, 0.05)",
+                      },
                     ]}
                     onPress={() => toggleUserSelection(item._id)}
                   >
@@ -245,34 +248,54 @@ export default function SelectParticipatesScreen() {
                             ? { uri: item.avatar }
                             : `https://ui-avatars.com/api/?name=${item.name}&background=random`
                         }
-                        style={styles.avatar}
+                        style={[
+                          styles.avatar,
+                          { borderColor: colors.surfaceLight },
+                        ]}
                       />
                       {selectedUsers.includes(item._id) && (
-                        <View style={styles.checkGlow}>
+                        <View
+                          style={[
+                            styles.checkGlow,
+                            { backgroundColor: colors.background },
+                          ]}
+                        >
                           <Ionicons
                             name="checkmark-circle"
                             size={18}
-                            color={COLORS.primary}
+                            color={colors.primary}
                           />
                         </View>
                       )}
                     </View>
                     <View style={styles.userInfo}>
-                      <Text style={styles.userName}>{item.name}</Text>
-                      <Text style={styles.userEmail}>{item.email}</Text>
+                      <Text
+                        style={[styles.userName, { color: colors.foreground }]}
+                      >
+                        {item.name}
+                      </Text>
+                      <Text style={[styles.userEmail, { color: colors.grey }]}>
+                        {item.email}
+                      </Text>
                     </View>
                     <View
                       style={[
                         styles.checkbox,
-                        selectedUsers.includes(item._id) &&
+                        { borderColor: colors.surfaceLight },
+                        selectedUsers.includes(item._id) && [
                           styles.checkboxActive,
+                          {
+                            backgroundColor: colors.primary,
+                            borderColor: colors.primary,
+                          },
+                        ],
                       ]}
                     >
                       {selectedUsers.includes(item._id) && (
                         <Ionicons
                           name="checkmark"
                           size={14}
-                          color={COLORS.background}
+                          color={isDark ? colors.background : colors.white}
                         />
                       )}
                     </View>
@@ -287,14 +310,23 @@ export default function SelectParticipatesScreen() {
       {/* FLOATING ACTION BUTTON */}
       {selectedUsers.length >= 2 && (
         <TouchableOpacity
-          style={styles.fab}
+          style={[
+            styles.fab,
+            { backgroundColor: colors.primary, shadowColor: colors.primary },
+          ]}
           onPress={() => setIsModalVisible(true)}
           disabled={isPending}
         >
           {isPending ? (
-            <ActivityIndicator color={COLORS.background} />
+            <ActivityIndicator
+              color={isDark ? colors.background : colors.white}
+            />
           ) : (
-            <Ionicons name="arrow-forward" size={22} color={COLORS.background} />
+            <Ionicons
+              name="arrow-forward"
+              size={22}
+              color={isDark ? colors.background : colors.white}
+            />
           )}
         </TouchableOpacity>
       )}
@@ -307,17 +339,32 @@ export default function SelectParticipatesScreen() {
         onRequestClose={() => setIsModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Create group</Text>
-            <Text style={styles.modalSubtitle}>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: colors.surfaceCard },
+            ]}
+          >
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+              Create group
+            </Text>
+            <Text style={[styles.modalSubtitle, { color: colors.grey }]}>
               Enter a name for your new group
             </Text>
 
-            <View style={styles.modalInputWrapper}>
+            <View
+              style={[
+                styles.modalInputWrapper,
+                {
+                  backgroundColor: colors.surfaceLight,
+                  borderColor: colors.surfaceLight,
+                },
+              ]}
+            >
               <TextInput
-                style={styles.modalInput}
+                style={[styles.modalInput, { color: colors.foreground }]}
                 placeholder="Group name"
-                placeholderTextColor={COLORS.grey}
+                placeholderTextColor={colors.grey}
                 value={groupName}
                 onChangeText={setGroupName}
               />
@@ -332,22 +379,34 @@ export default function SelectParticipatesScreen() {
                 }}
                 disabled={isPending}
               >
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text style={[styles.modalCancelText, { color: colors.grey }]}>
+                  Cancel
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
                   styles.modalButton,
                   styles.modalCreateButton,
+                  { backgroundColor: colors.primary },
                   (!groupName.trim() || isPending) && styles.disabledButton,
                 ]}
                 onPress={handleCreateGroup}
                 disabled={!groupName.trim() || isPending}
               >
                 {isPending ? (
-                  <ActivityIndicator color={COLORS.background} />
+                  <ActivityIndicator
+                    color={isDark ? colors.background : colors.white}
+                  />
                 ) : (
-                  <Text style={styles.modalCreateText}>Create</Text>
+                  <Text
+                    style={[
+                      styles.modalCreateText,
+                      { color: isDark ? colors.background : colors.white },
+                    ]}
+                  >
+                    Create
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -361,13 +420,11 @@ export default function SelectParticipatesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   center: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: COLORS.background,
   },
   header: {
     padding: 16,
@@ -377,26 +434,21 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flex: 1,
-    backgroundColor: COLORS.surfaceCard,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.surfaceLight,
     height: 48,
     justifyContent: "center",
     paddingHorizontal: 12,
   },
   nameInput: {
     fontSize: 16,
-    color: COLORS.foreground,
   },
   createButton: {
-    backgroundColor: COLORS.primary,
     paddingHorizontal: 20,
     height: 48,
     borderRadius: 12,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -404,12 +456,10 @@ const styles = StyleSheet.create({
   },
   disabledButton: {
     opacity: 0.5,
-    backgroundColor: COLORS.surfaceLight,
     shadowOpacity: 0,
     elevation: 0,
   },
   createButtonText: {
-    color: COLORS.background,
     fontWeight: "700",
     fontSize: 15,
   },
@@ -419,18 +469,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: COLORS.surfaceCard,
   },
   sectionTitle: {
     fontSize: 12,
     fontWeight: "600",
-    color: COLORS.grey,
     textTransform: "uppercase",
     letterSpacing: 1,
   },
   sectionCount: {
     fontSize: 12,
-    color: COLORS.primary,
     fontWeight: "600",
   },
   listContent: {
@@ -441,10 +488,6 @@ const styles = StyleSheet.create({
     padding: 16,
     alignItems: "center",
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.surfaceLight,
-  },
-  selectedUserItem: {
-    backgroundColor: "rgba(34, 197, 94, 0.05)",
   },
   avatarWrapper: {
     position: "relative",
@@ -454,13 +497,11 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 25,
     borderWidth: 1,
-    borderColor: COLORS.surfaceLight,
   },
   checkGlow: {
     position: "absolute",
     bottom: -2,
     right: -2,
-    backgroundColor: COLORS.background,
     borderRadius: 99,
   },
   userInfo: {
@@ -470,11 +511,9 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 16,
     fontWeight: "600",
-    color: COLORS.foreground,
   },
   userEmail: {
     fontSize: 13,
-    color: COLORS.grey,
     marginTop: 2,
   },
   checkbox: {
@@ -482,14 +521,10 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: COLORS.surfaceLight,
     justifyContent: "center",
     alignItems: "center",
   },
-  checkboxActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
+  checkboxActive: {},
   fab: {
     position: "absolute",
     right: 24,
@@ -497,10 +532,8 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -516,32 +549,26 @@ const styles = StyleSheet.create({
   modalContent: {
     width: "100%",
     borderRadius: 16,
-    backgroundColor: COLORS.background,
     padding: 20,
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: COLORS.foreground,
     marginBottom: 4,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: COLORS.grey,
     marginBottom: 16,
   },
   modalInputWrapper: {
-    backgroundColor: COLORS.surfaceLight,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.surfaceLight,
     paddingHorizontal: 12,
     paddingVertical: 8,
     marginBottom: 20,
   },
   modalInput: {
     fontSize: 16,
-    color: COLORS.foreground,
   },
   modalButtonsRow: {
     flexDirection: "row",
@@ -556,18 +583,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
   },
-  modalCancelButton: {
-    backgroundColor: COLORS.surfaceLight,
-  },
-  modalCreateButton: {
-    backgroundColor: COLORS.primary,
-  },
+  modalCancelButton: {},
+  modalCreateButton: {},
   modalCancelText: {
-    color: COLORS.foreground,
     fontWeight: "500",
   },
   modalCreateText: {
-    color: COLORS.background,
     fontWeight: "600",
   },
 });

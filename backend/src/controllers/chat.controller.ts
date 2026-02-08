@@ -44,6 +44,13 @@ export const getOrCreateChat = async (
         participants: sortedParticipants,
       });
       chat = await chat.populate("participants", "name email avatar");
+
+      // Notify both participants in real-time
+      if (io) {
+        sortedParticipants.forEach((p) => {
+          io.to(`user:${p.toString()}`).emit("new-chat", { chatId: chat?._id });
+        });
+      }
     }
 
     // Get the other participant's details
@@ -104,6 +111,15 @@ export const getOrCreateGroupChat = async (
       "participants",
       "name email avatar",
     );
+
+    // Notify all participants in real-time
+    if (io) {
+      uniqueParticipants.forEach((p) => {
+        io.to(`user:${p.toString()}`).emit("new-chat", {
+          chatId: populatedGroupChat._id,
+        });
+      });
+    }
 
     res.status(201).json(populatedGroupChat);
   } catch (error) {

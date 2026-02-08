@@ -7,6 +7,7 @@ const API_URL = "http://192.168.8.61:9000/api";
 // Axios instance
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 30000, // 30 seconds
 });
 
 // Response interceptor registered once
@@ -14,16 +15,12 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      console.warn("API request failed", {
-        endpoint: error.config?.url,
-        method: error.config?.method,
-        status: error.response.status,
-      });
-    } else if (error.request) {
-      console.warn("API request failed - no response", {
-        endpoint: error.config?.url,
-        method: error.config?.method,
-      });
+      // Prioritize the message from the server if available
+      if (error.response.data?.message) {
+        error.message = error.response.data.message;
+      }
+    } else {
+      console.warn("API request setup error:", error.message);
     }
     return Promise.reject(error);
   },

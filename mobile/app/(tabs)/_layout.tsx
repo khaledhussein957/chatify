@@ -3,10 +3,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "@/store/auth";
 import { useEffect, useState } from "react";
 import NetInfo from "@react-native-community/netinfo";
+import { useTheme } from "@/hooks/useTheme";
+import { COLORS } from "@/constants/theme";
 
 const TabsLayout = () => {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const [networkError, setNetworkError] = useState(false);
+  const { colors, isDark } = useTheme();
 
   // Monitor network
   useEffect(() => {
@@ -18,21 +21,22 @@ const TabsLayout = () => {
 
   if (networkError) return <Redirect href="/networkError" />;
   if (!isAuthenticated) return <Redirect href="/(auth)" />;
-  
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#000000", // black
-          borderTopColor: "#1F2933", // subtle dark border
+          backgroundColor: colors.background,
+          borderTopColor: colors.surfaceLight,
           borderTopWidth: 1,
           height: 88,
           paddingTop: 8,
+          elevation: 0,
+          shadowOpacity: 0,
         },
-        tabBarActiveTintColor: "#22C55E", // green
-        tabBarInactiveTintColor: "#6B7280", // muted gray
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.grey,
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: "600",

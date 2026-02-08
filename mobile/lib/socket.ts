@@ -4,13 +4,13 @@ import { QueryClient } from "@tanstack/react-query";
 import { Chat, Message, MessageSender, Status } from "@/types";
 import { useAuthStore } from "@/store/auth";
 
-const SOCKET_URL = "http://192.168.8.55:9000";
+const SOCKET_URL = "http://192.168.8.61:9000";
 
 interface SocketState {
   socket: Socket | null;
   isConnected: boolean;
   onlineUsers: Set<string>;
-  typingUsers: Map<string, Map<string, string>>; // chatId -> Map(userId -> userName)
+  activityUsers: Map<string, Map<string, { name: string; activity: string }>>; // chatId -> Map(userId -> {name, activity})
   unreadChats: Set<string>;
   currentChatId: string | null;
   queryClient: QueryClient | null;
@@ -24,14 +24,17 @@ interface SocketState {
     text: string,
     currentUser: MessageSender,
   ) => void;
-  sendTyping: (chatId: string, isTyping: boolean) => void;
+  sendActivity: (
+    chatId: string,
+    activity: "typing" | "recording" | "none",
+  ) => void;
 }
 
 export const useSocketStore = create<SocketState>((set, get) => ({
   socket: null,
   isConnected: false,
   onlineUsers: new Set(),
-  typingUsers: new Map(),
+  activityUsers: new Map(),
   unreadChats: new Set(),
   currentChatId: null,
   queryClient: null,
@@ -101,8 +104,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
               ...chat,
               lastMessage: {
                 _id: message._id,
+                type: message.type,
                 text: message.text,
                 content: message.content,
+                duration: message.duration,
                 sender: senderId,
                 createdAt: message.createdAt,
               },
@@ -123,11 +128,11 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         }
       }
 
-      // clear typing indicator when message received
+      // clear activity indicator when message received
       set((state) => {
-        const typingUsers = new Map(state.typingUsers);
-        typingUsers.delete(message.chat);
-        return { typingUsers: typingUsers };
+        const activityUsers = new Map(state.activityUsers);
+        activityUsers.delete(message.chat);
+        return { activityUsers };
       });
     });
 
@@ -183,42 +188,44 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       queryClient.setQueryData<Status[]>(["statuses"], (old) =>
         old?.filter((s) => s._id !== statusId),
       );
-      queryClient.setQueriesData<Status[]>(
-        { queryKey: ["statuses"] },
-        (old) => old?.filter((s) => s._id !== statusId),
+      queryClient.setQueriesData<Status[]>({ queryKey: ["statuses"] }, (old) =>
+        old?.filter((s) => s._id !== statusId),
       );
     });
 
     socket.on(
-      "typing",
+      "activity",
       ({
         userId,
         userName,
         chatId,
-        isTyping,
+        activity,
       }: {
         userId: string;
         userName: string;
         chatId: string;
-        isTyping: boolean;
+        activity: "typing" | "recording" | "none";
       }) => {
         set((state) => {
-          const typingUsers = new Map(state.typingUsers);
-          const chatTyping = new Map(typingUsers.get(chatId) || new Map());
+          const activityUsers = new Map(state.activityUsers);
+          const chatActivity = new Map(activityUsers.get(chatId) || new Map());
 
-          if (isTyping) {
-            chatTyping.set(userId, userName || "Someone");
+          if (activity !== "none") {
+            chatActivity.set(userId, {
+              name: userName || "Someone",
+              activity,
+            });
           } else {
-            chatTyping.delete(userId);
+            chatActivity.delete(userId);
           }
 
-          if (chatTyping.size > 0) {
-            typingUsers.set(chatId, chatTyping);
+          if (chatActivity.size > 0) {
+            activityUsers.set(chatId, chatActivity);
           } else {
-            typingUsers.delete(chatId);
+            activityUsers.delete(chatId);
           }
 
-          return { typingUsers: typingUsers };
+          return { activityUsers };
         });
       },
     );
@@ -254,6 +261,16 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       },
     );
 
+    socket.on("chat-deleted", ({ chatId }: { chatId: string }) => {
+      console.log("Received chat-deleted:", chatId);
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+    });
+
+    socket.on("new-chat", ({ chatId }: { chatId: string }) => {
+      console.log("Received new-chat:", chatId);
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+    });
+
     set({ socket, queryClient });
   },
 
@@ -265,7 +282,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         socket: null,
         isConnected: false,
         onlineUsers: new Set(),
-        typingUsers: new Map(),
+        activityUsers: new Map(),
         unreadChats: new Set(),
         currentChatId: null,
         queryClient: null,
@@ -301,6 +318,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       _id: tempId,
       chat: chatId,
       sender: currentUser,
+      type: "text",
       text,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -325,10 +343,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     socket.once("socket-error", errorHandler);
   },
 
-  sendTyping: (chatId, isTyping) => {
+  sendActivity: (chatId, activity) => {
     const { socket } = get();
     if (socket?.connected) {
-      socket.emit("typing", { chatId, isTyping });
+      socket.emit("activity", { chatId, activity });
     }
   },
 }));

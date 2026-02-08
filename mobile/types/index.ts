@@ -20,8 +20,10 @@ export interface Message {
   _id: string;
   chat: string;
   sender: MessageSender | string;
+  type: "text" | "image" | "video" | "voice";
   text: string;
   content?: string;
+  duration?: number;
   deleted?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -29,8 +31,10 @@ export interface Message {
 
 export interface ChatLastMessage {
   _id: string;
+  type: "text" | "image" | "video" | "voice";
   text: string;
   content?: string;
+  duration?: number;
   deleted?: boolean;
   sender: string;
   createdAt: string;

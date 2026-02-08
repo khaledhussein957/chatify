@@ -5,7 +5,30 @@ import {
   resetCodeTemplate,
   resetSuccessTemplate,
   emailLinkedSuccessTemplate,
+  welcomePasswordTemplate,
 } from "./emailTemplate";
+
+export const sendWelcomePasswordEmail = async (
+  name: string,
+  email: string,
+  password: string,
+) => {
+  const transporter = await getTransporter();
+
+  const info = await transporter.sendMail({
+    from: `Chatify <${ENV.SMTP_FROM_EMAIL}>`,
+    to: email,
+    subject: "Welcome to Chatify – Your Account Password",
+    html: welcomePasswordTemplate(name, password),
+  });
+
+  if (!info.messageId) {
+    console.error("Error sending welcome password email", info);
+    throw new Error("Failed to send welcome password email");
+  }
+
+  console.log("Welcome password email sent", info.messageId);
+};
 
 export const sendEmailLinkedSuccessEmail = async (
   name: string,

@@ -12,12 +12,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useForm, Controller } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
 import Joi from "joi";
-import { COLORS } from "@/constants/theme";
-import { styles } from "@/assets/styles/auth.style";
+import { getAuthStyles } from "@/assets/styles/auth.style";
 import { router } from "expo-router";
 import { useForgotPassword } from "@/hooks/useAuth";
 import { Ionicons } from "@expo/vector-icons";
 import { useAlert } from "@/components/AlertMessageController"; // ✅ use alert
+import { useTheme } from "@/hooks/useTheme";
 
 // Joi schema for email validation
 const forgotPasswordSchema = Joi.object({
@@ -35,6 +35,8 @@ type ForgotPasswordFormData = {
 };
 
 const ForgotPasswordScreen = () => {
+  const { colors, isDark } = useTheme();
+  const styles = getAuthStyles(colors);
   const {
     control,
     handleSubmit,
@@ -70,7 +72,7 @@ const ForgotPasswordScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -93,15 +95,22 @@ const ForgotPasswordScreen = () => {
                 <Ionicons
                   name="chatbubble-ellipses"
                   size={32}
-                  color={COLORS.primary}
+                  color={colors.primary}
                 />
               </View>
-              <Text style={styles.appName}>Forgot Password</Text>
+              <Text
+                style={[
+                  styles.appName,
+                  { color: colors.foreground, marginTop: 8 },
+                ]}
+              >
+                Forgot Password
+              </Text>
             </View>
 
             {/* Instruction */}
             <Text
-              style={{ marginBottom: 12, fontSize: 16, color: COLORS.grey }}
+              style={{ marginBottom: 12, fontSize: 16, color: colors.grey }}
             >
               Enter your email to receive a password reset link
             </Text>
@@ -112,11 +121,20 @@ const ForgotPasswordScreen = () => {
               name="email"
               render={({ field: { onChange, onBlur, value } }) => (
                 <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Email</Text>
+                  <Text style={[styles.label, { color: colors.foreground }]}>
+                    Email
+                  </Text>
                   <TextInput
-                    style={styles.input}
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: colors.surfaceCard,
+                        color: colors.foreground,
+                        borderColor: colors.surfaceLight,
+                      },
+                    ]}
                     placeholder="Enter your email"
-                    placeholderTextColor={COLORS.grey}
+                    placeholderTextColor={colors.grey}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     onChangeText={onChange}
@@ -137,9 +155,18 @@ const ForgotPasswordScreen = () => {
               onPress={handleSubmit(onSubmit)}
             >
               {isSubmitting || isPending ? (
-                <ActivityIndicator color={COLORS.background} />
+                <ActivityIndicator
+                  color={isDark ? colors.background : colors.white}
+                />
               ) : (
-                <Text style={styles.formButtonText}>Send Reset Link</Text>
+                <Text
+                  style={[
+                    styles.formButtonText,
+                    { color: isDark ? colors.background : colors.white },
+                  ]}
+                >
+                  Send Reset Link
+                </Text>
               )}
             </Pressable>
 
@@ -151,11 +178,11 @@ const ForgotPasswordScreen = () => {
                 marginTop: 16,
               }}
             >
-              <Text style={{ color: COLORS.grey }}>
+              <Text style={{ color: colors.grey }}>
                 Remember your password?{" "}
               </Text>
               <Pressable onPress={() => router.push("/(auth)")}>
-                <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
+                <Text style={{ color: colors.primary, fontWeight: "600" }}>
                   Login
                 </Text>
               </Pressable>

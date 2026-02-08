@@ -4,14 +4,21 @@ import bcrypt from "bcryptjs";
 import type { AuthRequest } from "../middlewares/auth.middleware";
 
 import User from "../models/user.model";
+import Chat from "../models/chat.model";
+import Message from "../models/message.model";
+import Status from "../models/status.model";
 
 import cloudinary from "../configs/cloudinary";
 
 import { isValidStrongPassword } from "../utils/validStrongPassword";
-import { io } from "../utils/socket";
+import { io, forceDisconnectUser } from "../utils/socket";
 import { validatePhoneNumber } from "../utils/phoneValidate";
 
-import { sendEmailLinkedSuccessEmail } from "../emails/emailHandler";
+import {
+  sendEmailLinkedSuccessEmail,
+  sendWelcomePasswordEmail,
+} from "../emails/emailHandler";
+import { generateStrongPassword } from "../utils/passwordGenerator";
 
 export const getUsers = async (req: AuthRequest, res: Response) => {
   try {
@@ -203,6 +210,15 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
       user.email = email;
     }
 
+    const isInitialSetup = !user.password && email;
+    let generatedPassword = "";
+
+    if (isInitialSetup) {
+      generatedPassword = generateStrongPassword();
+      const hashedPassword = await bcrypt.hash(generatedPassword, 10);
+      user.password = hashedPassword;
+    }
+
     await user.save();
 
     io.emit("user-updated", {
@@ -211,11 +227,17 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
       avatar: user.avatar,
     });
 
-    if (email) {
-      await sendEmailLinkedSuccessEmail(
-        user.name!,
+    if (isInitialSetup && user.email) {
+      await sendWelcomePasswordEmail(
+        user.name || "User",
         user.email!,
-        user.deviceId!,
+        generatedPassword,
+      );
+    } else if (email) {
+      await sendEmailLinkedSuccessEmail(
+        user.name || "User",
+        user.email!,
+        user.deviceId || "Unknown",
       );
     }
 
@@ -294,33 +316,125 @@ export const updateProfileAvatar = async (req: AuthRequest, res: Response) => {
 export const deleteAccount = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
-
     if (!userId) {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
     const user = await User.findById(userId);
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // clear user avatar from cloudinary
+    // 1. Clear user avatar from cloudinary
     if (user.avatar) {
       try {
         const publicId = user.avatar.split("/").pop()?.split(".")[0];
         if (publicId) {
-          await cloudinary.uploader.destroy(publicId.toString());
-          console.log("✅ Successfully destroyed.");
+          await cloudinary.uploader.destroy(`avatars/${publicId}`);
+          console.log("✅ Avatar destroyed.");
         }
       } catch (error) {
         console.log(`❌ Error destroying avatar: ${error}`);
       }
     }
 
+    // 2. Chat & Group Cleanup
+    const userChats = await Chat.find({ participants: userId });
+
+    for (const chat of userChats) {
+      if (!chat.isGroupChat) {
+        // 1-on-1 Chat: Delete all messages and the chat
+        // Identify other participant to notify them
+        const otherParticipant = chat.participants.find(
+          (p) => p.toString() !== userId,
+        );
+        if (otherParticipant) {
+          io.to(`user:${otherParticipant.toString()}`).emit("chat-deleted", {
+            chatId: chat._id,
+          });
+        }
+
+        await Message.deleteMany({ chat: chat._id });
+        await Chat.findByIdAndDelete(chat._id);
+        console.log(`✅ 1-on-1 Chat ${chat._id} deleted.`);
+      } else {
+        // Group Chat: Handle admin transfer and member removal
+        // Filter out the user from participants and admins
+        chat.participants = chat.participants.filter(
+          (p) => p.toString() !== userId,
+        );
+        chat.admins = chat.admins.filter((a) => a.toString() !== userId);
+
+        if (chat.participants.length === 0) {
+          // Last member: Delete group and messages
+          await Message.deleteMany({ chat: chat._id });
+          await Chat.findByIdAndDelete(chat._id);
+          console.log(`✅ Empty Group ${chat._id} deleted.`);
+        } else {
+          // Transfer admin if user was the only admin
+          if (chat.admins.length === 0) {
+            chat.admins.push(chat.participants[0]);
+          }
+          await chat.save();
+
+          // Notify remaining members
+          io.to(`chat:${chat._id}`).emit("user-left", {
+            userId,
+            chatId: chat._id,
+            wasDeleted: true,
+          });
+          console.log(
+            `✅ User removed from Group ${chat._id}. Admin transferred if needed.`,
+          );
+        }
+      }
+    }
+
+    // 3. Status Cleanup
+    // Delete all statuses sent by this user
+    await Status.deleteMany({ user: userId });
+    // Remove user from viewers of other statuses
+    await Status.updateMany(
+      { viewers: userId },
+      { $pull: { viewers: userId } },
+    );
+    console.log("✅ Statuses cleaned up.");
+
+    // 4. Metadata Synchronization (Sync lastMessage before purging messages)
+    const userMessageIds = await Message.find({ sender: userId }).distinct(
+      "_id",
+    );
+    const affectedChats = await Chat.find({
+      lastMessage: { $in: userMessageIds },
+    });
+
+    for (const chat of affectedChats) {
+      // Find the most recent message that is NOT from the deleted user
+      const newLastMsg = await Message.findOne({
+        chat: chat._id,
+        sender: { $ne: userId },
+      }).sort({ createdAt: -1 });
+
+      await Chat.findByIdAndUpdate(chat._id, {
+        lastMessage: newLastMsg ? newLastMsg._id : null,
+        lastMessageAt: newLastMsg ? newLastMsg.createdAt : chat.createdAt,
+      });
+    }
+    console.log("✅ Chat metadata synchronized.");
+
+    // 5. Message Purge (Even in remaining groups)
+    await Message.deleteMany({ sender: userId });
+    console.log("✅ User messages purged.");
+
+    // 6. Force socket disconnection
+    forceDisconnectUser(userId);
+
+    // 7. Final Account Deletion
     await User.findByIdAndDelete(userId);
 
-    res.status(200).json({ message: "✅ User account deleted successfully" });
+    res.status(200).json({
+      message: "✅ User account and all associated data deleted successfully",
+    });
   } catch (error) {
     console.log(`❌ Error in delete Account: ${error}`);
     return res.status(500).json({ message: "Internal server error" });

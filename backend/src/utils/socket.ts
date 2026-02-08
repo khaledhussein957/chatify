@@ -15,8 +15,8 @@ export let io: SocketServer;
 export const initializeSocket = (httpServer: HttpServer) => {
   const allowedOrigins = [
     "http://localhost:8081",
-    "http://192.168.8.55:9000",
-    "http://192.168.8.55:8081",
+    "http://192.168.8.61:9000",
+    "http://192.168.8.61:8081",
   ].filter(Boolean) as string[];
 
   io = new SocketServer(httpServer, { cors: { origin: allowedOrigins } });
@@ -104,6 +104,7 @@ export const initializeSocket = (httpServer: HttpServer) => {
           const message = await Message.create({
             chat: chatId,
             sender: userId,
+            type: "text",
             text,
           });
 
@@ -142,19 +143,30 @@ export const initializeSocket = (httpServer: HttpServer) => {
       },
     );
 
-    // Typing indicator
-    socket.on("typing", async (data: { chatId: string; isTyping: boolean }) => {
-      try {
-        const { chatId, isTyping } = data;
-        const chat = await Chat.findById(chatId);
-        if (!chat) return;
-        const user = await User.findById(userId).select("name");
-        const payload = { userId, userName: user?.name, chatId, isTyping };
-        socket.to(`chat:${chatId}`).emit("typing", payload);
-      } catch (err) {
-        console.error("Typing error:", err);
-      }
-    });
+    // Activity indicator (typing, recording, etc.)
+    socket.on(
+      "activity",
+      async (data: {
+        chatId: string;
+        activity: "typing" | "recording" | "none";
+      }) => {
+        try {
+          const { chatId, activity } = data;
+          const chat = await Chat.findById(chatId);
+          if (!chat) return;
+          const user = await User.findById(userId).select("name");
+          const payload = {
+            userId,
+            userName: user?.name,
+            chatId,
+            activity,
+          };
+          socket.to(`chat:${chatId}`).emit("activity", payload);
+        } catch (err) {
+          console.error("Activity error:", err);
+        }
+      },
+    );
 
     // View status
     socket.on("view-status", async (statusId: string) => {
@@ -188,11 +200,15 @@ export const initializeSocket = (httpServer: HttpServer) => {
       sockets.delete(socket.id);
       if (sockets.size === 0) {
         onlineUsers.delete(userId);
-        Chat.find({ participants: userId }).then((chats) => {
-          chats.forEach((chat) =>
-            io.to(`chat:${chat._id}`).emit("user-offline", { userId }),
+        Chat.find({ participants: userId })
+          .then((chats) => {
+            chats.forEach((chat) =>
+              io.to(`chat:${chat._id}`).emit("user-offline", { userId }),
+            );
+          })
+          .catch((err) =>
+            console.error("Disconnect offline-broadcast error:", err),
           );
-        });
       } else {
         onlineUsers.set(userId, sockets);
       }
@@ -200,4 +216,20 @@ export const initializeSocket = (httpServer: HttpServer) => {
   });
 
   return io;
+};
+
+/**
+ * Forcefully disconnects all sockets for a given user and clears online status.
+ */
+export const forceDisconnectUser = (userId: string) => {
+  if (!io) return;
+
+  const userRoom = `user:${userId}`;
+  io.to(userRoom).emit("user-deleted", {
+    message: "Your account has been deleted.",
+  });
+  io.in(userRoom).disconnectSockets(true);
+
+  // cleanup in-memory online state if any somehow remains
+  onlineUsers.delete(userId);
 };

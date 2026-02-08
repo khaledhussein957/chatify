@@ -1,7 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Image } from "expo-image";
-import { COLORS } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
 
 interface StatusCardProps {
   name: string;
@@ -18,19 +18,21 @@ const StatusCard: React.FC<StatusCardProps> = ({
   isOwn,
   onPress,
 }) => {
-  const initials = name
-    .split(" ")
-    .filter((n) => n.length > 0)
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase() || "?";
+  const { colors } = useTheme();
+  const initials =
+    name
+      .split(" ")
+      .filter((n) => n.length > 0)
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase() || "?";
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
       <View
         style={[
           styles.avatarRing,
-          hasUnseen ? styles.avatarRingUnseen : styles.avatarRingSeen,
+          { borderColor: hasUnseen ? colors.primary : colors.surfaceLight },
         ]}
       >
         {avatar ? (
@@ -40,24 +42,36 @@ const StatusCard: React.FC<StatusCardProps> = ({
             contentFit="cover"
           />
         ) : (
-          <View style={styles.avatarFallback}>
-            <Text style={styles.avatarFallbackText}>{initials}</Text>
+          <View
+            style={[
+              styles.avatarFallback,
+              { backgroundColor: colors.surfaceLight },
+            ]}
+          >
+            <Text
+              style={[styles.avatarFallbackText, { color: colors.foreground }]}
+            >
+              {initials}
+            </Text>
           </View>
         )}
       </View>
 
       <View style={styles.info}>
-        <Text style={styles.name} numberOfLines={1}>
+        <Text
+          style={[styles.name, { color: colors.foreground }]}
+          numberOfLines={1}
+        >
           {isOwn ? "My Status" : name}
         </Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.subtitle, { color: colors.grey }]}>
           {isOwn
             ? hasUnseen
               ? "Tap to add a status update"
               : "Tap to view your updates"
             : hasUnseen
-            ? "New updates"
-            : "Viewed"}
+              ? "New updates"
+              : "Viewed"}
         </Text>
       </View>
     </TouchableOpacity>
@@ -79,12 +93,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  avatarRingUnseen: {
-    borderColor: COLORS.primary,
-  },
-  avatarRingSeen: {
-    borderColor: COLORS.surfaceLight,
-  },
   avatar: {
     width: 46,
     height: 46,
@@ -94,12 +102,10 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: COLORS.surfaceLight,
     justifyContent: "center",
     alignItems: "center",
   },
   avatarFallbackText: {
-    color: COLORS.foreground,
     fontWeight: "600",
   },
   info: {
@@ -107,12 +113,10 @@ const styles = StyleSheet.create({
     marginLeft: 12,
   },
   name: {
-    color: COLORS.foreground,
     fontSize: 16,
     fontWeight: "600",
   },
   subtitle: {
-    color: COLORS.grey,
     fontSize: 12,
     marginTop: 2,
   },

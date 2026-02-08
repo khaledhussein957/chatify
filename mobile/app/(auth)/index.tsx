@@ -14,12 +14,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useForm, Controller } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
 import Joi from "joi";
-import { COLORS } from "@/constants/theme";
-import { styles } from "@/assets/styles/auth.style";
+import { getAuthStyles } from "@/assets/styles/auth.style";
 import { router } from "expo-router";
 import { useUserLogin } from "@/hooks/useAuth";
 import { useState } from "react";
 import { useAlert } from "../../components/AlertMessageController";
+import { useTheme } from "@/hooks/useTheme";
 
 // Joi schema
 const loginSchema = Joi.object({
@@ -43,6 +43,8 @@ type LoginFormData = {
 
 const AuthScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
+  const { colors, isDark } = useTheme();
+  const styles = getAuthStyles(colors);
 
   const {
     control,
@@ -76,7 +78,7 @@ const AuthScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -108,11 +110,20 @@ const AuthScreen = () => {
                 name="email"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Email</Text>
+                    <Text style={[styles.label, { color: colors.foreground }]}>
+                      Email
+                    </Text>
                     <TextInput
-                      style={styles.input}
+                      style={[
+                        styles.input,
+                        {
+                          backgroundColor: colors.surfaceCard,
+                          color: colors.foreground,
+                          borderColor: colors.surfaceLight,
+                        },
+                      ]}
                       placeholder="Enter your email"
-                      placeholderTextColor={COLORS.grey}
+                      placeholderTextColor={colors.grey}
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoCorrect={false}
@@ -121,7 +132,7 @@ const AuthScreen = () => {
                       value={value}
                     />
                     {errors.email && (
-                      <Text style={styles.errorText}>
+                      <Text style={[styles.errorText, { color: colors.error }]}>
                         {errors.email.message}
                       </Text>
                     )}
@@ -135,12 +146,21 @@ const AuthScreen = () => {
                 name="password"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Password</Text>
+                    <Text style={[styles.label, { color: colors.foreground }]}>
+                      Password
+                    </Text>
                     <View>
                       <TextInput
-                        style={styles.input}
+                        style={[
+                          styles.input,
+                          {
+                            backgroundColor: colors.surfaceCard,
+                            color: colors.foreground,
+                            borderColor: colors.surfaceLight,
+                          },
+                        ]}
                         placeholder="Enter your password"
-                        placeholderTextColor={COLORS.grey}
+                        placeholderTextColor={colors.grey}
                         secureTextEntry={!showPassword}
                         autoCapitalize="none"
                         autoCorrect={false}
@@ -160,12 +180,12 @@ const AuthScreen = () => {
                         <Ionicons
                           name={showPassword ? "eye" : "eye-off"}
                           size={20}
-                          color={COLORS.grey}
+                          color={colors.grey}
                         />
                       </Pressable>
                     </View>
                     {errors.password && (
-                      <Text style={styles.errorText}>
+                      <Text style={[styles.errorText, { color: colors.error }]}>
                         {errors.password.message}
                       </Text>
                     )}
@@ -178,7 +198,7 @@ const AuthScreen = () => {
                 <Text
                   style={[
                     styles.termsText,
-                    { textAlign: "right", marginTop: 8 },
+                    { textAlign: "right", marginTop: 8, color: colors.grey },
                   ]}
                 >
                   Forgot Password?
@@ -192,9 +212,18 @@ const AuthScreen = () => {
                 onPress={handleSubmit(onSubmit)}
               >
                 {isSubmitting || isLoggingIn ? (
-                  <ActivityIndicator color={COLORS.background} />
+                  <ActivityIndicator
+                    color={isDark ? colors.background : colors.white}
+                  />
                 ) : (
-                  <Text style={styles.formButtonText}>Login</Text>
+                  <Text
+                    style={[
+                      styles.formButtonText,
+                      { color: isDark ? colors.background : colors.white },
+                    ]}
+                  >
+                    Login
+                  </Text>
                 )}
               </Pressable>
 
@@ -206,17 +235,22 @@ const AuthScreen = () => {
                   marginTop: 16,
                 }}
               >
-                <Text style={{ color: COLORS.grey }}>
+                <Text style={{ color: colors.grey }}>
                   Don’t have an account?{" "}
                 </Text>
                 <Pressable onPress={() => router.push("/(auth)/register")}>
-                  <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
+                  <Text style={{ color: colors.primary, fontWeight: "600" }}>
                     Register
                   </Text>
                 </Pressable>
               </View>
 
-              <Text style={[styles.termsText, { marginTop: 16 }]}>
+              <Text
+                style={[
+                  styles.termsText,
+                  { marginTop: 16, color: colors.grey },
+                ]}
+              >
                 By continuing, you agree to our Terms & Privacy Policy
               </Text>
             </View>

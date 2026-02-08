@@ -16,8 +16,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { COLORS } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
 
 const NewChatScreen = () => {
+  const { colors, isDark } = useTheme();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -60,19 +62,19 @@ const NewChatScreen = () => {
 
   return (
     <SafeAreaView
-      style={{ flex: 1, backgroundColor: COLORS.background }}
+      style={{ flex: 1, backgroundColor: colors.background }}
       edges={["top"]}
     >
       <View
         style={{
           flex: 1,
-          backgroundColor: COLORS.surfaceLight,
+          backgroundColor: colors.surfaceLight,
           justifyContent: "flex-end",
         }}
       >
         <View
           style={{
-            backgroundColor: COLORS.background,
+            backgroundColor: colors.background,
             borderTopLeftRadius: 32,
             borderTopRightRadius: 32,
             height: "95%",
@@ -87,8 +89,8 @@ const NewChatScreen = () => {
               paddingHorizontal: 20,
               paddingVertical: 12,
               borderBottomWidth: 1,
-              borderBottomColor: COLORS.surfaceLight,
-              backgroundColor: COLORS.background,
+              borderBottomColor: colors.surfaceLight,
+              backgroundColor: colors.background,
             }}
           >
             <Pressable
@@ -100,23 +102,23 @@ const NewChatScreen = () => {
                 justifyContent: "center",
                 alignItems: "center",
                 marginRight: 12,
-                backgroundColor: COLORS.surfaceLight,
+                backgroundColor: colors.surfaceLight,
               }}
             >
-              <Ionicons name="close" size={20} color={COLORS.primary} />
+              <Ionicons name="close" size={20} color={colors.primary} />
             </Pressable>
 
             <View style={{ flex: 1 }}>
               <Text
                 style={{
-                  color: COLORS.foreground,
+                  color: colors.foreground,
                   fontSize: 20,
                   fontWeight: "600",
                 }}
               >
                 New chat
               </Text>
-              <Text style={{ color: COLORS.grey, fontSize: 12, marginTop: 2 }}>
+              <Text style={{ color: colors.grey, fontSize: 12, marginTop: 2 }}>
                 Search for a user to start chatting
               </Text>
             </View>
@@ -127,29 +129,29 @@ const NewChatScreen = () => {
             style={{
               paddingHorizontal: 20,
               paddingVertical: 12,
-              backgroundColor: COLORS.background,
+              backgroundColor: colors.background,
             }}
           >
             <View
               style={{
                 flexDirection: "row",
                 alignItems: "center",
-                backgroundColor: COLORS.surfaceLight,
+                backgroundColor: colors.surfaceLight,
                 borderRadius: 24,
                 paddingHorizontal: 12,
                 paddingVertical: 6,
                 borderWidth: 1,
-                borderColor: COLORS.surfaceLight,
+                borderColor: colors.surfaceLight,
               }}
             >
-              <Ionicons name="search" size={18} color={COLORS.grey} />
+              <Ionicons name="search" size={18} color={colors.grey} />
               <TextInput
                 placeholder="Search users"
-                placeholderTextColor={COLORS.grey}
+                placeholderTextColor={colors.grey}
                 style={{
                   flex: 1,
                   marginLeft: 8,
-                  color: COLORS.foreground,
+                  color: colors.foreground,
                   fontSize: 16,
                 }}
                 value={searchQuery}
@@ -160,7 +162,7 @@ const NewChatScreen = () => {
           </View>
 
           {/* USERS LIST */}
-          <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+          <View style={{ flex: 1, backgroundColor: colors.background }}>
             {isCreatingChat || isLoading ? (
               <View
                 style={{
@@ -169,7 +171,7 @@ const NewChatScreen = () => {
                   alignItems: "center",
                 }}
               >
-                <ActivityIndicator size="large" color={COLORS.primary} />
+                <ActivityIndicator size="large" color={colors.primary} />
               </View>
             ) : !users || users.length === 0 ? (
               <View
@@ -180,15 +182,15 @@ const NewChatScreen = () => {
                   paddingHorizontal: 20,
                 }}
               >
-                <Ionicons name="person-outline" size={64} color={COLORS.grey} />
+                <Ionicons name="person-outline" size={64} color={colors.grey} />
                 <Text
-                  style={{ color: COLORS.grey, fontSize: 18, marginTop: 12 }}
+                  style={{ color: colors.grey, fontSize: 18, marginTop: 12 }}
                 >
                   No users found
                 </Text>
                 <Text
                   style={{
-                    color: COLORS.grey,
+                    color: colors.grey,
                     fontSize: 14,
                     marginTop: 4,
                     textAlign: "center",
@@ -208,7 +210,7 @@ const NewChatScreen = () => {
                 showsVerticalScrollIndicator={false}
               >
                 <Text
-                  style={{ color: COLORS.grey, fontSize: 12, marginBottom: 8 }}
+                  style={{ color: colors.grey, fontSize: 12, marginBottom: 8 }}
                 >
                   USERS
                 </Text>

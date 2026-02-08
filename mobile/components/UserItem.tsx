@@ -1,7 +1,7 @@
 import type { User } from "@/types";
 import { Image } from "expo-image";
 import { Pressable, Text, View } from "react-native";
-import { COLORS } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
 
 type UserItemProps = {
   user: User;
@@ -10,8 +10,10 @@ type UserItemProps = {
 };
 
 function UserItem({ user, isOnline, onPress }: UserItemProps) {
+  const { colors } = useTheme();
   const hasAvatar = Boolean(user.avatar);
   const initial = user.name?.trim()?.[0]?.toUpperCase() ?? "?";
+
   return (
     <Pressable
       onPress={onPress}
@@ -21,7 +23,7 @@ function UserItem({ user, isOnline, onPress }: UserItemProps) {
         paddingVertical: 10,
         opacity: 1,
       }}
-      android_ripple={{ color: COLORS.surfaceLight }}
+      android_ripple={{ color: colors.surfaceLight }}
     >
       {/* Avatar & online indicator */}
       <View style={{ position: "relative" }}>
@@ -36,12 +38,12 @@ function UserItem({ user, isOnline, onPress }: UserItemProps) {
               width: 48,
               height: 48,
               borderRadius: 999,
-              backgroundColor: COLORS.surfaceLight,
+              backgroundColor: colors.surfaceLight,
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <Text style={{ color: COLORS.foreground, fontWeight: "600" }}>
+            <Text style={{ color: colors.foreground, fontWeight: "600" }}>
               {initial}
             </Text>
           </View>
@@ -54,10 +56,10 @@ function UserItem({ user, isOnline, onPress }: UserItemProps) {
               right: 0,
               width: 14,
               height: 14,
-              backgroundColor: COLORS.primary,
+              backgroundColor: colors.primary,
               borderRadius: 999,
               borderWidth: 2,
-              borderColor: COLORS.surfaceCard,
+              borderColor: colors.surfaceCard,
             }}
           />
         )}
@@ -69,7 +71,7 @@ function UserItem({ user, isOnline, onPress }: UserItemProps) {
           flex: 1,
           marginLeft: 12,
           borderBottomWidth: 1,
-          borderBottomColor: COLORS.surfaceLight,
+          borderBottomColor: colors.surfaceLight,
           paddingBottom: 8,
         }}
       >
@@ -82,7 +84,7 @@ function UserItem({ user, isOnline, onPress }: UserItemProps) {
         >
           <Text
             style={{
-              color: COLORS.foreground,
+              color: colors.foreground,
               fontWeight: "500",
               fontSize: 16,
             }}
@@ -93,7 +95,7 @@ function UserItem({ user, isOnline, onPress }: UserItemProps) {
           {isOnline && (
             <Text
               style={{
-                color: COLORS.primary,
+                color: colors.primary,
                 fontSize: 12,
                 fontWeight: "500",
               }}
@@ -104,7 +106,7 @@ function UserItem({ user, isOnline, onPress }: UserItemProps) {
         </View>
         <Text
           style={{
-            color: COLORS.grey,
+            color: colors.grey,
             fontSize: 12,
             marginTop: 2,
           }}

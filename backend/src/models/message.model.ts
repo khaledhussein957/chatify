@@ -3,10 +3,15 @@ import mongoose, { Schema, type Document } from "mongoose";
 export interface IMessage extends Document {
   chat: mongoose.Types.ObjectId;
   sender: mongoose.Types.ObjectId;
-  text: string;
+
+  type: "text" | "image" | "video" | "voice";
+
+  text?: string;
 
   content?: string; // Cloudinary secure_url
-  contentPublicId?: string; // 🔥 Cloudinary public_id
+  contentPublicId?: string;
+
+  duration?: number; // 🔥 for voice messages (seconds)
 
   deleted: boolean;
   deletedAt?: Date;
@@ -27,6 +32,13 @@ const MessageSchema = new Schema<IMessage>(
       ref: "User",
       required: true,
     },
+
+    type: {
+      type: String,
+      enum: ["text", "image", "video", "voice"],
+      default: "text",
+    },
+
     text: {
       type: String,
       trim: true,
@@ -37,9 +49,12 @@ const MessageSchema = new Schema<IMessage>(
       type: String,
     },
 
-    // 🔥 ADD THIS
     contentPublicId: {
       type: String,
+    },
+
+    duration: {
+      type: Number, // seconds (voice only)
     },
 
     deleted: {

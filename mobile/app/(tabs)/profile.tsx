@@ -4,17 +4,18 @@ import {
   ScrollView,
   Pressable,
   ActivityIndicator,
+  Switch,
 } from "react-native";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
-import { styles } from "@/assets/styles/profile.style";
+import { getProfileStyles } from "@/assets/styles/profile.style";
 import { useLogout } from "@/hooks/useAuth";
 import { useAuthStore } from "@/store/auth";
 import { useUpdateProfileAvatar } from "@/hooks/useUser";
-import { COLORS } from "@/constants/theme";
 import { router } from "expo-router";
 import { useAlert } from "@/components/AlertMessageController";
+import { useTheme } from "@/hooks/useTheme";
 
 const ACCOUNT_ITEMS = [
   {
@@ -43,6 +44,8 @@ const ProfileTab = () => {
   const updateUser = useAuthStore((state) => state.updateUser);
   const { mutateAsync: updateAvatar, isPending: isUpdatingAvatar } =
     useUpdateProfileAvatar();
+  const { colors, toggleTheme, isDark } = useTheme();
+  const styles = getProfileStyles(colors);
   const alert = useAlert();
 
   const handleLogout = () => {
@@ -92,7 +95,7 @@ const ProfileTab = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -109,12 +112,12 @@ const ProfileTab = () => {
                   alignItems: "center",
                   backgroundColor: isAvatarUrl(user?.avatar)
                     ? "transparent"
-                    : COLORS.primary,
+                    : colors.primary,
                 },
               ]}
             >
               {isUpdatingAvatar ? (
-                <ActivityIndicator color={COLORS.primary} />
+                <ActivityIndicator color={colors.primary} />
               ) : isAvatarUrl(user?.avatar) ? (
                 <Image source={{ uri: user?.avatar }} style={styles.avatar} />
               ) : (
@@ -131,17 +134,17 @@ const ProfileTab = () => {
               onPress={pickImage}
               disabled={isUpdatingAvatar}
             >
-              <Ionicons
-                name="camera"
-                size={16}
-                color={styles.container.backgroundColor}
-              />
+              <Ionicons name="camera" size={16} color={colors.background} />
             </Pressable>
           </View>
 
-          <Text style={styles.name}>{user?.name}</Text>
+          <Text style={[styles.name, { color: colors.text }]}>
+            {user?.name}
+          </Text>
 
-          <Text style={styles.email}>{user?.email}</Text>
+          <Text style={[styles.email, { color: colors.grey }]}>
+            {user?.email}
+          </Text>
 
           <View style={styles.onlineStatusContainer}>
             <View style={styles.onlineDot} />
@@ -149,16 +152,63 @@ const ProfileTab = () => {
           </View>
         </View>
 
+        {/* APPEARANCE SECTION */}
+        <View style={styles.sectionContainer}>
+          <Text style={[styles.sectionTitle, { color: colors.grey }]}>
+            Appearance
+          </Text>
+          <View
+            style={[
+              styles.sectionCard,
+              { backgroundColor: colors.surfaceCard },
+            ]}
+          >
+            <View style={styles.sectionItem}>
+              <View
+                style={[
+                  styles.sectionIconWrapper,
+                  { backgroundColor: `${colors.primary}20` },
+                ]}
+              >
+                <Ionicons
+                  name="moon-outline"
+                  size={20}
+                  color={colors.primary}
+                />
+              </View>
+              <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                Dark Mode
+              </Text>
+              <Switch
+                value={isDark}
+                onValueChange={toggleTheme}
+                trackColor={{ false: "#767577", true: colors.primary }}
+                thumbColor={isDark ? colors.white : "#f4f3f4"}
+              />
+            </View>
+          </View>
+        </View>
+
         {/* ACCOUNT SECTION */}
         <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>Account</Text>
-          <View style={styles.sectionCard}>
+          <Text style={[styles.sectionTitle, { color: colors.grey }]}>
+            Account
+          </Text>
+          <View
+            style={[
+              styles.sectionCard,
+              { backgroundColor: colors.surfaceCard },
+            ]}
+          >
             {ACCOUNT_ITEMS.map((item, index) => (
               <Pressable
                 key={item.label}
                 style={[
                   styles.sectionItem,
-                  index < ACCOUNT_ITEMS.length - 1 && styles.sectionItemBorder,
+                  index < ACCOUNT_ITEMS.length - 1 && [
+                    styles.sectionItemBorder,
+                    { borderBottomColor: colors.surfaceLight },
+                  ],
                 ]}
                 onPress={() => router.push(item.route as any)}
               >
@@ -174,8 +224,14 @@ const ProfileTab = () => {
                     color={item.color}
                   />
                 </View>
-                <Text style={styles.sectionLabel}>{item.label}</Text>
-                <Ionicons name="chevron-forward" size={18} color="#6B6B70" />
+                <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                  {item.label}
+                </Text>
+                <Ionicons
+                  name="chevron-forward"
+                  size={18}
+                  color={colors.grey}
+                />
               </Pressable>
             ))}
           </View>

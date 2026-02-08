@@ -1,20 +1,17 @@
 import React from "react";
-import {
-  View,
-  Text,
-  Pressable,
-  ActivityIndicator,
-} from "react-native";
+import { View, Text, Pressable, ActivityIndicator } from "react-native";
 import { router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useDeleteAccount } from "@/hooks/useUser";
 import { useLogout } from "@/hooks/useAuth";
-import { styles } from "@/assets/styles/profile.style";
-import { COLORS } from "@/constants/theme";
+import { getProfileStyles } from "@/assets/styles/profile.style";
 import { useAlert } from "@/components/AlertMessageController";
+import { useTheme } from "@/hooks/useTheme";
 
 const DeleteAccount = () => {
+  const { colors, isDark } = useTheme();
+  const styles = getProfileStyles(colors);
   const deleteAccount = useDeleteAccount();
   const logout = useLogout();
   const alert = useAlert();
@@ -25,44 +22,54 @@ const DeleteAccount = () => {
       logout();
       router.replace("/(auth)");
     } catch (error: any) {
-      const message = error.response?.data?.message || "Failed to delete account";
+      const message =
+        error.response?.data?.message || "Failed to delete account";
       alert.error(message);
     }
   };
 
   return (
     <View style={styles.modalOverlay}>
-      <View style={styles.modalContent}>
-        <View 
-          style={{ 
-            width: 60, 
-            height: 60, 
-            borderRadius: 30, 
-            backgroundColor: "rgba(239, 68, 68, 0.1)", 
-            justifyContent: 'center', 
-            alignItems: 'center' 
+      <View
+        style={[styles.modalContent, { backgroundColor: colors.surfaceCard }]}
+      >
+        <View
+          style={{
+            width: 60,
+            height: 60,
+            borderRadius: 30,
+            backgroundColor: "rgba(239, 68, 68, 0.1)",
+            justifyContent: "center",
+            alignItems: "center",
           }}
         >
-          <Ionicons name="warning" size={32} color={COLORS.error} />
+          <Ionicons name="warning" size={32} color={colors.error} />
         </View>
 
-        <Text style={styles.modalTitle}>Delete Account?</Text>
-        
-        <Text style={styles.modalDescription}>
-          This action is permanent and cannot be undone. All your messages, 
+        <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+          Delete Account?
+        </Text>
+
+        <Text style={[styles.modalDescription, { color: colors.grey }]}>
+          This action is permanent and cannot be undone. All your messages,
           chats, and profile data will be permanently removed.
         </Text>
 
         <View style={styles.modalActions}>
           <Pressable
-            style={[styles.dangerButton, deleteAccount.isPending && { opacity: 0.7 }]}
+            style={[
+              styles.dangerButton,
+              deleteAccount.isPending && { opacity: 0.7 },
+            ]}
             onPress={handleDelete}
             disabled={deleteAccount.isPending}
           >
             {deleteAccount.isPending ? (
-              <ActivityIndicator color={COLORS.white} />
+              <ActivityIndicator color={colors.white} />
             ) : (
-              <Text style={styles.dangerButtonText}>Delete My Account</Text>
+              <Text style={[styles.dangerButtonText, { color: colors.white }]}>
+                Delete My Account
+              </Text>
             )}
           </Pressable>
 
@@ -71,7 +78,9 @@ const DeleteAccount = () => {
             onPress={() => router.back()}
             disabled={deleteAccount.isPending}
           >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
+            <Text style={[styles.cancelButtonText, { color: colors.grey }]}>
+              Cancel
+            </Text>
           </Pressable>
         </View>
       </View>
