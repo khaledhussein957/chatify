@@ -23,7 +23,7 @@ Chatify is a real-time, cross-platform messaging application designed with a rob
   - **Global State:** Zustand
   - **Server State:** TanStack React Query (Data caching & fetching)
 - **Real-time:** Socket.io-client
-- **UI/UX:** React Native `StyleSheet` for optimized, built-in styling with a premium dark theme.
+- **UI/UX:** React Native `StyleSheet` with a **Dynamic Theme System** supporting Light and Dark modes.
 
 ---
 
@@ -33,24 +33,22 @@ Chatify is a real-time, cross-platform messaging application designed with a rob
 
 The backend follows a modular architecture:
 
-- **`models/`**: Defines the data schema for Users, Chats, and Messages.
-- **`routes/`**: Handles API endpoints for Authentication, Users, Chats, and Messages.
-- **`controllers/`**: Contains the business logic for each route.
-- **`middlewares/`**: Implements authentication checks and error handling.
-- **`utils/socket.ts`**: Manages real-time bidirectional communication.
-- **`emails/`**: Templates for email notifications and password reset functionality.
-- **`utils/otp.ts`**: SMS service integration for OTP and password delivery.
+- **`models/`**: Defines the data schema for Users, Chats, Messages, and Statuses.
+- **`routes/`**: Handles API endpoints for Authentication, Users, Chats, Messages, and Statuses.
+- **`controllers/`**: Contains the business logic for real-time interaction and data management.
+- **`middlewares/`**: Implements global authentication checks and request validation.
+- **`utils/socket.ts`**: Manages real-time bidirectional communication with online/offline state tracking.
+- **`emails/`**: Templates for email notifications and secure password delivery.
 
 ### 2. Mobile Structure (`mobile/app`)
 
 Utilizes Expo Router's directory-based navigation:
 
 - **`(auth)/`**: Handles User Onboarding (Login, Register, Phone OTP Verification).
-- **`(tabs)/`**: The main app navigation (Home/Chats, Search, Status, Profile).
-- **`chat/`**: Individual chat screen for real-time messaging.
-- **`new-chat/`**: Interface to start new 1:1 conversations.
-- **`screens/select_participates.tsx`**: Flow to create group chats by selecting multiple participants with a guided, modal-based group naming step.
-- **`store/`**: Centralized state for authentication and app-wide settings.
+- **`(tabs)/`**: The main app navigation (Home, Status, Group, Profile) fully synced with the dynamic theme.
+- **`chat/`**: Individual chat screen with real-time messaging, editing, and media sharing.
+- **`screens/`**: Standalone flows for Profile editing, Status viewing, and Group creation.
+- **`lib/socket.ts`**: Centralized Socket.io client management with React Query integration.
 
 ---
 
@@ -59,23 +57,21 @@ Utilizes Expo Router's directory-based navigation:
 ### 👤 User Management
 
 - **Security:**
-  - Secure registration via **Phone Number** with OTP verification via SMS.
-  - **Auto-Password Generation:** High-security password generated upon verification and sent to user via SMS.
-  - **OTP Rate Limiting:** Enforced limit of 5 OTPs per month per user to prevent abuse.
-  - **Device ID Tracking:** Retrieval of unique device identifiers (Android/iOS) for enhanced session security.
+  - Secure registration via **Phone Number** with OTP verification.
+  - **Auto-Password Generation:** Secure passwords generated and delivered via SMS/Email.
+  - **Device ID Tracking:** Multi-device session security and identification.
 - **Profile:**
-  - Customizable profiles with Cloudinary-hosted profile pictures.
-  - **Profile Completion:** Mandatory name and email entry before logout for guaranteed account recovery.
-- **Search:** Find other users to start conversations.
+  - **Dynamic Theming:** Smooth transition between Light and Dark modes with persistent user preference.
+  - Customizable profiles with Cloudinary-hosted media.
+- **Account Deletion:** Robust "Right to be Forgotten" implementation with automated cleanup of messages, media, and metadata synchronization to prevent dangling references.
 
 ### 💬 Messaging
 
-- **Real-time:** Instant message delivery using WebSockets.
-- **Group Chats:** Create named group conversations by selecting two or more participants.
-- **Message Actions:** Integrated header context bar for editing and deleting messages.
-- **Soft Delete:** Support for deleting messages with a "🚫 This message was deleted" placeholder.
-- **Time Limits:** Enforced 5-minute time window for editing sent messages.
-- **Rich Media:** Send and preview photos, videos, and documents.
-- **Status:** Share text, photo, or video updates with a polished interface and real-time online/offline indicators.
-- **Custom UI Alerts:** Premium, styled confirmation and error alerts replacing standard system dialogs.
-- **History:** Persistent message storage in MongoDB for viewing past conversations.
+- **Real-time:** Instant delivery with bidirectional state updates (Typing, Recording, Online/Offline).
+- **Group Chats:** Feature-rich group management with admin transfers and real-time membership notifications.
+- **Voice Messages:** Record and play voice notes with integrated progress tracking and duration awareness.
+- **Message Actions:** Edit and delete support within a 5-minute window, with real-time UI synchronization.
+- **Rich Media:** Seamless sharing of Photos, Videos, and Documents with immersive viewers.
+- **Status:** Share temporary text/media updates with a dedicated browser-like progress interface.
+- **Custom UI System:** Premium, theme-aware alerts and modals replacing generic native dialogs for a consistent "Chatify" experience.
+- **Data Integrity:** Reliable message history with automatic metadata re-syncing during participant departures.

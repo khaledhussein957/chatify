@@ -73,6 +73,11 @@ function MessageBubble({
     };
   }, []);
 
+  const playingIdRef = useRef(playingId);
+  useEffect(() => {
+    playingIdRef.current = playingId;
+  }, [playingId]);
+
   const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
     if (status.isLoaded) {
       setPlaybackPosition(status.positionMillis);
@@ -83,7 +88,7 @@ function MessageBubble({
         setPlaybackPosition(0);
         soundRef.current?.stopAsync();
         soundRef.current?.setPositionAsync(0);
-        if (onTogglePlay && playingId === message._id) {
+        if (onTogglePlay && playingIdRef.current === message._id) {
           onTogglePlay(null);
         }
       }
@@ -229,7 +234,7 @@ function MessageBubble({
                       style={[
                         styles.voiceProgressFill,
                         {
-                          width: `${(playbackPosition / ((message.duration || 0) * 1000)) * 100}%`,
+                          width: `${message.duration ? (playbackPosition / (message.duration * 1000)) * 100 : 0}%`,
                           backgroundColor: isFromMe
                             ? colors.background
                             : colors.primary,

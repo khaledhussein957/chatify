@@ -182,15 +182,15 @@ const NewChatScreen = () => {
                   paddingHorizontal: 20,
                 }}
               >
-                <Ionicons name="person-outline" size={64} color={COLORS.grey} />
+                <Ionicons name="person-outline" size={64} color={colors.grey} />
                 <Text
-                  style={{ color: COLORS.grey, fontSize: 18, marginTop: 12 }}
+                  style={{ color: colors.grey, fontSize: 18, marginTop: 12 }}
                 >
                   No users found
                 </Text>
                 <Text
                   style={{
-                    color: COLORS.grey,
+                    color: colors.grey,
                     fontSize: 14,
                     marginTop: 4,
                     textAlign: "center",

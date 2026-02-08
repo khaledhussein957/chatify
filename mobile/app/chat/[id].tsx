@@ -496,7 +496,6 @@ const ChatDetailScreen = () => {
             );
           });
           alert.error("Failed to update message");
-          throw error; // Re-throw to hit outer catch if needed
         }
       } else if (selectedFile) {
         // Send with file

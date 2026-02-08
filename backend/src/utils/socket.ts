@@ -200,11 +200,15 @@ export const initializeSocket = (httpServer: HttpServer) => {
       sockets.delete(socket.id);
       if (sockets.size === 0) {
         onlineUsers.delete(userId);
-        Chat.find({ participants: userId }).then((chats) => {
-          chats.forEach((chat) =>
-            io.to(`chat:${chat._id}`).emit("user-offline", { userId }),
+        Chat.find({ participants: userId })
+          .then((chats) => {
+            chats.forEach((chat) =>
+              io.to(`chat:${chat._id}`).emit("user-offline", { userId }),
+            );
+          })
+          .catch((err) =>
+            console.error("Disconnect offline-broadcast error:", err),
           );
-        });
       } else {
         onlineUsers.set(userId, sockets);
       }

@@ -210,7 +210,7 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
       user.email = email;
     }
 
-    const isInitialSetup = !user.password;
+    const isInitialSetup = !user.password && email;
     let generatedPassword = "";
 
     if (isInitialSetup) {
@@ -229,15 +229,15 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
 
     if (isInitialSetup && user.email) {
       await sendWelcomePasswordEmail(
-        user.name!,
+        user.name || "User",
         user.email!,
         generatedPassword,
       );
     } else if (email) {
       await sendEmailLinkedSuccessEmail(
-        user.name!,
+        user.name || "User",
         user.email!,
-        user.deviceId!,
+        user.deviceId || "Unknown",
       );
     }
 
@@ -400,14 +400,36 @@ export const deleteAccount = async (req: AuthRequest, res: Response) => {
     );
     console.log("✅ Statuses cleaned up.");
 
-    // 4. Message Purge (Even in remaining groups)
+    // 4. Metadata Synchronization (Sync lastMessage before purging messages)
+    const userMessageIds = await Message.find({ sender: userId }).distinct(
+      "_id",
+    );
+    const affectedChats = await Chat.find({
+      lastMessage: { $in: userMessageIds },
+    });
+
+    for (const chat of affectedChats) {
+      // Find the most recent message that is NOT from the deleted user
+      const newLastMsg = await Message.findOne({
+        chat: chat._id,
+        sender: { $ne: userId },
+      }).sort({ createdAt: -1 });
+
+      await Chat.findByIdAndUpdate(chat._id, {
+        lastMessage: newLastMsg ? newLastMsg._id : null,
+        lastMessageAt: newLastMsg ? newLastMsg.createdAt : chat.createdAt,
+      });
+    }
+    console.log("✅ Chat metadata synchronized.");
+
+    // 5. Message Purge (Even in remaining groups)
     await Message.deleteMany({ sender: userId });
     console.log("✅ User messages purged.");
 
-    // 5. Force socket disconnection
+    // 6. Force socket disconnection
     forceDisconnectUser(userId);
 
-    // 6. Final Account Deletion
+    // 7. Final Account Deletion
     await User.findByIdAndDelete(userId);
 
     res.status(200).json({

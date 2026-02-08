@@ -52,7 +52,7 @@ const ViewStatusScreen = () => {
         markViewed(currentStatus._id);
       }
     }
-  }, [currentStatus, currentUser?._id, markViewed]);
+  }, [currentStatus?._id, currentUser?._id, markViewed]);
 
   // Reset video playback when status changes
   useEffect(() => {
