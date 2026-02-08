@@ -50,9 +50,6 @@ importers:
       socket.io:
         specifier: ^4.8.3
         version: 4.8.3
-      sophone:
-        specifier: ^1.1.0
-        version: 1.1.0
     devDependencies:
       '@types/axios':
         specifier: ^0.14.4
@@ -791,11 +788,6 @@ packages:
   socket.io@4.8.3:
     resolution: {integrity: sha512-2Dd78bqzzjE6KPkD5fHZmDAKRNe3J15q+YHDrIsy9WEkqttc7GY+kT9OBLSMaPbQaEd0x1BjcmtMtXkfpc+T5A==}
     engines: {node: '>=10.2.0'}
-
-  sophone@1.1.0:
-    resolution: {integrity: sha512-fMus+Pw0C57Yn9lOj7GHLGl4JMYJh2mucewwCHk1GyQu5sNO5b3AM5ZXMcCBz757TscjmpTbo8BxjIHeD1hTZQ==}
-    engines: {node: '>=14'}
-    hasBin: true
 
   sparse-bitfield@3.0.3:
     resolution: {integrity: sha512-kvzhi7vqKTfkh0PZU+2D2PIllw2ymqJKujUcyPMd9Y75Nv4nPbGJZXNhxsgdQab2BmlDct1YnfQCguEvHr7VsQ==}
@@ -1686,8 +1678,6 @@ snapshots:
       - bufferutil
       - supports-color
       - utf-8-validate
-
-  sophone@1.1.0: {}
 
   sparse-bitfield@3.0.3:
     dependencies:

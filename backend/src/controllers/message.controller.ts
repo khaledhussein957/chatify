@@ -6,6 +6,8 @@ import cloudinary from "../configs/cloudinary";
 import path from "path";
 import fs from "fs";
 import { io } from "../utils/socket";
+import { sendPushNotification } from "../utils/expo";
+import User from "../models/user.model";
 
 export const getMessages = async (
   req: AuthRequest,
@@ -145,6 +147,33 @@ export const sendMessageWithContent = async (
           }
         }
       });
+    }
+
+    // Push Notifications
+    const otherParticipants = chat.participants.filter(
+      (p) => p.toString() !== userId,
+    );
+    if (otherParticipants.length > 0) {
+      const recipientUsers = await User.find({
+        _id: { $in: otherParticipants },
+        pushToken: { $exists: true, $ne: "" },
+      });
+
+      const pushTokens = recipientUsers.map((u) => u.pushToken as string);
+      if (pushTokens.length > 0) {
+        const senderName = (message.sender as any).name || "Someone";
+        let body = text || "";
+        if (messageType === "image") body = "📸 Image";
+        else if (messageType === "video") body = "🎥 Video";
+        else if (messageType === "voice") body = "🎤 Voice message";
+
+        sendPushNotification({
+          to: pushTokens,
+          title: chat.isGroupChat ? `${chat.name}` : senderName,
+          body: chat.isGroupChat ? `${senderName}: ${body}` : body,
+          data: { chatId, messageId: message._id, type: "new-message" },
+        });
+      }
     }
 
     res.status(201).json(message);
@@ -322,6 +351,30 @@ export const sendVoiceMessage = async (
           }
         }
       });
+    }
+
+    // Push Notifications
+    const otherParticipants = chat.participants.filter(
+      (p) => p.toString() !== userId,
+    );
+    if (otherParticipants.length > 0) {
+      const recipientUsers = await User.find({
+        _id: { $in: otherParticipants },
+        pushToken: { $exists: true, $ne: "" },
+      });
+
+      const pushTokens = recipientUsers.map((u) => u.pushToken as string);
+      if (pushTokens.length > 0) {
+        const senderName = (message.sender as any).name || "Someone";
+        sendPushNotification({
+          to: pushTokens,
+          title: chat.isGroupChat ? `${chat.name}` : senderName,
+          body: chat.isGroupChat
+            ? `${senderName}: 🎤 Voice message`
+            : "🎤 Voice message",
+          data: { chatId, messageId: message._id, type: "new-message" },
+        });
+      }
     }
 
     res.status(201).json(message);

@@ -5,6 +5,8 @@ import { Types } from "mongoose";
 import Message from "../models/message.model";
 import { io } from "../utils/socket";
 import cloudinary from "../configs/cloudinary";
+import { sendPushNotification } from "../utils/expo";
+import User from "../models/user.model";
 
 export const getOrCreateChat = async (
   req: AuthRequest,
@@ -49,6 +51,19 @@ export const getOrCreateChat = async (
       if (io) {
         sortedParticipants.forEach((p) => {
           io.to(`user:${p.toString()}`).emit("new-chat", { chatId: chat?._id });
+        });
+      }
+
+      // Push Notification to the other participant
+      const otherId = participantId.toString();
+      const me = await User.findById(userId);
+      const target = await User.findById(otherId);
+      if (target?.pushToken) {
+        sendPushNotification({
+          to: target.pushToken,
+          title: "New Chat",
+          body: `${me?.name || "Someone"} started a chat with you`,
+          data: { chatId: chat._id, type: "new-chat" },
         });
       }
     }

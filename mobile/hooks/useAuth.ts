@@ -202,6 +202,25 @@ export const useResetPassword = () => {
 };
 
 //
+// Update Push Token
+//
+export const useUpdatePushToken = () => {
+  const { apiWithAuth } = useApi();
+
+  return useMutation({
+    mutationKey: ["user", "updatePushToken"],
+    mutationFn: async (pushToken: string) => {
+      const { data } = await apiWithAuth<{ message: string }>({
+        method: "PUT",
+        url: "/user/push-token",
+        data: { pushToken },
+      });
+      return data;
+    },
+  });
+};
+
+//
 // Logout
 //
 export const useLogout = () => {

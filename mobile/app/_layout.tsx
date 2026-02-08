@@ -5,11 +5,27 @@ import { useTheme } from "@/hooks/useTheme";
 
 import SocketConnection from "@/components/SocketConnection";
 import { AlertProvider } from "@/components/AlertMessageController";
+import { useEffect } from "react";
+import { useAuthStore } from "@/store/auth";
+import { registerForPushNotificationsAsync } from "@/utils/notifications";
+import { useUpdatePushToken } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
 
 const RootLayoutInner = () => {
   const { colors, isDark } = useTheme();
+  const token = useAuthStore((state) => state.token);
+  const { mutate: updatePushToken } = useUpdatePushToken();
+
+  useEffect(() => {
+    if (token) {
+      registerForPushNotificationsAsync().then((pushToken) => {
+        if (pushToken) {
+          updatePushToken(pushToken);
+        }
+      });
+    }
+  }, [token, updatePushToken]);
 
   return (
     <>

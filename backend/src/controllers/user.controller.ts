@@ -440,3 +440,33 @@ export const deleteAccount = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+export const updatePushToken = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    const { pushToken } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    if (!pushToken) {
+      return res.status(400).json({ message: "Push token is required" });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { pushToken },
+      { new: true },
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ message: "✅ Push token updated successfully" });
+  } catch (error) {
+    console.log(`❌ Error in update push token: ${error}`);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};

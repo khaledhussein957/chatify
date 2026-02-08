@@ -7,6 +7,7 @@ import {
   updateProfile,
   updateProfileAvatar,
   changePhoneNumber,
+  updatePushToken,
 } from "../controllers/user.controller";
 
 import { protectRoute } from "../middlewares/auth.middleware";
@@ -45,6 +46,8 @@ router.put(
   upload.single("avatar"),
   updateProfileAvatar,
 );
+
+router.put("/push-token", protectRoute, updatePushToken);
 
 router.delete("/delete-account", protectRoute, deleteAccount);
 
