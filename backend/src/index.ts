@@ -4,6 +4,7 @@ import cors from "cors";
 
 import ENV from "./configs/env";
 import connectDB from "./configs/db";
+import cronJob from "./configs/cron";
 
 import authRoute from "./routes/auth.route";
 import chatRoute from "./routes/chat.route";
@@ -28,6 +29,9 @@ app.use(
 
 // Middlewares
 app.use(Express.json());
+
+// cron job
+cronJob.start();
 
 // test route
 app.get("/api/health", (req, res) => {

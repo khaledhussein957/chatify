@@ -4,7 +4,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { Chat, Message, MessageSender, Status } from "@/types";
 import { useAuthStore } from "@/store/auth";
 
-const SOCKET_URL = "https://chatify-server-hazel.vercel.app";
+const SOCKET_URL = "https://chatify-server-dd9f.onrender.com";
 
 interface SocketState {
   socket: Socket | null;

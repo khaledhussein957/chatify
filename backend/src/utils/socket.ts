@@ -19,7 +19,7 @@ export const initializeSocket = (httpServer: HttpServer) => {
     "http://192.168.8.61:8081",
   ].filter(Boolean) as string[];
 
-  io = new SocketServer(httpServer, { cors: { origin: allowedOrigins } });
+  io = new SocketServer(httpServer, { cors: { origin: "*" } });
 
   // JWT auth middleware
   io.use(async (socket, next) => {
