@@ -56,7 +56,7 @@ export const register = async (req: Request, res: Response) => {
     const expires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes from now
 
     // validate phone number
-    const validation = validatePhoneNumber(phone);
+    const validation = await validatePhoneNumber(phone);
     if (!validation?.valid) {
       return res
         .status(400)

@@ -1,12 +1,8 @@
-import {
-  isValidSomaliMobile,
-  getOperator,
-  getOperatorInfo,
-  SomaliPhoneError,
-} from "sophone";
-
-export const validatePhoneNumber = (phone: string) => {
+export const validatePhoneNumber = async (phone: string) => {
   try {
+    const { isValidSomaliMobile, getOperator, getOperatorInfo } =
+      await import("sophone");
+
     if (!isValidSomaliMobile(phone)) {
       return { valid: false, message: "Invalid phone number format" };
     }
@@ -35,6 +31,7 @@ export const validatePhoneNumber = (phone: string) => {
       message: "Valid phone number",
     };
   } catch (error) {
+    const { SomaliPhoneError } = await import("sophone");
     if (error instanceof SomaliPhoneError) {
       console.error("Phone validation error:", error.code, error.message);
       return { valid: false, message: error.message };

@@ -116,14 +116,14 @@ export const changePhoneNumber = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const isCorrectPhone = validatePhoneNumber(oldPhone);
+    const isCorrectPhone = await validatePhoneNumber(oldPhone);
     if (!isCorrectPhone?.valid) {
       return res
         .status(400)
         .json({ success: false, message: "Old phone number is incorrect" });
     }
 
-    const isCorrectNewPhone = validatePhoneNumber(newPhone);
+    const isCorrectNewPhone = await validatePhoneNumber(newPhone);
     if (!isCorrectNewPhone?.valid) {
       return res
         .status(400)
