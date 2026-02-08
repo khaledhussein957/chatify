@@ -17,10 +17,10 @@ import { router, useLocalSearchParams } from "expo-router";
 import * as Application from "expo-application";
 import { useEffect, useState } from "react";
 
-import { styles } from "@/assets/styles/auth.style";
-import { COLORS } from "@/constants/theme";
+import { getAuthStyles } from "@/assets/styles/auth.style";
 import { useVerifyCode, useResendCode } from "@/hooks/useAuth";
 import { useAlert } from "@/components/AlertMessageController";
+import { useTheme } from "@/hooks/useTheme";
 
 // Joi schema
 const verifySchema = Joi.object({
@@ -36,6 +36,8 @@ type VerifyFormData = {
 };
 
 const VerifyAccountScreen = () => {
+  const { colors, isDark } = useTheme();
+  const styles = getAuthStyles(colors);
   const { phone } = useLocalSearchParams<{ phone?: string }>();
   const alert = useAlert();
   const [deviceId, setDeviceId] = useState<string>("");
@@ -88,7 +90,11 @@ const VerifyAccountScreen = () => {
         alert.success("✅ Account verified successfully");
 
         if (router.canDismiss()) router.dismissAll();
-        router.replace("/(tabs)");
+        if (res.profileCompleted) {
+          router.replace("/(tabs)");
+        } else {
+          router.replace("/screens/edit_profile");
+        }
       } else {
         alert.error("❌ Verification failed");
       }
@@ -119,7 +125,7 @@ const VerifyAccountScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -145,8 +151,10 @@ const VerifyAccountScreen = () => {
             </View>
 
             {/* TITLE */}
-            <Text style={styles.title}>Verify Your Account</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: colors.primary }]}>
+              Verify Your Account
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.grey }]}>
               Enter the 6-digit code sent to {phone}
             </Text>
 
@@ -156,7 +164,9 @@ const VerifyAccountScreen = () => {
               name="code"
               render={({ field: { onChange, onBlur, value } }) => (
                 <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Verification Code</Text>
+                  <Text style={[styles.label, { color: colors.foreground }]}>
+                    Verification Code
+                  </Text>
                   <TextInput
                     style={[
                       styles.input,
@@ -164,10 +174,13 @@ const VerifyAccountScreen = () => {
                         textAlign: "center",
                         letterSpacing: 6,
                         fontSize: 20,
+                        backgroundColor: colors.surfaceCard,
+                        color: colors.foreground,
+                        borderColor: colors.surfaceLight,
                       },
                     ]}
                     placeholder="123456"
-                    placeholderTextColor={COLORS.grey}
+                    placeholderTextColor={colors.grey}
                     keyboardType="number-pad"
                     maxLength={6}
                     onChangeText={onChange}
@@ -175,7 +188,9 @@ const VerifyAccountScreen = () => {
                     value={value}
                   />
                   {errors.code && (
-                    <Text style={styles.errorText}>{errors.code.message}</Text>
+                    <Text style={[styles.errorText, { color: colors.error }]}>
+                      {errors.code.message}
+                    </Text>
                   )}
                 </View>
               )}
@@ -188,9 +203,18 @@ const VerifyAccountScreen = () => {
               onPress={handleSubmit(onSubmit)}
             >
               {isSubmitting || isLoading ? (
-                <ActivityIndicator color={COLORS.background} />
+                <ActivityIndicator
+                  color={isDark ? colors.background : colors.white}
+                />
               ) : (
-                <Text style={styles.formButtonText}>Verify</Text>
+                <Text
+                  style={[
+                    styles.formButtonText,
+                    { color: isDark ? colors.background : colors.white },
+                  ]}
+                >
+                  Verify
+                </Text>
               )}
             </Pressable>
 
@@ -200,9 +224,15 @@ const VerifyAccountScreen = () => {
               style={{ marginTop: 12, alignItems: "center" }}
               onPress={handleResend}
             >
-              <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
-                Resend Code
-              </Text>
+              {isResending ? (
+                <ActivityIndicator
+                  color={isDark ? colors.background : colors.white}
+                />
+              ) : (
+                <Text style={{ color: colors.primary, fontWeight: "600" }}>
+                  Resend Code
+                </Text>
+              )}
             </Pressable>
 
             {/* BACK */}
@@ -210,7 +240,7 @@ const VerifyAccountScreen = () => {
               style={{ marginTop: 20, alignItems: "center" }}
               onPress={() => router.back()}
             >
-              <Text style={{ color: COLORS.grey }}>Go Back</Text>
+              <Text style={{ color: colors.grey }}>Go Back</Text>
             </Pressable>
           </ScrollView>
         </KeyboardAvoidingView>

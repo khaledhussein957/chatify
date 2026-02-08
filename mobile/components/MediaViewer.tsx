@@ -6,7 +6,6 @@ import {
   Pressable,
   SafeAreaView,
   Dimensions,
-  ActivityIndicator,
   Text,
 } from "react-native";
 import { Image } from "expo-image";
@@ -24,7 +23,12 @@ interface MediaViewerProps {
   type: "image" | "video" | "document";
 }
 
-const MediaViewer = ({ isVisible, onClose, mediaUrl, type }: MediaViewerProps) => {
+const MediaViewer = ({
+  isVisible,
+  onClose,
+  mediaUrl,
+  type,
+}: MediaViewerProps) => {
   const handleOpenDocument = async () => {
     await WebBrowser.openBrowserAsync(mediaUrl);
     onClose();
@@ -66,7 +70,11 @@ const MediaViewer = ({ isVisible, onClose, mediaUrl, type }: MediaViewerProps) =
 
           {type === "document" && (
             <View style={styles.documentCenter}>
-              <Ionicons name="document-text" size={100} color={COLORS.primary} />
+              <Ionicons
+                name="document-text"
+                size={100}
+                color={COLORS.primary}
+              />
               <Text style={styles.documentLabel}>Document File</Text>
               <Pressable style={styles.openBtn} onPress={handleOpenDocument}>
                 <Text style={styles.openBtnText}>Open in Browser</Text>

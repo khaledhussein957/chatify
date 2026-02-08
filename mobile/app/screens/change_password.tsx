@@ -16,9 +16,9 @@ import { useForm, Controller } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
 
 import { useChangePassword } from "@/hooks/useUser";
-import { styles } from "@/assets/styles/profile.style";
-import { COLORS } from "@/constants/theme";
+import { getProfileStyles } from "@/assets/styles/profile.style";
 import { useAlert } from "@/components/AlertMessageController";
+import { useTheme } from "@/hooks/useTheme";
 import { changePasswordSchema } from "@/validators/changePassword.validator";
 
 type FormValues = {
@@ -28,6 +28,8 @@ type FormValues = {
 };
 
 const ChangePassword = () => {
+  const { colors, isDark } = useTheme();
+  const styles = getProfileStyles(colors);
   const alert = useAlert();
   const changePassword = useChangePassword();
 
@@ -46,7 +48,7 @@ const ChangePassword = () => {
 
   const onSubmit = (values: FormValues) => {
     changePassword.mutate(values, {
-      onSuccess: (data) => {
+      onSuccess: (data: any) => {
         alert.success(data.message || "Password updated successfully");
         router.back();
       },
@@ -59,13 +61,18 @@ const ChangePassword = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={["top"]}
+    >
       {/* Header */}
       <View style={[styles.pageHeader, { marginTop: 20 }]}>
         <Pressable onPress={() => router.back()} style={{ width: 40 }}>
-          <Ionicons name="arrow-back" size={24} color={COLORS.primary} />
+          <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </Pressable>
-        <Text style={styles.pageTitle}>Change Password</Text>
+        <Text style={[styles.pageTitle, { color: colors.foreground }]}>
+          Change Password
+        </Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -73,22 +80,36 @@ const ChangePassword = () => {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingHorizontal: 20 }]}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingHorizontal: 20 },
+          ]}
+        >
           <View style={{ marginTop: 40 }}>
             {/* Current Password */}
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Current Password</Text>
+              <Text style={[styles.inputLabel, { color: colors.foreground }]}>
+                Current Password
+              </Text>
               <Controller
                 control={control}
                 name="currentPassword"
                 render={({ field: { onChange, value } }) => (
                   <View style={styles.passwordInputWrapper}>
                     <TextInput
-                      style={styles.passwordInput}
+                      style={[
+                        styles.passwordInput,
+                        {
+                          backgroundColor: colors.surfaceCard,
+                          color: colors.foreground,
+                          borderColor: colors.surfaceLight,
+                        },
+                      ]}
                       value={value}
                       onChangeText={onChange}
                       placeholder="Enter current password"
-                      placeholderTextColor={COLORS.grey}
+                      placeholderTextColor={colors.grey}
                       secureTextEntry={!showCurrentPassword}
                     />
                     <Pressable
@@ -104,7 +125,7 @@ const ChangePassword = () => {
                             : "eye-outline"
                         }
                         size={20}
-                        color={COLORS.grey}
+                        color={colors.grey}
                       />
                     </Pressable>
                   </View>
@@ -119,18 +140,27 @@ const ChangePassword = () => {
 
             {/* New Password */}
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>New Password</Text>
+              <Text style={[styles.inputLabel, { color: colors.foreground }]}>
+                New Password
+              </Text>
               <Controller
                 control={control}
                 name="newPassword"
                 render={({ field: { onChange, value } }) => (
                   <View style={styles.passwordInputWrapper}>
                     <TextInput
-                      style={styles.passwordInput}
+                      style={[
+                        styles.passwordInput,
+                        {
+                          backgroundColor: colors.surfaceCard,
+                          color: colors.foreground,
+                          borderColor: colors.surfaceLight,
+                        },
+                      ]}
                       value={value}
                       onChangeText={onChange}
                       placeholder="Enter new password"
-                      placeholderTextColor={COLORS.grey}
+                      placeholderTextColor={colors.grey}
                       secureTextEntry={!showNewPassword}
                     />
                     <Pressable
@@ -139,12 +169,10 @@ const ChangePassword = () => {
                     >
                       <Ionicons
                         name={
-                          showNewPassword
-                            ? "eye-off-outline"
-                            : "eye-outline"
+                          showNewPassword ? "eye-off-outline" : "eye-outline"
                         }
                         size={20}
-                        color={COLORS.grey}
+                        color={colors.grey}
                       />
                     </Pressable>
                   </View>
@@ -159,18 +187,27 @@ const ChangePassword = () => {
 
             {/* Confirm Password */}
             <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Confirm New Password</Text>
+              <Text style={[styles.inputLabel, { color: colors.foreground }]}>
+                Confirm New Password
+              </Text>
               <Controller
                 control={control}
                 name="confirmPassword"
                 render={({ field: { onChange, value } }) => (
                   <View style={styles.passwordInputWrapper}>
                     <TextInput
-                      style={styles.passwordInput}
+                      style={[
+                        styles.passwordInput,
+                        {
+                          backgroundColor: colors.surfaceCard,
+                          color: colors.foreground,
+                          borderColor: colors.surfaceLight,
+                        },
+                      ]}
                       value={value}
                       onChangeText={onChange}
                       placeholder="Confirm new password"
-                      placeholderTextColor={COLORS.grey}
+                      placeholderTextColor={colors.grey}
                       secureTextEntry={!showConfirmPassword}
                     />
                     <Pressable
@@ -186,7 +223,7 @@ const ChangePassword = () => {
                             : "eye-outline"
                         }
                         size={20}
-                        color={COLORS.grey}
+                        color={colors.grey}
                       />
                     </Pressable>
                   </View>
@@ -209,9 +246,18 @@ const ChangePassword = () => {
               disabled={!isValid || changePassword.isPending}
             >
               {changePassword.isPending ? (
-                <ActivityIndicator color={COLORS.background} />
+                <ActivityIndicator
+                  color={isDark ? colors.background : colors.white}
+                />
               ) : (
-                <Text style={styles.saveButtonText}>Update Password</Text>
+                <Text
+                  style={[
+                    styles.saveButtonText,
+                    { color: isDark ? colors.background : colors.white },
+                  ]}
+                >
+                  Update Password
+                </Text>
               )}
             </Pressable>
           </View>

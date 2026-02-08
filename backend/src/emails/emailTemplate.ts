@@ -226,3 +226,97 @@ export const resetSuccessTemplate = () => `
 </body>
 </html>
 `;
+
+export const welcomePasswordTemplate = (name: string, password: string) => `
+<!DOCTYPE html>
+<html>
+<body style="margin:0;padding:0;font-family:Arial,sans-serif;">
+  <div style="max-width:520px;margin:40px auto;padding:0 16px;">
+    
+    <div style="
+      background:#1A1A1D;
+      padding:36px;
+      border-radius:12px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.25);
+    ">
+      
+      <h2 style="
+        color:#22C55E;
+        margin:0 0 6px 0;
+        font-size:20px;
+        font-weight:700;
+      ">
+        Chatify
+      </h2>
+
+      <p style="
+        color:#9CA3AF;
+        font-size:13px;
+        margin:0 0 20px 0;
+      ">
+        Welcome to Chatify!
+      </p>
+
+      <p style="
+        color:#D1D5DB;
+        font-size:14px;
+        margin:0 0 16px 0;
+      ">
+        Hi ${escapeHtml(name)},
+      </p>
+
+      <p style="
+        color:#D1D5DB;
+        font-size:14px;
+        line-height:1.7;
+        margin:0 0 24px 0;
+      ">
+        Your account profile is now complete. We have generated a secure password for you to log in to your account.
+      </p>
+
+      <div style="
+        background:#0F172A;
+        padding:18px;
+        border-radius:10px;
+        border:1px solid #22C55E33;
+        margin:0 0 24px 0;
+        text-align:center;
+      ">
+        <p style="margin:0 0 8px 0;color:#9CA3AF;font-size:12px;">
+          Your login password
+        </p>
+
+        <p style="
+          margin:0;
+          color:#22C55E;
+          font-size:24px;
+          font-weight:700;
+          letter-spacing:2px;
+        ">
+          ${escapeHtml(password)}
+        </p>
+      </div>
+
+      <p style="
+        color:#D1D5DB;
+        font-size:14px;
+        line-height:1.7;
+        margin:0 0 24px 0;
+      ">
+        Please save this password securely. You can change it anytime in your profile settings.
+      </p>
+
+      <p style="
+        color:#9CA3AF;
+        font-size:12px;
+        line-height:1.6;
+        margin:0;
+      ">
+        Welcome aboard! If you have any questions, feel free to contact our support team.
+      </p>
+
+    </div>
+  </div>
+</body>
+</html>
+`;

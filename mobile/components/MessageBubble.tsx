@@ -1,12 +1,18 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Message } from "@/types";
-import { View, Text, StyleSheet, Pressable } from "react-native";
-import { COLORS } from "@/constants/theme";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
 import { format } from "date-fns";
+import { useTheme } from "@/hooks/useTheme";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import MediaViewer from "./MediaViewer";
-
+import { Audio, AVPlaybackStatus } from "expo-av";
 
 function MessageBubble({
   message,
@@ -14,47 +20,161 @@ function MessageBubble({
   onLongPress,
   isSelected,
   showSenderName,
+  playingId,
+  onTogglePlay,
 }: {
   message: Message;
   isFromMe: boolean;
   onLongPress?: () => void;
   isSelected?: boolean;
   showSenderName?: boolean;
+  playingId?: string | null;
+  onTogglePlay?: (id: string | null) => void;
 }) {
+  const { colors, isDark } = useTheme();
   const [isViewerVisible, setIsViewerVisible] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackPosition, setPlaybackPosition] = useState(0);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+  const soundRef = useRef<Audio.Sound | null>(null);
 
-  const time = message.createdAt 
+  const time = message.createdAt
     ? format(new Date(message.createdAt), "h:mm a")
     : "";
 
   const contentPath = message.content?.split("?")[0].toLowerCase();
-  const isImage = !!contentPath && /\.(jpg|jpeg|png|gif|webp)$/.test(contentPath);
-  const isVideo = !!contentPath && /\.(mp4|mov)$/.test(contentPath);
+  const isImage =
+    message.type === "image" ||
+    (!message.type &&
+      !!contentPath &&
+      /\.(jpg|jpeg|png|gif|webp)$/.test(contentPath));
+  const isVoice = message.type === "voice";
+  const isVideo =
+    (message.type === "video" ||
+      (!message.type && !!contentPath && /\.(mp4|mov)$/.test(contentPath))) &&
+    !isVoice;
 
-  const isDocument = message.content && !isImage && !isVideo;
+  const isDocument = message.content && !isImage && !isVideo && !isVoice;
 
   const mediaType = isImage ? "image" : isVideo ? "video" : "document";
 
+  // Stop playback if another message starts playing
+  useEffect(() => {
+    if (playingId !== message._id && isPlaying) {
+      pauseAudio();
+    }
+  }, [playingId, message._id, isPlaying]);
+
+  useEffect(() => {
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+    };
+  }, []);
+
+  const onPlaybackStatusUpdate = (status: AVPlaybackStatus) => {
+    if (status.isLoaded) {
+      setPlaybackPosition(status.positionMillis);
+      setIsPlaying(status.isPlaying);
+
+      if (status.didJustFinish) {
+        setIsPlaying(false);
+        setPlaybackPosition(0);
+        soundRef.current?.stopAsync();
+        soundRef.current?.setPositionAsync(0);
+        if (onTogglePlay && playingId === message._id) {
+          onTogglePlay(null);
+        }
+      }
+    }
+  };
+
+  const pauseAudio = async () => {
+    try {
+      if (soundRef.current) {
+        await soundRef.current.pauseAsync();
+        setIsPlaying(false);
+      }
+    } catch (error) {
+      console.error("Error pausing audio:", error);
+    }
+  };
+
+  const togglePlayback = async () => {
+    if (!message.content) return;
+
+    try {
+      if (soundRef.current) {
+        if (isPlaying) {
+          await soundRef.current.pauseAsync();
+          if (onTogglePlay) onTogglePlay(null);
+        } else {
+          // If we are starting play, tell the parent
+          if (onTogglePlay) onTogglePlay(message._id);
+          await soundRef.current.playAsync();
+        }
+      } else {
+        setIsLoadingAudio(true);
+        if (onTogglePlay) onTogglePlay(message._id);
+
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: message.content },
+          { shouldPlay: true },
+          onPlaybackStatusUpdate,
+        );
+        soundRef.current = sound;
+        setIsLoadingAudio(false);
+      }
+    } catch (error) {
+      console.error("Error playing audio:", error);
+      setIsLoadingAudio(false);
+      if (onTogglePlay) onTogglePlay(null);
+    }
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
+
   return (
     <View
-      style={[
-        styles.row,
-        isFromMe ? styles.justifyEnd : styles.justifyStart,
-      ]}
+      style={[styles.row, isFromMe ? styles.justifyEnd : styles.justifyStart]}
     >
       <Pressable
         onLongPress={message.deleted ? undefined : onLongPress}
         style={[
           styles.bubble,
-          isFromMe ? styles.bubbleMe : styles.bubbleOther,
-          isSelected && styles.selectedBubble,
-          message.deleted && styles.bubbleDeleted,
+          isFromMe
+            ? { backgroundColor: colors.primary, borderBottomRightRadius: 4 }
+            : {
+                backgroundColor: colors.surfaceLight,
+                borderBottomLeftRadius: 0,
+              },
+          isSelected && {
+            borderWidth: 2,
+            borderColor: colors.primary,
+            backgroundColor: isDark
+              ? "rgba(108, 93, 211, 0.2)"
+              : "rgba(108, 93, 211, 0.1)",
+          },
+          message.deleted && {
+            backgroundColor: isDark
+              ? "rgba(255, 68, 68, 0.05)"
+              : "rgba(255, 68, 68, 0.1)",
+            borderWidth: 1,
+            borderColor: "rgba(255, 68, 68, 0.2)",
+          },
         ]}
       >
         {/* Sender Name for Group Chats */}
         {showSenderName && !isFromMe && !message.deleted && (
-          <Text style={styles.senderName}>
-            {typeof message.sender === "string" ? "Someone" : message.sender.name}
+          <Text style={[styles.senderName, { color: colors.primary }]}>
+            {typeof message.sender === "string"
+              ? "Someone"
+              : message.sender.name}
           </Text>
         )}
 
@@ -63,24 +183,100 @@ function MessageBubble({
           <>
             {isImage && (
               <Pressable onPress={() => setIsViewerVisible(true)}>
-                <Image source={{ uri: message.content }} style={styles.mediaImage} />
-              </Pressable>
-            )}
-            
-            {isVideo && (
-              <Pressable onPress={() => setIsViewerVisible(true)} style={styles.videoContainer}>
-                <Ionicons name="play-circle" size={48} color={COLORS.white} />
-              </Pressable>
-            )}
-            
-            {isDocument && (
-              <Pressable onPress={() => setIsViewerVisible(true)} style={styles.documentContainer}>
-                <Ionicons name="document-text" size={24} color={COLORS.primary} />
-                <Text style={styles.documentText}>Document</Text>
+                <Image
+                  source={{ uri: message.content }}
+                  style={styles.mediaImage}
+                />
               </Pressable>
             )}
 
-            <MediaViewer 
+            {isVideo && (
+              <Pressable
+                onPress={() => setIsViewerVisible(true)}
+                style={[
+                  styles.videoContainer,
+                  { backgroundColor: colors.surfaceLight },
+                ]}
+              >
+                <Ionicons name="play-circle" size={48} color={colors.white} />
+              </Pressable>
+            )}
+
+            {isVoice && (
+              <View style={styles.voiceContainer}>
+                <Pressable onPress={togglePlayback} style={styles.voicePlayBtn}>
+                  {isLoadingAudio ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={isFromMe ? colors.background : colors.primary}
+                    />
+                  ) : (
+                    <Ionicons
+                      name={isPlaying ? "pause" : "play"}
+                      size={24}
+                      color={isFromMe ? colors.background : colors.primary}
+                    />
+                  )}
+                </Pressable>
+                <View style={styles.voiceProgressContainer}>
+                  <View
+                    style={[
+                      styles.voiceProgressBar,
+                      { backgroundColor: "rgba(128, 128, 128, 0.2)" },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.voiceProgressFill,
+                        {
+                          width: `${(playbackPosition / ((message.duration || 0) * 1000)) * 100}%`,
+                          backgroundColor: isFromMe
+                            ? colors.background
+                            : colors.primary,
+                        },
+                      ]}
+                    />
+                  </View>
+                  <Text
+                    style={[
+                      styles.voiceDuration,
+                      {
+                        color: isFromMe ? colors.background : colors.foreground,
+                        opacity: 0.7,
+                      },
+                    ]}
+                  >
+                    {formatDuration(message.duration || 0)}
+                  </Text>
+                </View>
+              </View>
+            )}
+
+            {isDocument && (
+              <Pressable
+                onPress={() => setIsViewerVisible(true)}
+                style={[
+                  styles.documentContainer,
+                  { backgroundColor: colors.surfaceLight },
+                ]}
+              >
+                <Ionicons
+                  name="document-text"
+                  size={24}
+                  color={colors.primary}
+                />
+                <Text
+                  style={[
+                    styles.documentText,
+                    { color: isFromMe ? colors.background : colors.foreground },
+                  ]}
+                >
+                  Document
+                </Text>
+              </Pressable>
+            )}
+
+            <MediaViewer
               isVisible={isViewerVisible}
               onClose={() => setIsViewerVisible(false)}
               mediaUrl={message.content}
@@ -88,10 +284,12 @@ function MessageBubble({
             />
           </>
         )}
-        
+
         {/* Text */}
         {message.deleted ? (
-          <Text style={[styles.text, styles.deletedText]}>
+          <Text
+            style={[styles.text, styles.deletedText, { color: colors.grey }]}
+          >
             🚫 This message was deleted
           </Text>
         ) : (
@@ -99,7 +297,13 @@ function MessageBubble({
             <Text
               style={[
                 styles.text,
-                isFromMe ? styles.textMe : styles.textOther,
+                {
+                  color: isFromMe
+                    ? colors.background
+                    : isDark
+                      ? colors.white
+                      : colors.foreground,
+                },
                 message.content && { marginTop: 4 },
               ]}
             >
@@ -107,13 +311,19 @@ function MessageBubble({
             </Text>
           )
         )}
-        
+
         {/* Time */}
         {!message.deleted && (
           <Text
             style={[
               styles.time,
-              isFromMe ? styles.timeMe : styles.timeOther,
+              {
+                color: isFromMe
+                  ? "rgba(0,0,0,0.4)"
+                  : isDark
+                    ? "rgba(255,255,255,0.4)"
+                    : "rgba(0,0,0,0.3)",
+              },
             ]}
           >
             {time}
@@ -125,7 +335,6 @@ function MessageBubble({
 }
 
 export default MessageBubble;
-
 
 const styles = StyleSheet.create({
   row: {
@@ -145,54 +354,22 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
 
-  bubbleMe: {
-    backgroundColor: COLORS.primary,
-    borderBottomRightRadius: 4,
-  },
-  bubbleOther: {
-    backgroundColor: COLORS.surfaceLight,
-    borderBottomLeftRadius: 0,
-  },
-  bubbleDeleted: {
-    backgroundColor: "rgba(255, 68, 68, 0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(255, 68, 68, 0.2)",
-  },
-  selectedBubble: {
-    borderWidth: 2,
-    borderColor: COLORS.primary,
-    backgroundColor: "rgba(108, 93, 211, 0.2)",
-  },
   text: {
     fontSize: 14,
   },
   deletedText: {
-    color: COLORS.grey,
     fontStyle: "italic",
     fontSize: 13,
-  },
-  textMe: {
-    color: COLORS.background,
-  },
-  textOther: {
-    color: COLORS.white,
   },
   senderName: {
     fontSize: 12,
     fontWeight: "bold",
-    color: COLORS.primary,
     marginBottom: 2,
   },
   time: {
     fontSize: 10,
     marginTop: 4,
     alignSelf: "flex-end",
-  },
-  timeMe: {
-    color: "rgba(13, 13, 15, 0.5)",
-  },
-  timeOther: {
-    color: "rgba(255, 255, 255, 0.5)",
   },
   mediaImage: {
     width: 200,
@@ -204,7 +381,6 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 12,
-    backgroundColor: COLORS.surfaceLight,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 4,
@@ -214,12 +390,40 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     padding: 12,
-    backgroundColor: COLORS.surfaceLight,
     borderRadius: 8,
     marginBottom: 4,
   },
   documentText: {
-    color: COLORS.white,
     fontSize: 14,
+  },
+  voiceContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    minWidth: 150,
+    paddingVertical: 4,
+  },
+  voicePlayBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "rgba(128, 128, 128, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  voiceProgressContainer: {
+    flex: 1,
+    gap: 4,
+  },
+  voiceProgressBar: {
+    height: 3,
+    borderRadius: 1.5,
+    overflow: "hidden",
+  },
+  voiceProgressFill: {
+    height: "100%",
+  },
+  voiceDuration: {
+    fontSize: 10,
   },
 });

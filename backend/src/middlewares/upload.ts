@@ -29,10 +29,18 @@ const allowedMimeTypes = new Set([
   "video/x-msvideo",
   "video/x-matroska",
   "video/webm",
+  "audio/mpeg",
+  "audio/wav",
+  "audio/webm",
+  "audio/m4a",
+  "audio/aac",
+  "audio/ogg",
+  "audio/mp4",
+  "audio/x-m4a",
 ]);
 
 const allowedExtensions =
-  /\.(pdf|docx|doc|png|jpg|jpeg|webp|gif|mp4|mov|avi|mkv|webm)$/i;
+  /\.(pdf|docx|doc|png|jpg|jpeg|webp|gif|mp4|mov|avi|mkv|webm|mp3|wav|m4a|aac|ogg)$/i;
 
 const fileFilter = (
   req: Express.Request,

@@ -161,23 +161,6 @@ export const verifyCode = async (req: Request, res: Response) => {
       user.deviceId = deviceId;
     }
 
-    // Auto-generate password if user doesn't have one
-    if (!user.password) {
-      const generatedPassword = generateStrongPassword();
-      const hashedPassword = await bcrypt.hash(generatedPassword, 10);
-      user.password = hashedPassword;
-
-      // Send password via SMS
-      const passwordMessage = `Your Chatify account password is: ${generatedPassword}. Please save it securely.`;
-      try {
-        await sendOtp({ smsMessage: passwordMessage, phoneNumber: user.phone });
-        console.log("✅ Password sent via SMS to:", user.phone);
-      } catch (error) {
-        console.error("Error sending password SMS:", error);
-        // Continue even if SMS fails - user can reset password later
-      }
-    }
-
     user.isVerified = true;
     user.verificationCode = undefined;
     user.codeExpires = undefined;
@@ -189,6 +172,7 @@ export const verifyCode = async (req: Request, res: Response) => {
     return res.status(200).json({
       message: "Phone verified",
       token,
+      profileCompleted: !!(user.name && user.email),
       user: {
         _id: user._id,
         name: user.name,

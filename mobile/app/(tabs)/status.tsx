@@ -8,22 +8,25 @@ import {
   Modal,
   TextInput,
   FlatList,
+  RefreshControl,
+  Pressable,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 
-import { COLORS } from "@/constants/theme";
 import { useAuthStore } from "@/store/auth";
+import { useAlert } from "@/components/AlertMessageController";
+import { useTheme } from "@/hooks/useTheme";
 import StatusCard from "@/components/StatusCard";
 import { useCreateStatus, useStatuses } from "@/hooks/useStatus";
-import type { Status } from "@/types";
-import * as ImagePicker from "expo-image-picker";
-import { useAlert } from "@/components/AlertMessageController";
+import { Status } from "@/types";
 
 const StatusScreen = () => {
   const router = useRouter();
   const currentUser = useAuthStore((state) => state.user);
+  const { colors, isDark } = useTheme();
   const alert = useAlert();
 
   const { data: statuses, isLoading, refetch, isRefetching } = useStatuses();
@@ -125,21 +128,24 @@ const StatusScreen = () => {
   const currentUserAvatar = currentUser?.avatar;
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+    >
       {/* HEADER */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Status</Text>
+        <Text style={[styles.headerTitle, { color: colors.foreground }]}>
+          Status
+        </Text>
         <View style={styles.headerActions}>
           {isRefetching && (
-            <ActivityIndicator size="small" color={COLORS.primary} />
+            <ActivityIndicator size="small" color={colors.primary} />
           )}
         </View>
       </View>
 
-      {/* STATUS LIST */}
       {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
+        <View style={[styles.center, { backgroundColor: colors.background }]}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
         <FlatList
@@ -147,7 +153,9 @@ const StatusScreen = () => {
           keyExtractor={(item) => item.userId}
           ListHeaderComponent={
             <View>
-              <Text style={styles.sectionLabel}>My Status</Text>
+              <Text style={[styles.sectionLabel, { color: colors.grey }]}>
+                My Status
+              </Text>
               <StatusCard
                 name={currentUser?.name || "You"}
                 avatar={currentUserAvatar}
@@ -164,8 +172,13 @@ const StatusScreen = () => {
                     : setIsCreateModalVisible(true)
                 }
               />
-              <Text style={styles.sectionLabel}>Recent updates</Text>
+              <Text style={[styles.sectionLabel, { color: colors.grey }]}>
+                Recent updates
+              </Text>
             </View>
+          }
+          refreshControl={
+            <RefreshControl refreshing={isLoading} onRefresh={refetch} />
           }
           renderItem={({ item }) => {
             const hasUnseen = item.statuses.some(
@@ -182,9 +195,11 @@ const StatusScreen = () => {
             );
           }}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyTitle}>No status updates yet</Text>
-              <Text style={styles.emptySubtitle}>
+            <View style={[styles.emptyContainer, { marginTop: 40 }]}>
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
+                No status updates yet
+              </Text>
+              <Text style={[styles.emptySubtitle, { color: colors.grey }]}>
                 Tap the + button to share what{" "}
                 {currentUser?.name?.split(" ")[0] || "you"} are up to.
               </Text>
@@ -200,52 +215,93 @@ const StatusScreen = () => {
         visible={isCreateModalVisible}
         onRequestClose={() => setIsCreateModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>New Status</Text>
-            <Text style={styles.modalSubtitle}>Share a text update.</Text>
-            <View style={styles.modalInputWrapper}>
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setIsCreateModalVisible(false)}
+        >
+          <View
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor: colors.surfaceCard,
+                borderWidth: isDark ? 1 : 0,
+                borderColor: colors.surfaceLight,
+              },
+            ]}
+          >
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+              New Status
+            </Text>
+            <Text style={[styles.modalSubtitle, { color: colors.grey }]}>
+              Share a text update.
+            </Text>
+            <View
+              style={[
+                styles.modalInputWrapper,
+                { backgroundColor: colors.surfaceLight },
+              ]}
+            >
               <TextInput
-                style={styles.modalInput}
+                style={[styles.modalInput, { color: colors.foreground }]}
                 placeholder="What's on your mind?"
-                placeholderTextColor={COLORS.grey}
+                placeholderTextColor={colors.grey}
                 value={statusText}
                 onChangeText={setStatusText}
                 multiline
                 maxLength={200}
+                autoFocus
+                selectionColor={colors.primary}
               />
             </View>
 
             <View style={styles.modalButtonsRow}>
               <TouchableOpacity
-                style={[styles.modalButton, styles.modalCancelButton]}
+                style={[
+                  styles.modalButton,
+                  styles.modalCancelButton,
+                  { backgroundColor: colors.surfaceLight },
+                ]}
                 onPress={() => {
                   setIsCreateModalVisible(false);
                   setStatusText("");
                 }}
                 disabled={isCreating}
               >
-                <Text style={styles.modalCancelText}>Cancel</Text>
+                <Text
+                  style={[styles.modalCancelText, { color: colors.foreground }]}
+                >
+                  Cancel
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[
                   styles.modalButton,
                   styles.modalCreateButton,
+                  { backgroundColor: colors.primary },
                   !statusText.trim() && styles.modalButtonDisabled,
                 ]}
                 onPress={handleCreateStatus}
                 disabled={!statusText.trim() || isCreating}
               >
                 {isCreating ? (
-                  <ActivityIndicator color={COLORS.background} />
+                  <ActivityIndicator
+                    color={isDark ? colors.background : colors.white}
+                  />
                 ) : (
-                  <Text style={styles.modalCreateText}>Post</Text>
+                  <Text
+                    style={[
+                      styles.modalCreateText,
+                      { color: isDark ? colors.background : colors.white },
+                    ]}
+                  >
+                    Post
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </Pressable>
       </Modal>
 
       {/* TYPE SELECTION MODAL WITH ICONS */}
@@ -255,16 +311,36 @@ const StatusScreen = () => {
         visible={isTypeModalVisible}
         onRequestClose={() => setIsTypeModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Create Status</Text>
-            <Text style={styles.modalSubtitle}>
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setIsTypeModalVisible(false)}
+        >
+          <View
+            style={[
+              styles.modalContent,
+              {
+                backgroundColor: colors.surfaceCard,
+                borderWidth: isDark ? 1 : 0,
+                borderColor: colors.surfaceLight,
+              },
+            ]}
+          >
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+              Create Status
+            </Text>
+            <Text style={[styles.modalSubtitle, { color: colors.grey }]}>
               Choose what kind of status you want to share.
             </Text>
 
             <View style={styles.iconRow}>
               <TouchableOpacity
-                style={styles.iconCircle}
+                style={[
+                  styles.iconCircle,
+                  {
+                    backgroundColor: colors.surfaceLight,
+                    shadowColor: colors.grey,
+                  },
+                ]}
                 onPress={() => {
                   setIsTypeModalVisible(false);
                   setIsCreateModalVisible(true);
@@ -274,12 +350,18 @@ const StatusScreen = () => {
                 <Ionicons
                   name="create-outline"
                   size={28}
-                  color={COLORS.foreground}
+                  color={colors.foreground}
                 />
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.iconCircle}
+                style={[
+                  styles.iconCircle,
+                  {
+                    backgroundColor: colors.surfaceLight,
+                    shadowColor: colors.grey,
+                  },
+                ]}
                 onPress={async () => {
                   setIsTypeModalVisible(false);
                   await handlePickMediaAndPreview();
@@ -289,24 +371,29 @@ const StatusScreen = () => {
                 <Ionicons
                   name="image-outline"
                   size={28}
-                  color={COLORS.foreground}
+                  color={colors.foreground}
                 />
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </Pressable>
       </Modal>
 
-      {/* FAB */}
       <TouchableOpacity
-        style={styles.fab}
+        style={[styles.fab, { backgroundColor: colors.primary }]}
         onPress={() => setIsTypeModalVisible(true)}
         disabled={isCreating}
       >
         {isCreating ? (
-          <ActivityIndicator color={COLORS.background} />
+          <ActivityIndicator
+            color={isDark ? colors.background : colors.white}
+          />
         ) : (
-          <Ionicons name="add" size={26} color={COLORS.background} />
+          <Ionicons
+            name="add"
+            size={26}
+            color={isDark ? colors.background : "#FFF"}
+          />
         )}
       </TouchableOpacity>
     </SafeAreaView>
@@ -314,7 +401,7 @@ const StatusScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
+  container: { flex: 1 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -322,7 +409,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  headerTitle: { color: COLORS.foreground, fontSize: 22, fontWeight: "700" },
+  headerTitle: { fontSize: 22, fontWeight: "700" },
   headerActions: { flexDirection: "row", alignItems: "center", gap: 8 },
   iconButton: {
     width: 32,
@@ -330,96 +417,101 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: COLORS.surfaceLight,
   },
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   sectionLabel: {
-    color: COLORS.grey,
     fontSize: 12,
     textTransform: "uppercase",
     marginTop: 8,
     marginBottom: 4,
     paddingHorizontal: 16,
   },
-  emptyContainer: { paddingHorizontal: 24, paddingTop: 40 },
+  emptyContainer: { paddingHorizontal: 24 },
   emptyTitle: {
-    color: COLORS.foreground,
     fontSize: 18,
     fontWeight: "600",
     marginBottom: 4,
   },
-  emptySubtitle: { color: COLORS.grey, fontSize: 14 },
+  emptySubtitle: { fontSize: 14 },
 
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.6)",
     justifyContent: "center",
     alignItems: "center",
     padding: 24,
   },
   modalContent: {
     width: "100%",
-    borderRadius: 16,
-    backgroundColor: COLORS.background,
-    padding: 20,
+    borderRadius: 24,
+    padding: 24,
     alignItems: "center",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
   },
   modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: COLORS.foreground,
+    fontSize: 20,
+    fontWeight: "700",
     marginBottom: 4,
   },
-  modalSubtitle: { fontSize: 14, color: COLORS.grey, marginBottom: 16 },
+  modalSubtitle: { fontSize: 14, marginBottom: 24, textAlign: "center" },
   modalInputWrapper: {
-    backgroundColor: COLORS.surfaceLight,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.surfaceLight,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 20,
-    minHeight: 80,
+    width: "100%",
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 24,
+    minHeight: 120,
   },
-  modalInput: { fontSize: 16, color: COLORS.foreground },
+  modalInput: {
+    fontSize: 18,
+    textAlignVertical: "top",
+    lineHeight: 24,
+  },
+  charCounter: {
+    fontSize: 11,
+    alignSelf: "flex-end",
+    marginTop: 8,
+  },
   modalButtonsRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: 12,
+    width: "100%",
   },
   modalButton: {
-    minWidth: 90,
-    height: 40,
-    borderRadius: 999,
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 16,
   },
-  modalCancelButton: { backgroundColor: COLORS.surfaceLight },
-  modalCreateButton: { backgroundColor: COLORS.primary },
+  modalCancelButton: {},
+  modalCreateButton: {},
   modalButtonDisabled: { opacity: 0.5 },
-  modalCancelText: { color: COLORS.foreground, fontWeight: "500" },
-  modalCreateText: { color: COLORS.background, fontWeight: "600" },
+  modalCancelText: { fontWeight: "600", fontSize: 16 },
+  modalCreateText: { fontWeight: "700", fontSize: 16 },
 
   // Icon Row for TYPE Modal
   iconRow: {
     flexDirection: "row",
-    justifyContent: "space-around",
+    justifyContent: "center",
+    gap: 32,
     width: "100%",
-    marginTop: 20,
+    marginTop: 8,
   },
   iconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: COLORS.surfaceLight,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: COLORS.background,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
 
   fab: {
@@ -429,10 +521,8 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

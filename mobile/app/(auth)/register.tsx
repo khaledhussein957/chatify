@@ -13,12 +13,12 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useForm, Controller } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
 import Joi from "joi";
-import { COLORS } from "@/constants/theme";
-import { styles } from "@/assets/styles/auth.style";
+import { getAuthStyles } from "@/assets/styles/auth.style";
 import { router } from "expo-router";
 import { useUserRegister } from "@/hooks/useAuth";
 import { useAlert } from "@/components/AlertMessageController"; // ✅ import alert
 import { validatePhoneNumber } from "@/lib/phoneValidate";
+import { useTheme } from "@/hooks/useTheme";
 
 // Joi schema for register validation
 const registerSchema = Joi.object({
@@ -32,6 +32,8 @@ type RegisterFormData = {
 };
 
 const RegisterScreen = () => {
+  const { colors, isDark } = useTheme();
+  const styles = getAuthStyles(colors);
   const {
     control,
     handleSubmit,
@@ -74,7 +76,7 @@ const RegisterScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -107,12 +109,21 @@ const RegisterScreen = () => {
                 name="phone"
                 render={({ field: { onChange, onBlur, value } }) => (
                   <View style={styles.inputContainer}>
-                    <Text style={styles.label}>Phone</Text>
+                    <Text style={[styles.label, { color: colors.foreground }]}>
+                      Phone
+                    </Text>
                     <View>
                       <TextInput
-                        style={styles.input}
+                        style={[
+                          styles.input,
+                          {
+                            backgroundColor: colors.surfaceCard,
+                            color: colors.foreground,
+                            borderColor: colors.surfaceLight,
+                          },
+                        ]}
                         placeholder="Enter your phone"
-                        placeholderTextColor={COLORS.grey}
+                        placeholderTextColor={colors.grey}
                         autoCapitalize="none"
                         onChangeText={onChange}
                         onBlur={onBlur}
@@ -120,7 +131,7 @@ const RegisterScreen = () => {
                       />
                     </View>
                     {errors.phone && (
-                      <Text style={styles.errorText}>
+                      <Text style={[styles.errorText, { color: colors.error }]}>
                         {errors.phone.message}
                       </Text>
                     )}
@@ -135,9 +146,18 @@ const RegisterScreen = () => {
                 onPress={handleSubmit(onSubmit)}
               >
                 {isSubmitting || isRegistering ? (
-                  <ActivityIndicator color={COLORS.background} />
+                  <ActivityIndicator
+                    color={isDark ? colors.background : colors.white}
+                  />
                 ) : (
-                  <Text style={styles.formButtonText}>Register</Text>
+                  <Text
+                    style={[
+                      styles.formButtonText,
+                      { color: isDark ? colors.background : colors.white },
+                    ]}
+                  >
+                    Register
+                  </Text>
                 )}
               </Pressable>
 
@@ -149,17 +169,22 @@ const RegisterScreen = () => {
                   marginTop: 16,
                 }}
               >
-                <Text style={{ color: COLORS.grey }}>
+                <Text style={{ color: colors.grey }}>
                   Already have an account?{" "}
                 </Text>
                 <Pressable onPress={() => router.push("/(auth)")}>
-                  <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
+                  <Text style={{ color: colors.primary, fontWeight: "600" }}>
                     Login
                   </Text>
                 </Pressable>
               </View>
 
-              <Text style={[styles.termsText, { marginTop: 16 }]}>
+              <Text
+                style={[
+                  styles.termsText,
+                  { marginTop: 16, color: colors.grey },
+                ]}
+              >
                 By continuing, you agree to our Terms & Privacy Policy
               </Text>
             </View>

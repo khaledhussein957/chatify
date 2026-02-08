@@ -14,12 +14,12 @@ import { useForm, Controller } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
 import Joi from "joi";
 import { useRoute } from "@react-navigation/native";
-import { COLORS } from "@/constants/theme";
-import { styles } from "@/assets/styles/auth.style";
+import { getAuthStyles } from "@/assets/styles/auth.style";
 import { router } from "expo-router";
 import { useResetPassword, useResendResetCode } from "@/hooks/useAuth";
 import { useState } from "react";
 import { useAlert } from "@/components/AlertMessageController"; // ✅ import alert
+import { useTheme } from "@/hooks/useTheme";
 
 // Joi schema for reset password
 const resetPasswordSchema = Joi.object({
@@ -44,6 +44,8 @@ type ResetPasswordFormData = {
 };
 
 const ResetPasswordScreen = () => {
+  const { colors, isDark } = useTheme();
+  const styles = getAuthStyles(colors);
   const route = useRoute();
   const email = (route.params as { email?: string } | undefined)?.email;
 
@@ -110,7 +112,7 @@ const ResetPasswordScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -132,18 +134,23 @@ const ResetPasswordScreen = () => {
               <Ionicons
                 name="chatbubble-ellipses"
                 size={32}
-                color={COLORS.primary}
+                color={colors.primary}
               />
-              <Text style={[styles.appName, { marginTop: 8 }]}>
+              <Text
+                style={[
+                  styles.appName,
+                  { color: colors.foreground, marginTop: 8 },
+                ]}
+              >
                 Reset Password
               </Text>
             </View>
 
             <Text
-              style={{ marginBottom: 12, fontSize: 16, color: COLORS.grey }}
+              style={{ marginBottom: 12, fontSize: 16, color: colors.grey }}
             >
               Reset password for:{" "}
-              <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
+              <Text style={{ color: colors.primary, fontWeight: "600" }}>
                 {email}
               </Text>
             </Text>
@@ -154,11 +161,20 @@ const ResetPasswordScreen = () => {
               name="resetCode"
               render={({ field: { onChange, onBlur, value } }) => (
                 <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Reset Code</Text>
+                  <Text style={[styles.label, { color: colors.foreground }]}>
+                    Reset Code
+                  </Text>
                   <TextInput
-                    style={styles.input}
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: colors.surfaceCard,
+                        color: colors.foreground,
+                        borderColor: colors.surfaceLight,
+                      },
+                    ]}
                     placeholder="Enter reset code"
-                    placeholderTextColor={COLORS.grey}
+                    placeholderTextColor={colors.grey}
                     keyboardType="numeric"
                     onChangeText={onChange}
                     onBlur={onBlur}
@@ -179,15 +195,20 @@ const ResetPasswordScreen = () => {
                       alignSelf: "flex-end",
                       paddingVertical: 6,
                       paddingHorizontal: 12,
-                      backgroundColor: COLORS.primary,
+                      backgroundColor: colors.primary,
                       borderRadius: 8,
                     }}
                   >
                     {isResending ? (
-                      <ActivityIndicator color={COLORS.background} />
+                      <ActivityIndicator
+                        color={isDark ? colors.background : colors.white}
+                      />
                     ) : (
                       <Text
-                        style={{ color: COLORS.background, fontWeight: "600" }}
+                        style={{
+                          color: isDark ? colors.background : colors.white,
+                          fontWeight: "600",
+                        }}
                       >
                         Resend Code
                       </Text>
@@ -203,12 +224,22 @@ const ResetPasswordScreen = () => {
               name="newPassword"
               render={({ field: { onChange, onBlur, value } }) => (
                 <View style={styles.inputContainer}>
-                  <Text style={styles.label}>New Password</Text>
+                  <Text style={[styles.label, { color: colors.foreground }]}>
+                    New Password
+                  </Text>
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
                     <TextInput
-                      style={[styles.input, { flex: 1 }]}
+                      style={[
+                        styles.input,
+                        {
+                          flex: 1,
+                          backgroundColor: colors.surfaceCard,
+                          color: colors.foreground,
+                          borderColor: colors.surfaceLight,
+                        },
+                      ]}
                       placeholder="Enter new password"
-                      placeholderTextColor={COLORS.grey}
+                      placeholderTextColor={colors.grey}
                       secureTextEntry={!showPassword}
                       onChangeText={onChange}
                       onBlur={onBlur}
@@ -221,7 +252,7 @@ const ResetPasswordScreen = () => {
                       <Ionicons
                         name={showPassword ? "eye-off" : "eye"}
                         size={22}
-                        color={COLORS.grey}
+                        color={colors.grey}
                       />
                     </Pressable>
                   </View>
@@ -240,12 +271,22 @@ const ResetPasswordScreen = () => {
               name="confirmPassword"
               render={({ field: { onChange, onBlur, value } }) => (
                 <View style={styles.inputContainer}>
-                  <Text style={styles.label}>Confirm Password</Text>
+                  <Text style={[styles.label, { color: colors.foreground }]}>
+                    Confirm Password
+                  </Text>
                   <View style={{ flexDirection: "row", alignItems: "center" }}>
                     <TextInput
-                      style={[styles.input, { flex: 1 }]}
+                      style={[
+                        styles.input,
+                        {
+                          flex: 1,
+                          backgroundColor: colors.surfaceCard,
+                          color: colors.foreground,
+                          borderColor: colors.surfaceLight,
+                        },
+                      ]}
                       placeholder="Confirm new password"
-                      placeholderTextColor={COLORS.grey}
+                      placeholderTextColor={colors.grey}
                       secureTextEntry={!showConfirmPassword}
                       onChangeText={onChange}
                       onBlur={onBlur}
@@ -258,7 +299,7 @@ const ResetPasswordScreen = () => {
                       <Ionicons
                         name={showConfirmPassword ? "eye-off" : "eye"}
                         size={22}
-                        color={COLORS.grey}
+                        color={colors.grey}
                       />
                     </Pressable>
                   </View>
@@ -278,9 +319,18 @@ const ResetPasswordScreen = () => {
               onPress={handleSubmit(onSubmit)}
             >
               {isSubmitting || isResetting ? (
-                <ActivityIndicator color={COLORS.background} />
+                <ActivityIndicator
+                  color={isDark ? colors.background : colors.white}
+                />
               ) : (
-                <Text style={styles.formButtonText}>Reset Password</Text>
+                <Text
+                  style={[
+                    styles.formButtonText,
+                    { color: isDark ? colors.background : colors.white },
+                  ]}
+                >
+                  Reset Password
+                </Text>
               )}
             </Pressable>
 
@@ -292,11 +342,11 @@ const ResetPasswordScreen = () => {
                 marginTop: 16,
               }}
             >
-              <Text style={{ color: COLORS.grey }}>
+              <Text style={{ color: colors.grey }}>
                 Remember your password?{" "}
               </Text>
               <Pressable onPress={() => router.push("/(auth)")}>
-                <Text style={{ color: COLORS.primary, fontWeight: "600" }}>
+                <Text style={{ color: colors.primary, fontWeight: "600" }}>
                   Login
                 </Text>
               </Pressable>

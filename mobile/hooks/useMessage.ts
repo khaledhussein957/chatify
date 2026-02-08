@@ -54,6 +54,34 @@ export const useSendMessageWithContent = () => {
   };
 };
 
+export const useSendVoiceMessage = () => {
+  const { apiWithAuth } = useApi();
+
+  return async (chatId: string, file: FileUpload, duration: number) => {
+    const formData = new FormData();
+    formData.append("chatId", chatId);
+    formData.append("duration", duration.toString());
+
+    // @ts-ignore
+    formData.append("content", {
+      uri: file.uri,
+      name: file.name,
+      type: file.type,
+    } as any);
+
+    const { data } = await apiWithAuth<Message>({
+      method: "POST",
+      url: "/messages/voice",
+      data: formData,
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    return data;
+  };
+};
+
 export const useUpdateTextMessage = () => {
   const { apiWithAuth } = useApi();
 

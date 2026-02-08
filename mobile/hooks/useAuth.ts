@@ -71,7 +71,11 @@ export const useVerifyCode = () => {
       code: string;
       deviceId: string;
     }) => {
-      const { data } = await api<{ token: string; user: User }>({
+      const { data } = await api<{
+        token: string;
+        user: User;
+        profileCompleted: boolean;
+      }>({
         method: "POST",
         url: "/auth/verify-code",
         data: userData,

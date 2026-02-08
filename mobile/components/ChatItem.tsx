@@ -3,13 +3,14 @@ import { Image } from "expo-image";
 import { View, Text, Pressable, StyleSheet } from "react-native";
 import { format } from "date-fns";
 import { useSocketStore } from "@/lib/socket";
-import { COLORS } from "@/constants/theme";
 import { useCurrentUser } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 
 const ChatItem = ({ chat, onPress }: { chat: Chat; onPress: () => void }) => {
   const participant = chat.participant;
-  const { onlineUsers, typingUsers, unreadChats } = useSocketStore();
+  const { onlineUsers, activityUsers, unreadChats } = useSocketStore();
   const { data: currentUser } = useCurrentUser();
+  const { colors } = useTheme();
 
   const isOnline = chat.isGroupChat
     ? chat.participants.some((p) => {
@@ -17,44 +18,75 @@ const ChatItem = ({ chat, onPress }: { chat: Chat; onPress: () => void }) => {
         return pId !== currentUser?._id && onlineUsers.has(pId);
       })
     : participant
-    ? onlineUsers.has(participant._id)
-    : false;
+      ? onlineUsers.has(participant._id)
+      : false;
 
-  const chatTypingMap = typingUsers.get(chat._id);
-  const isTyping = chatTypingMap && chatTypingMap.size > 0;
+  const chatActivityMap = activityUsers.get(chat._id);
+  const firstActiveEntry = chatActivityMap
+    ? Array.from(chatActivityMap.values())[0]
+    : null;
 
-  let typingText = "typing...";
-  if (isTyping && chatTypingMap && chat.isGroupChat) {
-    const names = Array.from(chatTypingMap.values());
-    typingText = names.length === 1 ? `${names[0]} is typing...` : "People are typing...";
-  }
+  const getActivityText = () => {
+    if (!firstActiveEntry) return null;
+    const { activity, name } = firstActiveEntry;
+
+    if (chat.isGroupChat) {
+      const activeCount = chatActivityMap?.size || 0;
+      return activeCount === 1
+        ? `${name} is ${activity}...`
+        : "People are active...";
+    }
+
+    return activity === "typing" ? "typing..." : "recording...";
+  };
+
+  const activityText = getActivityText();
 
   const hasUnread = unreadChats.has(chat._id);
 
   const displayName = chat.isGroupChat ? chat.name : participant?.name;
-  const displayAvatar = chat.isGroupChat ? `https://ui-avatars.com/api/?name=${chat.name}&background=random` : participant?.avatar;
+  const displayAvatar = chat.isGroupChat
+    ? `https://ui-avatars.com/api/?name=${chat.name}&background=random`
+    : participant?.avatar;
 
   return (
     <Pressable style={styles.container} onPress={onPress}>
       {/* Avatar & online indicator */}
       <View style={styles.avatarWrapper}>
-        <Image 
-          source={displayAvatar} 
-          style={styles.avatar} 
-        />
-        {isOnline && <View style={styles.onlineIndicator} />}
+        <Image source={displayAvatar} style={styles.avatar} />
+        {isOnline && (
+          <View
+            style={[
+              styles.onlineIndicator,
+              {
+                backgroundColor: colors.primary,
+                borderColor: colors.background,
+              },
+            ]}
+          />
+        )}
       </View>
 
       {/* Chat info */}
       <View style={styles.info}>
         <View style={styles.row}>
-          <Text style={[styles.name, hasUnread && { color: COLORS.primary, fontWeight: "600" }]}>
+          <Text
+            style={[
+              styles.name,
+              { color: colors.foreground },
+              hasUnread && { color: colors.primary, fontWeight: "600" },
+            ]}
+          >
             {displayName}
           </Text>
 
           <View style={styles.row}>
-            {hasUnread && <View style={styles.unreadDot} />}
-            <Text style={styles.time}>
+            {hasUnread && (
+              <View
+                style={[styles.unreadDot, { backgroundColor: colors.primary }]}
+              />
+            )}
+            <Text style={[styles.time, { color: colors.grey }]}>
               {chat.lastMessageAt
                 ? format(new Date(chat.lastMessageAt), "h:mm a")
                 : ""}
@@ -62,30 +94,46 @@ const ChatItem = ({ chat, onPress }: { chat: Chat; onPress: () => void }) => {
           </View>
         </View>
 
-        <View style={[styles.row, { marginTop: 4, justifyContent: "space-between" }]}>
-          {isTyping ? (
-            <Text style={styles.typingText}>{typingText}</Text>
+        <View
+          style={[
+            styles.row,
+            { marginTop: 4, justifyContent: "space-between" },
+          ]}
+        >
+          {activityText ? (
+            <Text style={[styles.typingText, { color: colors.primary }]}>
+              {activityText}
+            </Text>
           ) : (
             <Text
               style={[
                 styles.lastMessage,
-                hasUnread ? { color: COLORS.foreground, fontWeight: "500" } : { color: COLORS.grey },
-                chat.lastMessage?.deleted && styles.deletedText,
+                hasUnread
+                  ? { color: colors.foreground, fontWeight: "500" }
+                  : { color: colors.grey },
+                chat.lastMessage?.deleted && [
+                  styles.deletedText,
+                  { color: colors.grey },
+                ],
               ]}
               numberOfLines={1}
             >
-              {chat.lastMessage?.deleted ? (
-                "🚫 Message was deleted"
-              ) : (
-                chat.lastMessage?.text ||
-                (chat.lastMessage?.content ? (
-                  chat.lastMessage.content.match(/\.(jpg|jpeg|png|webp|gif)(\?|$)/i)
-                    ? "Photo 📸"
-                    : chat.lastMessage.content.match(/\.(mp4|mov|avi|mkv|webm)(\?|$)/i)
-                    ? "Video 📹"
-                    : "File 📁"
-                ) : "No messages yet 📝")
-              )}
+              {chat.lastMessage?.deleted
+                ? "🚫 Message was deleted"
+                : chat.lastMessage?.type === "voice"
+                  ? "Voice message 🎤"
+                  : chat.lastMessage?.text ||
+                    (chat.lastMessage?.content
+                      ? chat.lastMessage.content.match(
+                          /\.(jpg|jpeg|png|webp|gif)(\?|$)/i,
+                        )
+                        ? "Photo 📸"
+                        : chat.lastMessage.content.match(
+                              /\.(mp4|mov|avi|mkv|webm)(\?|$)/i,
+                            )
+                          ? "Video 📹"
+                          : "File 📁"
+                      : "No messages yet 📝")}
             </Text>
           )}
         </View>
@@ -121,9 +169,7 @@ const styles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 999,
-    backgroundColor: COLORS.primary,
     borderWidth: 2,
-    borderColor: COLORS.background,
   },
 
   info: {
@@ -139,7 +185,6 @@ const styles = StyleSheet.create({
 
   name: {
     fontSize: 16,
-    color: COLORS.foreground,
   },
 
   lastMessage: {
@@ -151,23 +196,19 @@ const styles = StyleSheet.create({
   typingText: {
     fontSize: 14,
     fontStyle: "italic",
-    color: COLORS.primary,
   },
 
   unreadDot: {
     width: 10,
     height: 10,
     borderRadius: 999,
-    backgroundColor: COLORS.primary,
     marginRight: 6,
   },
 
   time: {
     fontSize: 12,
-    color: COLORS.grey,
   },
   deletedText: {
     fontStyle: "italic",
-    color: COLORS.grey,
   },
 });

@@ -12,6 +12,7 @@ import NetInfo from "@react-native-community/netinfo";
 import { COLORS } from "@/constants/theme";
 import { useRouter } from "expo-router";
 import { useAuthStore } from "@/store/auth";
+import { useTheme } from "@/hooks/useTheme";
 
 const { height } = Dimensions.get("window");
 
@@ -19,6 +20,7 @@ const NetworkErrorScreen = () => {
   const [loading, setLoading] = useState(false);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const router = useRouter();
+  const { colors, isDark } = useTheme();
 
   const handleRetry = async () => {
     setLoading(true);
@@ -41,7 +43,7 @@ const NetworkErrorScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.imageContainer}>
         <Image
           source={require("../assets/images/icon.png")}
@@ -50,21 +52,36 @@ const NetworkErrorScreen = () => {
         />
       </View>
 
-      <Text style={styles.title}>Network Error</Text>
+      <Text style={[styles.title, { color: colors.primary }]}>
+        Network Error
+      </Text>
 
-      <Text style={styles.message}>
+      <Text style={[styles.message, { color: colors.grey }]}>
         Unable to connect. Please check your internet connection and try again.
       </Text>
 
       <Pressable
-        style={[styles.button, loading && styles.buttonDisabled]}
+        style={[
+          styles.button,
+          loading && styles.buttonDisabled,
+          { backgroundColor: colors.primary },
+        ]}
         onPress={handleRetry}
         disabled={loading}
       >
         {loading ? (
-          <ActivityIndicator color={COLORS.background} />
+          <ActivityIndicator
+            color={isDark ? colors.background : colors.white}
+          />
         ) : (
-          <Text style={styles.buttonText}>Refresh</Text>
+          <Text
+            style={[
+              styles.buttonText,
+              { color: isDark ? colors.background : colors.white },
+            ]}
+          >
+            Refresh
+          </Text>
         )}
       </Pressable>
     </View>

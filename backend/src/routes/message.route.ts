@@ -5,6 +5,7 @@ import {
   sendMessageWithContent,
   updateTextMessage,
   deleteMessage,
+  sendVoiceMessage,
 } from "../controllers/message.controller";
 import upload from "../middlewares/upload";
 
@@ -18,6 +19,8 @@ router.post(
   upload.single("content"),
   sendMessageWithContent,
 );
+
+router.post("/voice", protectRoute, upload.single("content"), sendVoiceMessage);
 
 router.get("/:chatId", protectRoute, getMessages);
 

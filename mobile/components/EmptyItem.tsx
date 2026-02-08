@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Pressable, Text, View, StyleSheet } from "react-native";
-import { COLORS } from "@/constants/theme";
+import { useTheme } from "@/hooks/useTheme";
 
 type EmptyUIProps = {
   title: string;
@@ -16,20 +16,37 @@ function EmptyUI({
   title,
   subtitle,
   iconName = "chatbubbles-outline",
-  iconColor = COLORS.grey,
+  iconColor,
   iconSize = 64,
   buttonLabel,
   onPressButton,
 }: EmptyUIProps) {
+  const { colors } = useTheme();
+
   return (
     <View style={styles.container}>
-      {iconName && <Ionicons name={iconName} size={iconSize} color={iconColor} />}
-      <Text style={styles.title}>{title}</Text>
-      {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+      {iconName && (
+        <Ionicons
+          name={iconName}
+          size={iconSize}
+          color={iconColor || colors.grey}
+        />
+      )}
+      <Text style={[styles.title, { color: colors.foreground }]}>{title}</Text>
+      {subtitle && (
+        <Text style={[styles.subtitle, { color: colors.grey }]}>
+          {subtitle}
+        </Text>
+      )}
 
       {buttonLabel && onPressButton && (
-        <Pressable style={styles.button} onPress={onPressButton}>
-          <Text style={styles.buttonText}>{buttonLabel}</Text>
+        <Pressable
+          style={[styles.button, { backgroundColor: colors.primary }]}
+          onPress={onPressButton}
+        >
+          <Text style={[styles.buttonText, { color: colors.background }]}>
+            {buttonLabel}
+          </Text>
         </Pressable>
       )}
     </View>
@@ -47,26 +64,22 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    color: COLORS.foreground,
     marginTop: 16,
     textAlign: "center",
     fontWeight: "600",
   },
   subtitle: {
     fontSize: 14,
-    color: COLORS.grey,
     marginTop: 4,
     textAlign: "center",
   },
   button: {
     marginTop: 24,
-    backgroundColor: COLORS.primary,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 999,
   },
   buttonText: {
-    color: COLORS.background,
     fontWeight: "600",
     fontSize: 16,
     textAlign: "center",
