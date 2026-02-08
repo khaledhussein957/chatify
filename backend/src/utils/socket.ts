@@ -7,8 +7,8 @@ import User from "../models/user.model";
 import Status from "../models/status.model";
 import ENV from "../configs/env";
 
-// store online users in memory: userId -> socketIds
-export const onlineUsers: Map<string, Set<string>> = new Map();
+// store online users in memory: userId -> { deviceId -> Set<socketIds> }
+export const onlineUsers: Map<string, Map<string, Set<string>>> = new Map();
 
 export let io: SocketServer;
 
@@ -42,15 +42,22 @@ export const initializeSocket = (httpServer: HttpServer) => {
 
   io.on("connection", (socket: Socket) => {
     const userId = socket.data.userId;
+    const deviceId = socket.handshake.auth.deviceId || "unknown";
 
     // Online users
     socket.emit("online-users", { userIds: Array.from(onlineUsers.keys()) });
-    const sockets = onlineUsers.get(userId) ?? new Set<string>();
-    sockets.add(socket.id);
-    onlineUsers.set(userId, sockets);
+
+    const userDevices =
+      onlineUsers.get(userId) ?? new Map<string, Set<string>>();
+    const deviceSockets = userDevices.get(deviceId) ?? new Set<string>();
+    deviceSockets.add(socket.id);
+    userDevices.set(deviceId, deviceSockets);
+    onlineUsers.set(userId, userDevices);
+
     socket.broadcast.emit("user-online", { userId });
 
     socket.join(`user:${userId}`);
+    socket.join(`user:${userId}:device:${deviceId}`); // User-scoped device room
 
     // Join chat
     socket.on("join-chat", async (chatId: string) => {
@@ -194,11 +201,18 @@ export const initializeSocket = (httpServer: HttpServer) => {
 
     // Disconnect
     socket.on("disconnect", () => {
-      const sockets = onlineUsers.get(userId);
-      if (!sockets) return;
+      const userDevices = onlineUsers.get(userId);
+      if (!userDevices) return;
 
-      sockets.delete(socket.id);
-      if (sockets.size === 0) {
+      const deviceSockets = userDevices.get(deviceId);
+      if (deviceSockets) {
+        deviceSockets.delete(socket.id);
+        if (deviceSockets.size === 0) {
+          userDevices.delete(deviceId);
+        }
+      }
+
+      if (userDevices.size === 0) {
         onlineUsers.delete(userId);
         Chat.find({ participants: userId })
           .then((chats) => {
@@ -210,7 +224,7 @@ export const initializeSocket = (httpServer: HttpServer) => {
             console.error("Disconnect offline-broadcast error:", err),
           );
       } else {
-        onlineUsers.set(userId, sockets);
+        onlineUsers.set(userId, userDevices);
       }
     });
   });
@@ -232,4 +246,31 @@ export const forceDisconnectUser = (userId: string) => {
 
   // cleanup in-memory online state if any somehow remains
   onlineUsers.delete(userId);
+};
+
+/**
+ * Logout all other devices for a user
+ */
+export const logoutOtherDevices = (userId: string, currentDeviceId: string) => {
+  if (!io) return;
+
+  const userDevices = onlineUsers.get(userId);
+  if (!userDevices) return;
+
+  for (const [deviceId, socketIds] of userDevices.entries()) {
+    if (deviceId !== currentDeviceId) {
+      const deviceRoom = `user:${userId}:device:${deviceId}`;
+      io.to(deviceRoom).emit("session-expired", {
+        message: "You have logged in from another device.",
+      });
+      io.in(deviceRoom).disconnectSockets(true);
+      userDevices.delete(deviceId);
+    }
+  }
+
+  if (userDevices.size === 0) {
+    onlineUsers.delete(userId);
+  } else {
+    onlineUsers.set(userId, userDevices);
+  }
 };

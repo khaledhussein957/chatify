@@ -11,6 +11,7 @@ import { generateToken } from "../utils/generateToken";
 import { validatePhoneNumber } from "../utils/phoneValidate";
 import sendOtp from "../utils/otp";
 import { generateStrongPassword } from "../utils/passwordGenerator";
+import { logoutOtherDevices } from "../utils/socket";
 
 import {
   forgotPasswordEmail,
@@ -166,6 +167,11 @@ export const verifyCode = async (req: Request, res: Response) => {
     user.codeExpires = undefined;
     await user.save();
 
+    // Force logout other devices if a deviceId is set
+    if (user.deviceId) {
+      logoutOtherDevices(user._id.toString(), user.deviceId);
+    }
+
     // generate token
     const token = generateToken(user._id.toString());
 
@@ -244,7 +250,7 @@ export const resendOtp = async (req: Request, res: Response) => {
 
 export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, deviceId } = req.body;
     if (!email || !password)
       return res.status(400).json({ message: "❌ All fields are required" });
 
@@ -260,6 +266,13 @@ export const login = async (req: Request, res: Response) => {
       : false;
     if (!user || !isPasswordValid)
       return res.status(401).json({ message: "❌ Invalid credentials" });
+
+    // Update deviceId if provided
+    if (deviceId) {
+      user.deviceId = deviceId;
+      await user.save();
+      logoutOtherDevices(user._id.toString(), deviceId);
+    }
 
     const token = generateToken(user._id.toString());
 

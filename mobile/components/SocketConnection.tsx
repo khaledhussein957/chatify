@@ -2,6 +2,7 @@ import { useSocketStore } from "@/lib/socket";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useAuthStore } from "@/store/auth";
+import { getDeviceId } from "@/utils/device";
 
 const SocketConnection = () => {
   const queryClient = useQueryClient();
@@ -10,17 +11,15 @@ const SocketConnection = () => {
   const token = useAuthStore((state) => state.token);
 
   useEffect(() => {
-    console.log("SocketConnection effect triggered. Token present:", !!token);
     if (token) {
-      console.log("Attempting to connect with token...");
-      connect(token, queryClient);
+      getDeviceId().then((deviceId) => {
+        connect(token, queryClient, deviceId);
+      });
     } else {
-      console.log("No token, disconnecting socket...");
       disconnect();
     }
 
     return () => {
-      console.log("SocketConnection effect cleanup");
       disconnect();
     };
   }, [token, connect, disconnect, queryClient]);

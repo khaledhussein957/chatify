@@ -28,6 +28,7 @@ export const resendOtpSchema = Joi.object({
 export const loginSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(8).required(),
+  deviceId: Joi.string().optional(),
 });
 
 export const forgotPasswordSchema = Joi.object({

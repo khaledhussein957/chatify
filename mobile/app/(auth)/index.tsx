@@ -17,9 +17,10 @@ import Joi from "joi";
 import { getAuthStyles } from "@/assets/styles/auth.style";
 import { router } from "expo-router";
 import { useUserLogin } from "@/hooks/useAuth";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAlert } from "../../components/AlertMessageController";
 import { useTheme } from "@/hooks/useTheme";
+import { getDeviceId } from "@/utils/device";
 
 // Joi schema
 const loginSchema = Joi.object({
@@ -45,6 +46,12 @@ const AuthScreen = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { colors, isDark } = useTheme();
   const styles = getAuthStyles(colors);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+
+  // Get device ID on component mount
+  useEffect(() => {
+    getDeviceId().then(setDeviceId);
+  }, []);
 
   const {
     control,
@@ -61,7 +68,7 @@ const AuthScreen = () => {
 
   const onSubmit = async (data: LoginFormData) => {
     try {
-      await login(data);
+      await login({ ...data, deviceId: deviceId || undefined });
       if (router.canDismiss()) router.dismissAll();
       router.replace("/(tabs)");
 

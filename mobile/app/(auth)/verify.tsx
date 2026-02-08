@@ -14,13 +14,13 @@ import { useForm, Controller } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
 import Joi from "joi";
 import { router, useLocalSearchParams } from "expo-router";
-import * as Application from "expo-application";
 import { useEffect, useState } from "react";
 
 import { getAuthStyles } from "@/assets/styles/auth.style";
 import { useVerifyCode, useResendCode } from "@/hooks/useAuth";
 import { useAlert } from "@/components/AlertMessageController";
 import { useTheme } from "@/hooks/useTheme";
+import { getDeviceId } from "@/utils/device";
 
 // Joi schema
 const verifySchema = Joi.object({
@@ -57,20 +57,7 @@ const VerifyAccountScreen = () => {
 
   // Get device ID on component mount
   useEffect(() => {
-    const getDeviceId = async () => {
-      try {
-        // Try to get Android ID or iOS identifier
-        const id =
-          (await Application.getAndroidId()) ||
-          (await Application.getIosIdForVendorAsync()) ||
-          `device-${Date.now()}`;
-        setDeviceId(id);
-      } catch (error) {
-        console.error("Error getting device ID:", error);
-        setDeviceId(`device-${Date.now()}`); // Fallback to timestamp
-      }
-    };
-    getDeviceId();
+    getDeviceId().then(setDeviceId);
   }, []);
 
   const onSubmit = async (data: VerifyFormData) => {

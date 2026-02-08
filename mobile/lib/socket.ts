@@ -15,7 +15,7 @@ interface SocketState {
   currentChatId: string | null;
   queryClient: QueryClient | null;
 
-  connect: (token: string, queryClient: QueryClient) => void;
+  connect: (token: string, queryClient: QueryClient, deviceId: string) => void;
   disconnect: () => void;
   joinChat: (chatId: string) => void;
   leaveChat: (chatId: string) => void;
@@ -39,13 +39,13 @@ export const useSocketStore = create<SocketState>((set, get) => ({
   currentChatId: null,
   queryClient: null,
 
-  connect: (token, queryClient) => {
+  connect: (token, queryClient, deviceId) => {
     const existingSocket = get().socket;
     if (existingSocket?.connected) return;
 
     if (existingSocket) existingSocket.disconnect();
 
-    const socket = io(SOCKET_URL, { auth: { token } });
+    const socket = io(SOCKET_URL, { auth: { token, deviceId } });
 
     socket.on("connect", () => {
       console.log("Socket connected, id:", socket.id);
@@ -269,6 +269,13 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     socket.on("new-chat", ({ chatId }: { chatId: string }) => {
       console.log("Received new-chat:", chatId);
       queryClient.invalidateQueries({ queryKey: ["chats"] });
+    });
+
+    socket.on("session-expired", ({ message }: { message: string }) => {
+      console.log("Session expired:", message);
+      useAuthStore.getState().logout();
+      socket.disconnect();
+      set({ isConnected: false });
     });
 
     set({ socket, queryClient });

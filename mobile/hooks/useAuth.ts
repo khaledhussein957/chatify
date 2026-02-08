@@ -116,7 +116,11 @@ export const useUserLogin = () => {
 
   return useMutation({
     mutationKey: ["auth", "login"],
-    mutationFn: async (credentials: { email: string; password: string }) => {
+    mutationFn: async (credentials: {
+      email: string;
+      password: string;
+      deviceId?: string;
+    }) => {
       const { data } = await api<{ token: string; user: User }>({
         method: "POST",
         url: "/auth/login",
