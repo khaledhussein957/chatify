@@ -43,6 +43,7 @@ const StatusScreen = () => {
     >();
 
     statuses?.forEach((status) => {
+      if (!status?.user?._id) return;
       const userId = status.user._id;
       const existing = map.get(userId);
       if (existing) {

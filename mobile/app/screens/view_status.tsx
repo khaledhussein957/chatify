@@ -38,7 +38,9 @@ const ViewStatusScreen = () => {
   const sortedStatuses = useMemo(
     () =>
       statuses
-        ? [...statuses].sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
+        ? [...statuses]
+            .filter((s) => s.user?._id)
+            .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1))
         : [],
     [statuses],
   );
@@ -115,8 +117,12 @@ const ViewStatusScreen = () => {
 
         {/* CONTENT */}
         <View style={styles.content}>
-          {isLoading || !currentStatus ? (
+          {isLoading ? (
             <ActivityIndicator size="large" color={colors.primary} />
+          ) : !currentStatus ? (
+            <View style={styles.center}>
+              <Text style={{ color: colors.grey }}>No statuses available</Text>
+            </View>
           ) : (
             <>
               {isVideo ? (
@@ -413,6 +419,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     zIndex: 2,
+  },
+  center: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 

@@ -210,7 +210,9 @@ export const getUserStatuses = async (
     const statuses = await Status.find({
       user: userId,
       expiresAt: { $gt: now },
-    }).sort({ createdAt: -1 });
+    })
+      .populate("user", "name avatar")
+      .sort({ createdAt: -1 });
 
     res.status(200).json(statuses);
   } catch (err) {
