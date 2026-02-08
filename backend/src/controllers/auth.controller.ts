@@ -8,7 +8,7 @@ import { AuthRequest } from "../middlewares/auth.middleware";
 
 import { isValidStrongPassword } from "../utils/validStrongPassword";
 import { generateToken } from "../utils/generateToken";
-import { validatePhoneNumber } from "../utils/phoneValidate";
+import { isOtpSupported, validatePhoneNumber } from "../utils/phoneValidate";
 import sendOtp from "../utils/otp";
 import { generateStrongPassword } from "../utils/passwordGenerator";
 import { logoutOtherDevices } from "../utils/socket";
@@ -63,6 +63,8 @@ export const register = async (req: Request, res: Response) => {
         .json({ success: false, message: validation?.message });
     }
 
+    // Move isOtpSupported check after user creation/update logic
+
     // Check OTP rate limiting (5 OTPs per month)
     const now = new Date();
     const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -112,6 +114,17 @@ export const register = async (req: Request, res: Response) => {
       user.codeExpires = expires;
       user.otpSentCount += 1;
       await user.save();
+    }
+
+    // Check if operator supports OTP and handle bypass
+    if (!isOtpSupported(phone)) {
+      const v = await validatePhoneNumber(phone);
+      const operator = v?.operator || "This network";
+      return res.status(200).json({
+        success: true,
+        message: `OTP service is currently unavailable for ${operator} subscribers. and then follow to use this otp code ${code}`,
+        userId: user._id,
+      });
     }
 
     // Send OTP via SMS
@@ -220,6 +233,17 @@ export const resendOtp = async (req: Request, res: Response) => {
     user.verificationCode = code;
     user.codeExpires = expires;
     await user.save();
+
+    // Check if operator supports OTP and handle bypass
+    if (!isOtpSupported(phone)) {
+      const v = await validatePhoneNumber(phone);
+      const operator = v?.operator || "This network";
+      return res.status(200).json({
+        success: true,
+        message: `OTP service is currently unavailable for ${operator} subscribers. and then follow to use this otp code ${code}`,
+        userId: user._id,
+      });
+    }
 
     // Send OTP via SMS
     const smsMessage = `Your verification code of Chatify is ${code}`;
