@@ -45,7 +45,10 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
     if (existingSocket) existingSocket.disconnect();
 
-    const socket = io(SOCKET_URL, { auth: { token, deviceId } });
+    const socket = io(SOCKET_URL, {
+      auth: { token, deviceId },
+      transports: ["websocket"],
+    });
 
     socket.on("connect", () => {
       console.log("Socket connected, id:", socket.id);
