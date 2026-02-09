@@ -111,9 +111,7 @@ export const useUpdateProfileAvatar = () => {
         method: "PUT",
         url: "/users/update-profile-avatar",
         data: formData,
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        // Don't set Content-Type manually - axios will set it with proper boundary for FormData
       });
       return data;
     },

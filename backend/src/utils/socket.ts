@@ -125,7 +125,11 @@ export const initializeSocket = (httpServer: HttpServer) => {
           // Emit to chat room
           io.to(`chat:${chatId}`).emit("new-message", message);
 
-          // Emit to participants not currently in the chat room
+          // Get sender name for push notification
+          const sender = await User.findById(userId).select("name");
+          const senderName = sender?.name || "Someone";
+
+          // Emit to participants not currently in the chat room + send push to offline
           for (const participantId of chat.participants) {
             const participantStr = participantId.toString();
             if (participantStr !== userId) {
@@ -140,6 +144,30 @@ export const initializeSocket = (httpServer: HttpServer) => {
                   if (!chatRoomSockets?.has(socketId)) {
                     io.to(socketId).emit("new-message", message);
                   }
+                }
+              }
+
+              // Check if user is offline and send push notification
+              const userDevices = onlineUsers.get(participantStr);
+              if (!userDevices || userDevices.size === 0) {
+                // User is offline, send push notification
+                const participant =
+                  await User.findById(participantStr).select("pushToken");
+                if (participant?.pushToken) {
+                  await sendPushNotification({
+                    to: participant.pushToken,
+                    title: chat.isGroupChat
+                      ? chat.name || "Group Chat"
+                      : senderName,
+                    body: chat.isGroupChat
+                      ? `${senderName}: ${text.substring(0, 100)}`
+                      : text.substring(0, 100),
+                    data: {
+                      type: "message",
+                      chatId,
+                      senderId: userId,
+                    },
+                  });
                 }
               }
             }
@@ -279,12 +307,52 @@ export const initializeSocket = (httpServer: HttpServer) => {
       });
     });
 
-    socket.on("end-call", (data: { chatId: string }) => {
+    // Handle accept-call: join call room and broadcast acceptance
+    socket.on("accept-call", async (data: { chatId: string }) => {
+      socket.join(`call:${data.chatId}`);
+
+      // Broadcast to all users in the call room that this user accepted
+      io.to(`call:${data.chatId}`).emit("call-accepted", {
+        userId,
+        chatId: data.chatId,
+      });
+
+      // Also emit to all participants in the chat for the caller who initiated
+      const chat = await Chat.findById(data.chatId);
+      if (chat) {
+        for (const participant of chat.participants) {
+          const partId = participant.toString();
+          if (partId !== userId) {
+            io.to(`user:${partId}`).emit("call-accepted", {
+              userId,
+              chatId: data.chatId,
+            });
+          }
+        }
+      }
+    });
+
+    socket.on("end-call", async (data: { chatId: string }) => {
       // Notify everyone in the call room
       io.to(`call:${data.chatId}`).emit("call-ended", {
         userId,
         chatId: data.chatId,
       });
+
+      // Also notify all chat participants directly (for those not in call room)
+      const chat = await Chat.findById(data.chatId);
+      if (chat) {
+        for (const participant of chat.participants) {
+          const partId = participant.toString();
+          if (partId !== userId) {
+            io.to(`user:${partId}`).emit("call-ended", {
+              userId,
+              chatId: data.chatId,
+            });
+          }
+        }
+      }
+
       socket.leave(`call:${data.chatId}`);
     });
 

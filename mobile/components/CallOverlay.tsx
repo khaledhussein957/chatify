@@ -57,6 +57,11 @@ const CallOverlay = () => {
 
         pc = new RTCPeerConnection(configuration);
 
+        // Add audio tracks to peer connection for caller
+        stream.getTracks().forEach((track) => {
+          pc!.addTrack(track, stream);
+        });
+
         (pc as any).addEventListener("icecandidate", (event: any) => {
           if (event.candidate) {
             const targetId = isCalling ? receiver?._id : caller?._id;
@@ -81,8 +86,10 @@ const CallOverlay = () => {
         if (targetId) addPeerConnection(targetId, pc);
 
         // Caller: Emit call-user, but wait for 'call-accepted' to send Offer
+        // Also join call room to receive call-ended events
         if (isCalling) {
-          socket?.emit("call-user", { chatId, isGroup: false }); // Ensure backend handles this
+          socket?.emit("call-user", { chatId, isGroup: false });
+          socket?.emit("answer-call", { chatId }); // Join call room
         }
       } catch (err) {
         console.error("Error starting call:", err);
@@ -216,7 +223,9 @@ const CallOverlay = () => {
 
       if (caller?._id) addPeerConnection(caller._id, pc);
 
+      // Emit both accept-call and answer-call to join the call room
       socket?.emit("accept-call", { chatId });
+      socket?.emit("answer-call", { chatId });
     } catch (err) {
       console.error("Accept error:", err);
       endCall();
