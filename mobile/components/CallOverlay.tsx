@@ -101,7 +101,18 @@ const CallOverlay = () => {
     return () => {
       // cleanup handled by resetCall
     };
-  }, [isCalling]);
+  }, [
+    isCalling,
+    addPeerConnection,
+    addRemoteStream,
+    caller?._id,
+    chatId,
+    isIncomingCall,
+    peerConnections.size,
+    setLocalStream,
+    receiver?._id,
+    socket,
+  ]);
 
   // Handle Socket Events
   useEffect(() => {

@@ -298,6 +298,7 @@ const ChatDetailScreen = () => {
           clearSelection();
           alert.success("Message deleted");
         } catch (error) {
+          console.log(error);
           // Rollback or invalidate on error
           queryClient.invalidateQueries({ queryKey: ["messages", chatId] });
           alert.error("Failed to delete message");
@@ -510,6 +511,7 @@ const ChatDetailScreen = () => {
           await updateTextMessage(messageId, newText);
           clearSelection();
         } catch (error) {
+          console.log(error);
           // Rollback optimistic update
           queryClient.setQueryData<Message[]>(["messages", chatId], (old) => {
             return old?.map((m) =>
