@@ -39,6 +39,7 @@ import { COLORS } from "@/constants/theme";
 import { Message } from "@/types";
 import { useAlert } from "@/components/AlertMessageController";
 import { useTheme } from "@/hooks/useTheme";
+import { format, isToday, isYesterday, isSameDay } from "date-fns";
 
 type ChatParams = {
   id: string;
@@ -656,23 +657,58 @@ const ChatDetailScreen = () => {
               ref={scrollViewRef}
               contentContainerStyle={styles.messages}
             >
-              {messages.map((message) => {
+              {messages.map((message, index) => {
+                const prevMessage = index > 0 ? messages[index - 1] : null;
+                const showDateSeparator =
+                  !prevMessage ||
+                  !isSameDay(
+                    new Date(message.createdAt),
+                    new Date(prevMessage.createdAt),
+                  );
+
+                const dateText = (() => {
+                  const date = new Date(message.createdAt);
+                  if (isToday(date)) return "Today";
+                  if (isYesterday(date)) return "Yesterday";
+                  return format(date, "MMMM d, yyyy");
+                })();
+
                 const senderId =
                   typeof message.sender === "string"
                     ? message.sender
                     : message.sender._id;
 
                 return (
-                  <MessageBubble
-                    key={message._id}
-                    message={message}
-                    isFromMe={senderId === currentUser?._id}
-                    showSenderName={isGroup}
-                    onLongPress={() => handleLongPress(message)}
-                    isSelected={selectedMessageId === message._id}
-                    playingId={currentlyPlayingId}
-                    onTogglePlay={setCurrentlyPlayingId}
-                  />
+                  <View key={message._id}>
+                    {showDateSeparator && (
+                      <View style={styles.dateSeparator}>
+                        <View
+                          style={[
+                            styles.dateLine,
+                            { backgroundColor: colors.surfaceDivider },
+                          ]}
+                        />
+                        <Text style={[styles.dateText, { color: colors.grey }]}>
+                          {dateText}
+                        </Text>
+                        <View
+                          style={[
+                            styles.dateLine,
+                            { backgroundColor: colors.surfaceDivider },
+                          ]}
+                        />
+                      </View>
+                    )}
+                    <MessageBubble
+                      message={message}
+                      isFromMe={senderId === currentUser?._id}
+                      showSenderName={isGroup}
+                      onLongPress={() => handleLongPress(message)}
+                      isSelected={selectedMessageId === message._id}
+                      playingId={currentlyPlayingId}
+                      onTogglePlay={setCurrentlyPlayingId}
+                    />
+                  </View>
                 );
               })}
             </ScrollView>
@@ -928,9 +964,28 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
 
   messages: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
+    padding: 16,
+    paddingBottom: 20,
+    gap: 12,
+  },
+  dateSeparator: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 16,
+    gap: 12,
+    paddingHorizontal: 20,
+  },
+  dateLine: {
+    flex: 1,
+    height: 1,
+    opacity: 0.5,
+  },
+  dateText: {
+    fontSize: 12,
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
 
   inputWrapper: {
