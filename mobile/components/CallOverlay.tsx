@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -11,20 +11,15 @@ import {
   RTCPeerConnection,
   RTCIceCandidate,
   RTCSessionDescription,
-  mediaDevices,
   RTCView,
 } from "react-native-webrtc";
 import { Ionicons } from "@expo/vector-icons";
 import { useCallStore } from "@/store/call";
 import { useSocketStore } from "@/lib/socket";
-
-const configuration = {
-  iceServers: [
-    { urls: "stun:stun.l.google.com:19302" },
-    { urls: "stun:stun1.l.google.com:19302" },
-    { urls: "stun:stun2.l.google.com:19302" },
-  ],
-};
+import {
+  startCall as startCallService,
+  answerCall as answerCallService,
+} from "@/services/call";
 
 const CallOverlay = () => {
   const {
@@ -36,249 +31,179 @@ const CallOverlay = () => {
     role,
     setCallStatus,
     resetCall,
-    localStream,
-    setLocalStream,
     addRemoteStream,
     remoteStreams,
-    peerConnections,
-    addPeerConnection,
   } = useCallStore();
 
   const socket = useSocketStore((state) => state.socket);
   const [isMuted, setIsMuted] = useState(false);
 
-  const endCall = React.useCallback(() => {
-    if (chatId) {
-      socket?.emit("end-call", { chatId });
+  const pcRef = useRef<RTCPeerConnection | null>(null);
+  const [localStream, setLocalStream] = useState<any>(null);
+
+  const cleanup = React.useCallback(() => {
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
+    if (localStream) {
+      localStream.getTracks().forEach((t: any) => t.stop());
+      setLocalStream(null);
     }
     resetCall();
-  }, [chatId, socket, resetCall]);
+  }, [localStream, resetCall]);
+
+  const endCall = React.useCallback(() => {
+    if (chatId && socket) {
+      socket.emit("end-call", { chatId });
+    }
+    cleanup();
+  }, [chatId, socket, cleanup]);
 
   const onAccept = React.useCallback(async () => {
     try {
-      const stream = await mediaDevices.getUserMedia({
-        audio: true,
-        video: false,
-      });
+      if (!chatId || !caller?._id || !socket) return;
+
+      const { pc, stream } = await startCallService(chatId!, caller._id);
+      pcRef.current = pc;
       setLocalStream(stream);
 
-      const pc = new RTCPeerConnection(configuration);
-
-      stream.getTracks().forEach((track) => {
-        pc.addTrack(track, stream);
-      });
-
-      (pc as any).addEventListener("icecandidate", (event: any) => {
+      (pc as any).onicecandidate = (event: any) => {
         if (event.candidate) {
-          socket?.emit("ice-candidate", {
-            targetUserId: caller?._id,
+          socket.emit("ice-candidate", {
+            targetUserId: caller._id,
             candidate: event.candidate,
             chatId,
           });
         }
-      });
+      };
 
-      (pc as any).addEventListener("track", (event: any) => {
-        console.log(
-          "[DEBUG] Remote track received in onAccept:",
-          event.streams[0]?.id,
-        );
-        if (caller?._id && event.streams && event.streams[0]) {
+      (pc as any).ontrack = (event: any) => {
+        if (event.streams && event.streams[0]) {
           addRemoteStream(caller._id, event.streams[0]);
         }
-      });
+      };
 
-      if (caller?._id) addPeerConnection(caller._id, pc);
-
-      socket?.emit("accept-call", { chatId });
-      socket?.emit("answer-call", { chatId });
-
-      // Update state AFTER connection is prepared to avoid useEffect race condition calling startCall()
+      socket.emit("accept-call", { chatId });
       setCallStatus({ isIncomingCall: false, isCalling: true });
     } catch (err) {
       console.error("Accept error:", err);
       endCall();
     }
-  }, [
-    caller?._id,
-    chatId,
-    socket,
-    setLocalStream,
-    addPeerConnection,
-    addRemoteStream,
-    setCallStatus,
-    endCall,
-  ]);
+  }, [caller?._id, chatId, socket, addRemoteStream, setCallStatus, endCall]);
 
   const onReject = React.useCallback(() => {
-    if (caller && chatId) {
-      socket?.emit("reject-call", { chatId, callerId: caller._id });
+    if (caller && chatId && socket) {
+      socket.emit("reject-call", { chatId, callerId: caller._id });
     }
     resetCall();
   }, [caller, chatId, socket, resetCall]);
 
   const toggleMute = React.useCallback(() => {
     if (localStream) {
-      localStream.getAudioTracks().forEach((t) => (t.enabled = !t.enabled));
+      localStream
+        .getAudioTracks()
+        .forEach((t: any) => (t.enabled = !t.enabled));
       setIsMuted(!isMuted);
     }
   }, [localStream, isMuted]);
 
   useEffect(() => {
-    let pc: RTCPeerConnection | null = null;
-
-    const startCall = async () => {
+    const handleStart = async () => {
       try {
-        const stream = await mediaDevices.getUserMedia({
-          audio: true,
-          video: false,
-        });
+        if (!chatId || !receiver?._id || !socket) return;
+        const { pc, stream } = await startCallService(chatId!, receiver._id);
+        pcRef.current = pc;
         setLocalStream(stream);
 
-        pc = new RTCPeerConnection(configuration);
-
-        // Add audio tracks to peer connection for caller
-        stream.getTracks().forEach((track) => {
-          pc!.addTrack(track, stream);
-        });
-
-        (pc as any).addEventListener("icecandidate", (event: any) => {
-          if (event.candidate) {
-            const targetId = isCalling ? receiver?._id : caller?._id;
-            if (targetId) {
-              socket?.emit("ice-candidate", {
-                targetUserId: targetId,
-                candidate: event.candidate,
-                chatId,
-              });
-            }
+        (pc as any).onicecandidate = (event: any) => {
+          if (event.candidate && chatId) {
+            socket.emit("ice-candidate", {
+              targetUserId: receiver._id,
+              candidate: event.candidate,
+              chatId,
+            });
           }
-        });
+        };
 
-        (pc as any).addEventListener("track", (event: any) => {
-          const targetId = isCalling ? receiver?._id : caller?._id;
-          console.log(
-            "[DEBUG] Remote track received in startCall:",
-            event.streams[0]?.id,
-            "for target:",
-            targetId,
-          );
-          if (targetId && event.streams && event.streams[0]) {
-            addRemoteStream(targetId, event.streams[0]);
+        (pc as any).ontrack = (event: any) => {
+          if (event.streams && event.streams[0]) {
+            addRemoteStream(receiver._id, event.streams[0]);
           }
-        });
+        };
 
-        const targetId = isCalling ? receiver?._id : caller?._id;
-        if (targetId) addPeerConnection(targetId, pc);
-
-        // Caller: Emit call-user, but wait for 'call-accepted' to send Offer
-        // Also join call room to receive call-ended events
-        if (isCalling) {
-          socket?.emit("call-user", { chatId, isGroup: false });
-          socket?.emit("answer-call", { chatId }); // Join call room
-        }
+        socket.emit("call-user", { chatId, isGroup: false });
       } catch (err) {
         console.error("Error starting call:", err);
         endCall();
       }
     };
 
-    if ((isCalling || isIncomingCall) && !peerConnections.size) {
-      // Prepare media/PC for both Caller and Receiver (once accepted for receiver, but here we prep early is fine too?
-      // No, Receiver should prep on Accept. Caller preps immediately.
-      if (isCalling) {
-        startCall();
-      }
+    if (isCalling && role === "caller" && !pcRef.current) {
+      handleStart();
     }
-
-    return () => {
-      // cleanup handled by resetCall
-    };
   }, [
     isCalling,
-    addPeerConnection,
-    addRemoteStream,
-    caller?._id,
+    role,
     chatId,
-    isIncomingCall,
-    peerConnections.size,
-    setLocalStream,
     receiver?._id,
     socket,
+    addRemoteStream,
     endCall,
   ]);
 
-  // Handle Socket Events
   useEffect(() => {
     if (!socket) return;
 
     const handleCallAccepted = async (data: any) => {
-      // Only the ORIGINAL initiator (the person who started the call)
-      // should handle acceptance by creating an offer.
-      const isInitiator = role === "caller";
-
-      if (isCalling && isInitiator) {
-        const targetId = receiver?._id;
-        const pc = peerConnections.get(targetId!);
-        if (pc) {
-          const offer = await pc.createOffer({});
-          await pc.setLocalDescription(offer);
-          socket.emit("webrtc-offer", {
-            targetUserId: targetId,
-            sdp: offer,
-            chatId,
-          });
-        }
-      }
+      // initiator handles acceptance (we already created pc in handleStart)
     };
 
     const handleOffer = async (data: any) => {
-      // Receiver handles offer
-      // We expect this ONLY if we are in a call (accepted)
-      // Check if we have a PC for this sender
-      let pc = peerConnections.get(data.senderId);
-
-      // If we accepted but haven't created PC yet (race condition?), we should ensure PC exists.
-      // But onAccept creates PC.
-      if (pc) {
-        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        socket.emit("webrtc-answer", {
-          targetUserId: data.senderId,
-          sdp: answer,
-          chatId,
-        });
+      if (pcRef.current && data.chatId === chatId) {
+        await answerCallService(
+          pcRef.current,
+          data.sdp,
+          data.senderId,
+          chatId!,
+        );
       }
     };
 
     const handleAnswer = async (data: any) => {
-      const pc = peerConnections.get(data.senderId);
-      if (pc) {
-        await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
+      if (pcRef.current) {
+        await pcRef.current.setRemoteDescription(
+          new RTCSessionDescription(data.sdp),
+        );
       }
     };
 
     const handleCandidate = async (data: any) => {
-      console.log("[DEBUG] ICE candidate received from:", data.senderId);
-      const pc = peerConnections.get(data.senderId);
-      if (pc) {
-        await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+      if (pcRef.current) {
+        await pcRef.current.addIceCandidate(
+          new RTCIceCandidate(data.candidate),
+        );
       }
+    };
+
+    const handleCallEnded = () => {
+      cleanup();
     };
 
     socket.on("call-accepted", handleCallAccepted);
     socket.on("webrtc-offer", handleOffer);
     socket.on("webrtc-answer", handleAnswer);
     socket.on("ice-candidate", handleCandidate);
+    socket.on("call-ended", handleCallEnded);
 
     return () => {
       socket.off("call-accepted", handleCallAccepted);
       socket.off("webrtc-offer", handleOffer);
       socket.off("webrtc-answer", handleAnswer);
       socket.off("ice-candidate", handleCandidate);
+      socket.off("call-ended", handleCallEnded);
     };
-  }, [socket, peerConnections, isCalling, chatId, role, receiver]);
+  }, [socket, chatId, cleanup]);
 
   if (!isIncomingCall && !isCalling) return null;
 
@@ -293,13 +218,11 @@ const CallOverlay = () => {
             <Text style={styles.status}>
               {isIncomingCall ? "Incoming Audio Call..." : "Connected"}
             </Text>
-            {/* Hidden RTCView to ensure audio streams are played back */}
             {Array.from(remoteStreams.values()).map((stream, idx) => (
               <RTCView
                 key={idx}
                 streamURL={stream.toURL()}
                 style={{ width: 0, height: 0, opacity: 0 }}
-                objectFit="cover"
               />
             ))}
           </View>
@@ -338,7 +261,6 @@ const CallOverlay = () => {
                     color="white"
                   />
                 </TouchableOpacity>
-
                 <TouchableOpacity
                   style={[styles.button, styles.rejectBtn]}
                   onPress={endCall}
@@ -356,30 +278,16 @@ const CallOverlay = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#1a1a1a",
-  },
+  container: { flex: 1, backgroundColor: "#1a1a1a" },
   content: {
     flex: 1,
     justifyContent: "space-between",
     paddingVertical: 50,
     alignItems: "center",
   },
-  header: {
-    alignItems: "center",
-    marginTop: 50,
-  },
-  name: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "white",
-    marginBottom: 10,
-  },
-  status: {
-    fontSize: 16,
-    color: "#cccccc",
-  },
+  header: { alignItems: "center", marginTop: 50 },
+  name: { fontSize: 28, fontWeight: "bold", color: "white", marginBottom: 10 },
+  status: { fontSize: 16, color: "#cccccc" },
   controls: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -393,23 +301,11 @@ const styles = StyleSheet.create({
     height: 70,
     borderRadius: 35,
   },
-  acceptBtn: {
-    backgroundColor: "#4cd964",
-  },
-  rejectBtn: {
-    backgroundColor: "#ff3b30",
-  },
-  controlBtn: {
-    backgroundColor: "rgba(255,255,255,0.2)",
-  },
-  activeBtn: {
-    backgroundColor: "white",
-  },
-  btnText: {
-    color: "white",
-    marginTop: 5,
-    fontSize: 12,
-  },
+  acceptBtn: { backgroundColor: "#4cd964" },
+  rejectBtn: { backgroundColor: "#ff3b30" },
+  controlBtn: { backgroundColor: "rgba(255,255,255,0.2)" },
+  activeBtn: { backgroundColor: "white" },
+  btnText: { color: "white", marginTop: 5, fontSize: 12 },
 });
 
 export default CallOverlay;

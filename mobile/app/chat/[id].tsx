@@ -157,15 +157,12 @@ const ChatDetailScreen = () => {
     }
     setCallStatus({
       isCalling: true,
-      isIncomingCall: false,
       chatId,
       role: "caller",
-      receiver: {
-        _id: participantId,
-        name: name,
-        avatar: avatar,
-      },
       isGroupCall: isGroup,
+      receiver: participantId
+        ? { _id: participantId, name: name || "User", avatar: avatar || "" }
+        : null,
     });
   };
 
@@ -532,12 +529,7 @@ const ChatDetailScreen = () => {
         setMessageText("");
       } else if (isConnected) {
         // Send text only via socket
-        sendMessage(chatId, messageText.trim(), {
-          _id: currentUser._id,
-          name: currentUser.name,
-          email: currentUser.email,
-          avatar: currentUser.avatar as string,
-        });
+        sendMessage(chatId, messageText.trim());
         setMessageText("");
       } else {
         // Fallback: Send text via HTTP if socket is disconnected

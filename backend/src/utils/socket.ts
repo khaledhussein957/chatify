@@ -1,439 +1,238 @@
-import { Socket, Server as SocketServer } from "socket.io";
+import { Server, Socket } from "socket.io";
 import { Server as HttpServer } from "http";
 import jwt from "jsonwebtoken";
 import Chat from "../models/chat.model";
 import Message from "../models/message.model";
 import User from "../models/user.model";
 import Status from "../models/status.model";
-import ENV from "../configs/env";
 import { sendPushNotification } from "./expo";
+import ENV from "../configs/env";
 
-// store online users in memory: userId -> { deviceId -> Set<socketIds> }
-export const onlineUsers: Map<string, Map<string, Set<string>>> = new Map();
-
-export let io: SocketServer;
+export const onlineUsers = new Map<string, Set<string>>();
+export let io: Server;
 
 export const initializeSocket = (httpServer: HttpServer) => {
-  const allowedOrigins = [
-    "http://localhost:8081",
-    "http://192.168.8.61:9000",
-    "http://192.168.8.61:8081",
-  ].filter(Boolean) as string[];
+  io = new Server(httpServer, { cors: { origin: "*" } });
 
-  io = new SocketServer(httpServer, { cors: { origin: "*" } });
-
-  // JWT auth middleware
   io.use(async (socket, next) => {
     const token = socket.handshake.auth.token;
-    if (!token) return next(new Error("Authentication error: token missing"));
+    if (!token) return next(new Error("No token provided"));
 
     try {
       if (!ENV.JWT_SECRET) return next(new Error("Server misconfiguration"));
-
-      const decoded = jwt.verify(token, ENV.JWT_SECRET) as { userId: string };
-      const user = await User.findById(decoded.userId);
-      if (!user) return next(new Error("User not found"));
-
-      socket.data.userId = user._id.toString();
+      const decoded = jwt.verify(token, ENV.JWT_SECRET!) as { userId: string };
+      socket.data.userId = decoded.userId;
       next();
-    } catch (error) {
-      next(new Error("Authentication error: invalid token"));
+    } catch {
+      next(new Error("Invalid token"));
     }
   });
 
   io.on("connection", (socket: Socket) => {
     const userId = socket.data.userId;
-    const deviceId = socket.handshake.auth.deviceId || "unknown";
 
-    // Online users
-    socket.emit("online-users", { userIds: Array.from(onlineUsers.keys()) });
-
-    const userDevices =
-      onlineUsers.get(userId) ?? new Map<string, Set<string>>();
-    const deviceSockets = userDevices.get(deviceId) ?? new Set<string>();
-    deviceSockets.add(socket.id);
-    userDevices.set(deviceId, deviceSockets);
-    onlineUsers.set(userId, userDevices);
-
-    socket.broadcast.emit("user-online", { userId });
+    // --- Online Status ---
+    if (!onlineUsers.has(userId)) {
+      onlineUsers.set(userId, new Set());
+    }
+    onlineUsers.get(userId)!.add(socket.id);
 
     socket.join(`user:${userId}`);
-    socket.join(`user:${userId}:device:${deviceId}`); // User-scoped device room
+    socket.emit("online-users", { userIds: Array.from(onlineUsers.keys()) });
+    socket.broadcast.emit("user-online", { userId });
 
-    // Join chat
-    socket.on("join-chat", async (chatId: string) => {
-      try {
-        const chat = await Chat.findById(chatId);
-        if (!chat)
-          return socket.emit("socket-error", { message: "Chat not found" });
-        if (!chat.participants.some((p) => p.toString() === userId)) {
-          return socket.emit("socket-error", {
-            message: "You are not in this chat",
-          });
-        }
-        socket.join(`chat:${chatId}`);
-        socket.to(`chat:${chatId}`).emit("user-joined", {
-          userId,
-          chatId,
-          isGroupChat: chat.isGroupChat,
-        });
-      } catch (err) {
-        console.error("Join chat error:", err);
-        socket.emit("socket-error", { message: "Failed to join chat" });
-      }
+    // --- Chat Room Management ---
+    socket.on("join-chat", (chatId: string) => {
+      socket.join(`chat:${chatId}`);
     });
 
-    // Leave chat
     socket.on("leave-chat", (chatId: string) => {
       socket.leave(`chat:${chatId}`);
-      socket.to(`chat:${chatId}`).emit("user-left", { userId, chatId });
     });
 
-    // Send message (text only)
+    // --- Send Message ---
     socket.on(
       "send-message",
       async (data: { chatId: string; text: string }) => {
         try {
           const { chatId, text } = data;
-          if (!text || text.trim() === "") {
-            socket.emit("socket-error", { message: "Message cannot be empty" });
-            return;
-          }
-
-          const chat = await Chat.findOne({
-            _id: chatId,
-            participants: userId,
-          });
-          if (!chat) {
-            socket.emit("socket-error", { message: "Chat not found" });
-            return;
-          }
+          if (!text?.trim()) return;
 
           const message = await Message.create({
             chat: chatId,
             sender: userId,
             type: "text",
-            text,
+            text: text.trim(),
           });
 
-          chat.lastMessage = message._id;
-          chat.lastMessageAt = new Date();
-          await chat.save();
+          // Update Chat metadata
+          const chat = await Chat.findByIdAndUpdate(chatId, {
+            lastMessage: message._id,
+            lastMessageAt: new Date(),
+          }).populate("participants", "pushToken");
+
+          if (!chat) return;
 
           await message.populate("sender", "name avatar");
-
-          // Emit to chat room
           io.to(`chat:${chatId}`).emit("new-message", message);
 
-          // Get sender name for push notification
+          // Handle offline push notifications
           const sender = await User.findById(userId).select("name");
           const senderName = sender?.name || "Someone";
 
-          // Emit to participants not currently in the chat room + send push to offline
-          for (const participantId of chat.participants) {
-            const participantStr = participantId.toString();
-            if (participantStr !== userId) {
-              const userRoom = `user:${participantStr}`;
-              const chatRoomSockets = io.sockets.adapter.rooms.get(
-                `chat:${chatId}`,
-              );
-              const userRoomSockets = io.sockets.adapter.rooms.get(userRoom);
+          for (const participant of chat.participants as any[]) {
+            const pid = participant._id.toString();
+            if (pid === userId) continue;
 
-              if (userRoomSockets) {
-                for (const socketId of userRoomSockets) {
-                  if (!chatRoomSockets?.has(socketId)) {
-                    io.to(socketId).emit("new-message", message);
-                  }
-                }
-              }
-
-              // Check if user is offline and send push notification
-              const userDevices = onlineUsers.get(participantStr);
-              const isOffline = !userDevices || userDevices.size === 0;
-
-              console.log(
-                `[DEBUG] Message to ${participantStr}. Offline? ${isOffline}. Pushing to device? ${isOffline}`,
-              );
-
-              if (isOffline) {
-                // User is offline, send push notification
-                const participant =
-                  await User.findById(participantStr).select("pushToken");
-                console.log(
-                  `[DEBUG] Found participant ${participantStr}. Token: ${participant?.pushToken}`,
-                );
-
-                if (participant?.pushToken) {
-                  try {
-                    await sendPushNotification({
-                      to: participant.pushToken,
-                      title: chat.isGroupChat
-                        ? chat.name || "Group Chat"
-                        : senderName,
-                      body: chat.isGroupChat
-                        ? `${senderName}: ${text.substring(0, 100)}`
-                        : text.substring(0, 100),
-                      data: {
-                        type: "message",
-                        chatId,
-                        senderId: userId,
-                      },
-                    });
-                    console.log(
-                      `[DEBUG] Push notification sent to ${participantStr}`,
-                    );
-                  } catch (pushErr) {
-                    console.error(`[DEBUG] Failed to send push:`, pushErr);
-                  }
-                } else {
-                  console.log(`[DEBUG] No push token for ${participantStr}`);
-                }
-              }
-            }
-          }
-        } catch (err) {
-          console.error("Error sending message:", err);
-          socket.emit("socket-error", { message: "Failed to send message" });
-        }
-      },
-    );
-
-    // Activity indicator (typing, recording, etc.)
-    socket.on(
-      "activity",
-      async (data: {
-        chatId: string;
-        activity: "typing" | "recording" | "none";
-      }) => {
-        try {
-          const { chatId, activity } = data;
-          const chat = await Chat.findById(chatId);
-          if (!chat) return;
-          const user = await User.findById(userId).select("name");
-          const payload = {
-            userId,
-            userName: user?.name,
-            chatId,
-            activity,
-          };
-          socket.to(`chat:${chatId}`).emit("activity", payload);
-        } catch (err) {
-          console.error("Activity error:", err);
-        }
-      },
-    );
-
-    // View status
-    socket.on("view-status", async (statusId: string) => {
-      try {
-        const status = await Status.findById(statusId);
-        if (!status) return;
-
-        // Don't count owner viewing their own status
-        if (status.user.toString() === userId) return;
-
-        if (!status.viewers.includes(userId)) {
-          status.viewers.push(userId);
-          await status.save();
-
-          // Notify owner in real-time
-          io.to(`user:${status.user.toString()}`).emit("status-viewed", {
-            statusId,
-            viewerId: userId,
-          });
-        }
-      } catch (err) {
-        console.error("Error handling view-status:", err);
-      }
-    });
-
-    // --- Call Events ---
-
-    socket.on(
-      "call-user",
-      async (data: { chatId: string; isGroup: boolean }) => {
-        try {
-          const { chatId, isGroup } = data;
-          const callerId = userId;
-
-          const chat = await Chat.findById(chatId).populate(
-            "participants",
-            "name avatar",
-          );
-          if (!chat) return;
-
-          const callerName =
-            (
-              chat.participants.find(
-                (p: any) => p._id.toString() === callerId,
-              ) as any
-            )?.name || "Unknown";
-
-          // Notify participants
-          for (const participant of chat.participants) {
-            const partId = (participant as any)._id.toString();
-            if (partId === callerId) continue;
-
-            const userDevices = onlineUsers.get(partId);
-            if (userDevices && userDevices.size > 0) {
-              // User is online, emit socket event
-              const userRoom = `user:${partId}`;
-              io.to(userRoom).emit("incoming-call", {
-                chatId,
-                callerId,
-                callerName,
-                isGroup,
-              });
-            } else {
-              // User is offline, send Push Notification
-              // We need the push token. identifying it might require a User query if not in 'participant'
-              // But 'participant' is populated with name/avatar only.
-              // Let's fetch the user to get pushToken if needed, or better, populate pushToken in chat query?
-              // For now, let's fetch user again to be safe and get pushToken.
-              const user = await User.findById(partId).select("pushToken");
-              if (user?.pushToken) {
+            // Check if participant is offline (no active sockets)
+            if (!onlineUsers.has(pid) || onlineUsers.get(pid)!.size === 0) {
+              if (participant.pushToken) {
                 await sendPushNotification({
-                  to: user.pushToken,
-                  title: isGroup
-                    ? `Group Call from ${callerName}`
-                    : "Incoming Call",
-                  body: `${callerName} is calling you...`,
-                  data: {
-                    type: "call",
-                    chatId,
-                    callerName,
-                    isGroup,
-                  },
+                  to: participant.pushToken,
+                  title: chat.isGroupChat
+                    ? chat.name || "Group Chat"
+                    : senderName,
+                  body: text.substring(0, 100),
+                  data: { type: "message", chatId },
                 });
               }
             }
           }
         } catch (err) {
-          console.error("Error in call-user:", err);
+          console.error("Socket send-message error:", err);
         }
       },
     );
 
-    socket.on("answer-call", (data: { chatId: string }) => {
-      socket.join(`call:${data.chatId}`);
-    });
-
-    socket.on("reject-call", (data: { chatId: string; callerId: string }) => {
-      // Notify the caller that this specific user rejected
-      io.to(`user:${data.callerId}`).emit("call-rejected", {
-        userId,
-        chatId: data.chatId,
-      });
-    });
-
-    // Handle accept-call: join call room and broadcast acceptance
-    socket.on("accept-call", async (data: { chatId: string }) => {
-      socket.join(`call:${data.chatId}`);
-
-      // Broadcast to all users in the call room that this user accepted
-      io.to(`call:${data.chatId}`).emit("call-accepted", {
-        userId,
-        chatId: data.chatId,
-      });
-
-      // Also emit to all participants in the chat for the caller who initiated
-      const chat = await Chat.findById(data.chatId);
-      if (chat) {
-        for (const participant of chat.participants) {
-          const partId = participant.toString();
-          if (partId !== userId) {
-            io.to(`user:${partId}`).emit("call-accepted", {
-              userId,
-              chatId: data.chatId,
-            });
-          }
-        }
-      }
-    });
-
-    socket.on("end-call", async (data: { chatId: string }) => {
-      // Notify everyone in the call room
-      io.to(`call:${data.chatId}`).emit("call-ended", {
-        userId,
-        chatId: data.chatId,
-      });
-
-      // Also notify all chat participants directly (for those not in call room)
-      const chat = await Chat.findById(data.chatId);
-      if (chat) {
-        for (const participant of chat.participants) {
-          const partId = participant.toString();
-          if (partId !== userId) {
-            io.to(`user:${partId}`).emit("call-ended", {
-              userId,
-              chatId: data.chatId,
-            });
-          }
-        }
-      }
-
-      socket.leave(`call:${data.chatId}`);
-    });
-
+    // --- Activity & Status ---
     socket.on(
-      "webrtc-offer",
-      (data: { targetUserId: string; sdp: any; chatId: string }) => {
-        io.to(`user:${data.targetUserId}`).emit("webrtc-offer", {
-          senderId: userId,
-          sdp: data.sdp,
+      "activity",
+      async (data: { chatId: string; activity: string }) => {
+        const user = await User.findById(userId).select("name");
+        socket.to(`chat:${data.chatId}`).emit("activity", {
+          userId,
+          userName: user?.name,
           chatId: data.chatId,
+          activity: data.activity,
         });
       },
     );
 
-    socket.on(
-      "webrtc-answer",
-      (data: { targetUserId: string; sdp: any; chatId: string }) => {
-        io.to(`user:${data.targetUserId}`).emit("webrtc-answer", {
-          senderId: userId,
-          sdp: data.sdp,
-          chatId: data.chatId,
-        });
-      },
-    );
-
-    socket.on(
-      "ice-candidate",
-      (data: { targetUserId: string; candidate: any; chatId: string }) => {
-        io.to(`user:${data.targetUserId}`).emit("ice-candidate", {
-          senderId: userId,
-          candidate: data.candidate,
-          chatId: data.chatId,
-        });
-      },
-    );
-
-    // Disconnect
-    socket.on("disconnect", () => {
-      const userDevices = onlineUsers.get(userId);
-      if (!userDevices) return;
-
-      const deviceSockets = userDevices.get(deviceId);
-      if (deviceSockets) {
-        deviceSockets.delete(socket.id);
-        if (deviceSockets.size === 0) {
-          userDevices.delete(deviceId);
+    socket.on("view-status", async (statusId: string) => {
+      try {
+        const status = await Status.findById(statusId);
+        if (
+          status &&
+          status.user.toString() !== userId &&
+          !status.viewers.includes(userId)
+        ) {
+          status.viewers.push(userId);
+          await status.save();
+          io.to(`user:${status.user}`).emit("status-viewed", {
+            statusId,
+            viewerId: userId,
+          });
         }
+      } catch (err) {
+        console.error(err);
       }
+    });
 
-      if (userDevices.size === 0) {
-        onlineUsers.delete(userId);
-        Chat.find({ participants: userId })
-          .then((chats) => {
-            chats.forEach((chat) =>
-              io.to(`chat:${chat._id}`).emit("user-offline", { userId }),
-            );
-          })
-          .catch((err) =>
-            console.error("Disconnect offline-broadcast error:", err),
+    // --- Video/Audio Calls ---
+    socket.on(
+      "call-user",
+      async (data: { chatId: string; isGroup: boolean }) => {
+        try {
+          const chat = await Chat.findById(data.chatId).populate(
+            "participants",
+            "name pushToken",
           );
-      } else {
-        onlineUsers.set(userId, userDevices);
+          if (!chat) return;
+
+          const caller = await User.findById(userId).select("name");
+
+          for (const p of chat.participants as any[]) {
+            if (p._id.toString() === userId) continue;
+
+            if (onlineUsers.has(p._id.toString())) {
+              io.to(`user:${p._id}`).emit("incoming-call", {
+                chatId: data.chatId,
+                callerId: userId,
+                callerName: caller?.name,
+                isGroup: data.isGroup,
+              });
+            } else if (p.pushToken) {
+              await sendPushNotification({
+                to: p.pushToken,
+                title: "Incoming Call",
+                body: `${caller?.name} is calling you`,
+                data: {
+                  type: "call",
+                  chatId: data.chatId,
+                  callerName: caller?.name,
+                  isGroup: data.isGroup,
+                },
+              });
+            }
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      },
+    );
+
+    socket.on("accept-call", ({ chatId }) => {
+      socket.join(`call:${chatId}`);
+      io.to(`call:${chatId}`).emit("call-accepted", { userId, chatId });
+    });
+
+    socket.on("answer-call", ({ chatId }) => {
+      socket.join(`call:${chatId}`);
+    });
+
+    socket.on("reject-call", ({ chatId, callerId }) => {
+      io.to(`user:${callerId}`).emit("call-rejected", { userId, chatId });
+    });
+
+    socket.on("end-call", ({ chatId }) => {
+      io.to(`call:${chatId}`).emit("call-ended", { userId, chatId });
+      socket.leave(`call:${chatId}`);
+    });
+
+    // --- WebRTC Signaling ---
+    socket.on("webrtc-offer", (data) => {
+      io.to(`user:${data.targetUserId}`).emit("webrtc-offer", {
+        senderId: userId,
+        sdp: data.sdp,
+        chatId: data.chatId,
+      });
+    });
+
+    socket.on("webrtc-answer", (data) => {
+      io.to(`user:${data.targetUserId}`).emit("webrtc-answer", {
+        senderId: userId,
+        sdp: data.sdp,
+        chatId: data.chatId,
+      });
+    });
+
+    socket.on("ice-candidate", (data) => {
+      io.to(`user:${data.targetUserId}`).emit("ice-candidate", {
+        senderId: userId,
+        candidate: data.candidate,
+        chatId: data.chatId,
+      });
+    });
+
+    // --- Disconnect ---
+    socket.on("disconnect", () => {
+      const userSockets = onlineUsers.get(userId);
+      if (userSockets) {
+        userSockets.delete(socket.id);
+        if (userSockets.size === 0) {
+          onlineUsers.delete(userId);
+          socket.broadcast.emit("user-offline", { userId });
+        }
       }
     });
   });
@@ -441,45 +240,9 @@ export const initializeSocket = (httpServer: HttpServer) => {
   return io;
 };
 
-/**
- * Forcefully disconnects all sockets for a given user and clears online status.
- */
 export const forceDisconnectUser = (userId: string) => {
   if (!io) return;
-
-  const userRoom = `user:${userId}`;
-  io.to(userRoom).emit("user-deleted", {
-    message: "Your account has been deleted.",
-  });
-  io.in(userRoom).disconnectSockets(true);
-
-  // cleanup in-memory online state if any somehow remains
+  io.to(`user:${userId}`).emit("user-deleted", { message: "Account deleted" });
+  io.in(`user:${userId}`).disconnectSockets(true);
   onlineUsers.delete(userId);
-};
-
-/**
- * Logout all other devices for a user
- */
-export const logoutOtherDevices = (userId: string, currentDeviceId: string) => {
-  if (!io) return;
-
-  const userDevices = onlineUsers.get(userId);
-  if (!userDevices) return;
-
-  for (const [deviceId, socketIds] of userDevices.entries()) {
-    if (deviceId !== currentDeviceId) {
-      const deviceRoom = `user:${userId}:device:${deviceId}`;
-      io.to(deviceRoom).emit("session-expired", {
-        message: "You have logged in from another device.",
-      });
-      io.in(deviceRoom).disconnectSockets(true);
-      userDevices.delete(deviceId);
-    }
-  }
-
-  if (userDevices.size === 0) {
-    onlineUsers.delete(userId);
-  } else {
-    onlineUsers.set(userId, userDevices);
-  }
 };
