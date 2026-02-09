@@ -5,8 +5,8 @@ import { Types } from "mongoose";
 import Message from "../models/message.model";
 import { io } from "../utils/socket";
 import cloudinary from "../configs/cloudinary";
-import { sendPushNotification } from "../utils/expo";
 import User from "../models/user.model";
+import { NotificationService } from "../services/notification.service";
 
 export const getOrCreateChat = async (
   req: AuthRequest,
@@ -54,15 +54,17 @@ export const getOrCreateChat = async (
         });
       }
 
-      // Push Notification to the other participant
+      // Push Notification & Persistence
       const otherId = participantId.toString();
       const me = await User.findById(userId);
       const target = await User.findById(otherId);
-      if (target?.pushToken) {
-        sendPushNotification({
-          to: target.pushToken,
+
+      if (target) {
+        await NotificationService.send({
+          userId: otherId,
           title: "New Chat",
           body: `${me?.name || "Someone"} started a chat with you`,
+          type: "system",
           data: { chatId: chat._id, type: "new-chat" },
         });
       }

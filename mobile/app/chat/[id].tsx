@@ -10,6 +10,7 @@ import {
 } from "@/hooks/useMessage";
 import { useChats } from "@/hooks/useChat";
 import { useSocketStore } from "@/lib/socket";
+import { useCallStore } from "@/store/call";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
@@ -146,6 +147,26 @@ const ChatDetailScreen = () => {
   } else if (participantId) {
     isOnline = onlineUsers.has(participantId);
   }
+
+  const setCallStatus = useCallStore((state) => state.setCallStatus);
+
+  const handleCall = () => {
+    if (!isConnected) {
+      alert.error("You are offline");
+      return;
+    }
+    setCallStatus({
+      isCalling: true,
+      isIncomingCall: false,
+      chatId,
+      receiver: {
+        _id: participantId,
+        name: name,
+        avatar: avatar,
+      },
+      isGroupCall: isGroup,
+    });
+  };
 
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -585,16 +606,22 @@ const ChatDetailScreen = () => {
           )}
         </View>
 
-        {selectedMessageId && (
-          <View style={styles.headerActions}>
-            <Pressable style={styles.iconBtn} onPress={handleEditSelected}>
-              <Ionicons name="pencil" size={20} color={colors.primary} />
+        <View style={styles.headerActions}>
+          {!selectedMessageId ? (
+            <Pressable style={styles.iconBtn} onPress={handleCall}>
+              <Ionicons name="call-outline" size={24} color={colors.primary} />
             </Pressable>
-            <Pressable style={styles.iconBtn} onPress={handleDeleteSelected}>
-              <Ionicons name="trash" size={20} color={colors.error} />
-            </Pressable>
-          </View>
-        )}
+          ) : (
+            <>
+              <Pressable style={styles.iconBtn} onPress={handleEditSelected}>
+                <Ionicons name="pencil" size={20} color={colors.primary} />
+              </Pressable>
+              <Pressable style={styles.iconBtn} onPress={handleDeleteSelected}>
+                <Ionicons name="trash" size={20} color={colors.error} />
+              </Pressable>
+            </>
+          )}
+        </View>
       </View>
 
       <KeyboardAvoidingView

@@ -11,44 +11,51 @@ interface PushPayload {
   badge?: number;
 }
 
-/**
- * Sends a push notification via Expo Push API
- */
+const isExpoPushToken = (token: string) =>
+  typeof token === "string" && token.startsWith("ExponentPushToken");
+
+const chunkArray = <T>(arr: T[], size: number) =>
+  Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
+    arr.slice(i * size, i * size + size),
+  );
+
 export const sendPushNotification = async (payload: PushPayload) => {
   try {
     const { to, title, body, data, sound = "default", badge } = payload;
 
-    // Filter out invalid or empty tokens
-    const tokens = Array.isArray(to) ? to.filter((t) => !!t) : to ? [to] : [];
+    const tokens = Array.isArray(to)
+      ? to.filter(isExpoPushToken)
+      : to && isExpoPushToken(to)
+        ? [to]
+        : [];
+
     if (tokens.length === 0) return;
 
-    console.log(
-      `📡 Sending push notification to ${tokens.length} recipients: ${title}`,
-    );
+    const chunks = chunkArray(tokens, 100);
 
-    const response = await axios.post(
-      EXPO_PUSH_URL,
-      {
-        to: tokens.length === 1 ? tokens[0] : tokens,
-        title,
-        body,
-        data,
-        sound,
-        badge,
-      },
-      {
-        headers: {
-          Accept: "application/json",
-          "Accept-encoding": "gzip, deflate",
-          "Content-Type": "application/json",
+    for (const chunk of chunks) {
+      await axios.post(
+        EXPO_PUSH_URL,
+        {
+          to: chunk,
+          title,
+          body,
+          data,
+          sound,
+          badge,
         },
-      },
-    );
-
-    return response.data;
+        {
+          headers: {
+            Accept: "application/json",
+            "Accept-encoding": "gzip, deflate",
+            "Content-Type": "application/json",
+          },
+        },
+      );
+    }
   } catch (error: any) {
     console.error(
-      "❌ Error sending push notification:",
+      "❌ Expo push error:",
       error?.response?.data || error.message,
     );
   }

@@ -6,6 +6,7 @@ import Message from "../models/message.model";
 import User from "../models/user.model";
 import Status from "../models/status.model";
 import ENV from "../configs/env";
+import { sendPushNotification } from "./expo";
 
 // store online users in memory: userId -> { deviceId -> Set<socketIds> }
 export const onlineUsers: Map<string, Map<string, Set<string>>> = new Map();
@@ -198,6 +199,127 @@ export const initializeSocket = (httpServer: HttpServer) => {
         console.error("Error handling view-status:", err);
       }
     });
+
+    // --- Call Events ---
+
+    socket.on(
+      "call-user",
+      async (data: { chatId: string; isGroup: boolean }) => {
+        try {
+          const { chatId, isGroup } = data;
+          const callerId = userId;
+
+          const chat = await Chat.findById(chatId).populate(
+            "participants",
+            "name avatar",
+          );
+          if (!chat) return;
+
+          const callerName =
+            (
+              chat.participants.find(
+                (p: any) => p._id.toString() === callerId,
+              ) as any
+            )?.name || "Unknown";
+
+          // Notify participants
+          for (const participant of chat.participants) {
+            const partId = (participant as any)._id.toString();
+            if (partId === callerId) continue;
+
+            const userDevices = onlineUsers.get(partId);
+            if (userDevices && userDevices.size > 0) {
+              // User is online, emit socket event
+              const userRoom = `user:${partId}`;
+              io.to(userRoom).emit("incoming-call", {
+                chatId,
+                callerId,
+                callerName,
+                isGroup,
+              });
+            } else {
+              // User is offline, send Push Notification
+              // We need the push token. identifying it might require a User query if not in 'participant'
+              // But 'participant' is populated with name/avatar only.
+              // Let's fetch the user to get pushToken if needed, or better, populate pushToken in chat query?
+              // For now, let's fetch user again to be safe and get pushToken.
+              const user = await User.findById(partId).select("pushToken");
+              if (user?.pushToken) {
+                await sendPushNotification({
+                  to: user.pushToken,
+                  title: isGroup
+                    ? `Group Call from ${callerName}`
+                    : "Incoming Call",
+                  body: `${callerName} is calling you...`,
+                  data: {
+                    type: "call",
+                    chatId,
+                    callerName,
+                    isGroup,
+                  },
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Error in call-user:", err);
+        }
+      },
+    );
+
+    socket.on("answer-call", (data: { chatId: string }) => {
+      socket.join(`call:${data.chatId}`);
+    });
+
+    socket.on("reject-call", (data: { chatId: string; callerId: string }) => {
+      // Notify the caller that this specific user rejected
+      io.to(`user:${data.callerId}`).emit("call-rejected", {
+        userId,
+        chatId: data.chatId,
+      });
+    });
+
+    socket.on("end-call", (data: { chatId: string }) => {
+      // Notify everyone in the call room
+      io.to(`call:${data.chatId}`).emit("call-ended", {
+        userId,
+        chatId: data.chatId,
+      });
+      socket.leave(`call:${data.chatId}`);
+    });
+
+    socket.on(
+      "webrtc-offer",
+      (data: { targetUserId: string; sdp: any; chatId: string }) => {
+        io.to(`user:${data.targetUserId}`).emit("webrtc-offer", {
+          senderId: userId,
+          sdp: data.sdp,
+          chatId: data.chatId,
+        });
+      },
+    );
+
+    socket.on(
+      "webrtc-answer",
+      (data: { targetUserId: string; sdp: any; chatId: string }) => {
+        io.to(`user:${data.targetUserId}`).emit("webrtc-answer", {
+          senderId: userId,
+          sdp: data.sdp,
+          chatId: data.chatId,
+        });
+      },
+    );
+
+    socket.on(
+      "ice-candidate",
+      (data: { targetUserId: string; candidate: any; chatId: string }) => {
+        io.to(`user:${data.targetUserId}`).emit("ice-candidate", {
+          senderId: userId,
+          candidate: data.candidate,
+          chatId: data.chatId,
+        });
+      },
+    );
 
     // Disconnect
     socket.on("disconnect", () => {
