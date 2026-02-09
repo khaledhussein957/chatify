@@ -4,12 +4,6 @@ import { QueryClient } from "@tanstack/react-query";
 import { Chat, Message, MessageSender, Status, Notification } from "@/types";
 import { useAuthStore } from "@/store/auth";
 import { useCallStore } from "@/store/call";
-import {
-  RTCPeerConnection,
-  RTCIceCandidate,
-  RTCSessionDescription,
-  mediaDevices,
-} from "react-native-webrtc";
 
 const SOCKET_URL = "https://chatify-server-dd9f.onrender.com";
 

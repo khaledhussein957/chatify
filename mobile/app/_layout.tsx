@@ -6,33 +6,33 @@ import { useTheme } from "@/hooks/useTheme";
 import SocketConnection from "@/components/SocketConnection";
 import CallOverlay from "@/components/CallOverlay";
 import { AlertProvider } from "@/components/AlertMessageController";
-// import { useEffect } from "react";
-// import { useAuthStore } from "@/store/auth";
-// import { registerForPushNotificationsAsync } from "@/utils/notifications";
-// import { useUpdatePushToken } from "@/hooks/useAuth";
+import { useEffect } from "react";
+import { useAuthStore } from "@/store/auth";
+import { registerForPushNotificationsAsync } from "@/utils/notifications";
+import { useUpdatePushToken } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
 
 const RootLayoutInner = () => {
   const { colors, isDark } = useTheme();
-  // const token = useAuthStore((state) => state.token);
-  // const { mutate: updatePushToken } = useUpdatePushToken();
+  const token = useAuthStore((state) => state.token);
+  const { mutate: updatePushToken } = useUpdatePushToken();
 
-  // useEffect(() => {
-  //   if (token) {
-  //     registerForPushNotificationsAsync().then((pushToken) => {
-  //       if (pushToken) {
-  //         updatePushToken(pushToken);
-  //       }
-  //     });
-  //   }
-  // }, [token, updatePushToken]);
+  useEffect(() => {
+    if (token) {
+      registerForPushNotificationsAsync().then((pushToken) => {
+        if (pushToken) {
+          updatePushToken(pushToken);
+        }
+      });
+    }
+  }, [token, updatePushToken]);
 
   return (
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
       <SocketConnection />
-      {/* <CallOverlay /> */}
+      <CallOverlay />
       <Stack
         screenOptions={{
           headerShown: false,
