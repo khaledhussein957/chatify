@@ -6,7 +6,15 @@ import { useSocketStore } from "@/lib/socket";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 
-const ChatItem = ({ chat, onPress }: { chat: Chat; onPress: () => void }) => {
+const ChatItem = ({
+  chat,
+  onPress,
+  onLongPress,
+}: {
+  chat: Chat;
+  onPress: () => void;
+  onLongPress?: () => void;
+}) => {
   const participant = chat.participant;
   const { onlineUsers, activityUsers, unreadChats } = useSocketStore();
   const { data: currentUser } = useCurrentUser();
@@ -50,7 +58,12 @@ const ChatItem = ({ chat, onPress }: { chat: Chat; onPress: () => void }) => {
     : participant?.avatar;
 
   return (
-    <Pressable style={styles.container} onPress={onPress}>
+    <Pressable
+      style={styles.container}
+      onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={500}
+    >
       {/* Avatar & online indicator */}
       <View style={styles.avatarWrapper}>
         <Image source={displayAvatar} style={styles.avatar} />

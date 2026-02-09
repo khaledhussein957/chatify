@@ -584,7 +584,11 @@ const ChatDetailScreen = () => {
           />
         </Pressable>
 
-        <View style={styles.headerCenter}>
+        <Pressable
+          style={styles.headerCenter}
+          disabled={!!selectedMessageId || !isGroup}
+          onPress={() => router.push(`/screens/group_details?id=${chatId}`)}
+        >
           {!selectedMessageId ? (
             <>
               {avatar && <Image source={avatar} style={styles.avatar} />}
@@ -617,7 +621,7 @@ const ChatDetailScreen = () => {
               {isEditingMode ? "Editing Message" : "Message Selected"}
             </Text>
           )}
-        </View>
+        </Pressable>
 
         <View style={styles.headerActions}>
           {!selectedMessageId ? (

@@ -1,5 +1,7 @@
 import React, { useState } from "react";
-import { useChats } from "@/hooks/useChat";
+import { useChats, useDeleteChat } from "@/hooks/useChat";
+import { useAlert } from "@/components/AlertMessageController";
+import { COLORS } from "@/constants/theme";
 import { Chat } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -24,6 +26,8 @@ const ChatsTab = () => {
   const { data: chats, isLoading, error, refetch } = useChats();
   const [search, setSearch] = useState("");
   const { colors, isDark } = useTheme();
+  const { mutateAsync: deleteChat } = useDeleteChat();
+  const alert = useAlert();
 
   if (isLoading) {
     return (
@@ -61,6 +65,22 @@ const ChatsTab = () => {
     });
   };
 
+  const handleDeleteChat = (chat: Chat) => {
+    alert.confirm(
+      `Delete chat with ${chat.isGroupChat ? chat.name : chat.participant?.name}?`,
+      async () => {
+        try {
+          await deleteChat(chat._id);
+          alert.success("Chat deleted successfully");
+        } catch (error: any) {
+          console.error("Delete chat error:", error);
+          alert.error(error.message || "Failed to delete chat");
+        }
+      },
+      { confirmText: "Delete", confirmColor: COLORS.error },
+    );
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <SafeAreaView
@@ -96,7 +116,11 @@ const ChatsTab = () => {
         data={filteredChats}
         keyExtractor={(item) => item._id}
         renderItem={({ item }) => (
-          <ChatItem chat={item} onPress={() => handleChatPress(item)} />
+          <ChatItem
+            chat={item}
+            onPress={() => handleChatPress(item)}
+            onLongPress={() => handleDeleteChat(item)}
+          />
         )}
         showsVerticalScrollIndicator={false}
         contentInsetAdjustmentBehavior="automatic"

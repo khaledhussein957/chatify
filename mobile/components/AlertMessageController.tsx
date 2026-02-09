@@ -9,8 +9,9 @@ type AlertContextType = {
   confirm: (
     message: string,
     onConfirm: () => void,
-    options?: { confirmText?: string; confirmColor?: string }
+    options?: { confirmText?: string; confirmColor?: string },
   ) => void;
+  show: (msg: string) => void;
 };
 
 const AlertContext = createContext<AlertContextType | null>(null);
@@ -25,6 +26,7 @@ export const AlertProvider = ({ children }: { children: React.ReactNode }) => {
     hide: () => alertRef.current?.hide(),
     confirm: (msg, onConfirm, options) =>
       confirmRef.current?.show(msg, onConfirm, options),
+    show: (msg) => alertRef.current?.show(msg, "info"),
   };
 
   return (

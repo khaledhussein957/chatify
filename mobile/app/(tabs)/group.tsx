@@ -11,7 +11,9 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useChats } from "@/hooks/useChat";
+import { useChats, useDeleteChat } from "@/hooks/useChat";
+import { useAlert } from "@/components/AlertMessageController";
+import { COLORS } from "@/constants/theme";
 import ChatItem from "@/components/ChatItem";
 
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -24,6 +26,28 @@ export default function GroupScreen() {
   const { data: chats, isLoading, refetch } = useChats();
   const [search, setSearch] = useState("");
   const { colors, isDark } = useTheme();
+  const { mutateAsync: deleteChat } = useDeleteChat();
+  const alert = useAlert();
+
+  const handleChatPress = (chatId: string) => {
+    router.push(`/chat/${chatId}`);
+  };
+
+  const handleDeleteChat = (chat: any) => {
+    alert.confirm(
+      `Delete group chat "${chat.name}"?`,
+      async () => {
+        try {
+          await deleteChat(chat._id);
+          alert.success("Group deleted successfully");
+        } catch (error: any) {
+          console.error("Delete group error:", error);
+          alert.error(error.message || "Failed to delete group");
+        }
+      },
+      { confirmText: "Delete", confirmColor: COLORS.error },
+    );
+  };
 
   const groupChats = chats?.filter((chat) => chat.isGroupChat) || [];
   const filteredGroups = groupChats.filter((group) =>
@@ -75,7 +99,8 @@ export default function GroupScreen() {
         renderItem={({ item }) => (
           <ChatItem
             chat={item}
-            onPress={() => router.push(`/chat/${item._id}`)}
+            onPress={() => handleChatPress(item._id)}
+            onLongPress={() => handleDeleteChat(item)}
           />
         )}
         showsVerticalScrollIndicator={false}

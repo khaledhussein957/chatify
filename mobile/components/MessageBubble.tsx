@@ -13,6 +13,7 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import MediaViewer from "./MediaViewer";
 import { Audio, AVPlaybackStatus } from "expo-av";
+import { useDownload, MediaType } from "@/hooks/useDownload";
 
 function MessageBubble({
   message,
@@ -37,6 +38,13 @@ function MessageBubble({
   const [playbackPosition, setPlaybackPosition] = useState(0);
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const soundRef = useRef<Audio.Sound | null>(null);
+  const { downloadMedia, isDownloading } = useDownload();
+
+  const handleDownload = () => {
+    if (message.content) {
+      downloadMedia(message.content, mediaType as MediaType);
+    }
+  };
 
   const time = message.createdAt
     ? format(new Date(message.createdAt), "h:mm a")
@@ -187,24 +195,56 @@ function MessageBubble({
         {message.content && !message.deleted && (
           <>
             {isImage && (
-              <Pressable onPress={() => setIsViewerVisible(true)}>
-                <Image
-                  source={{ uri: message.content }}
-                  style={styles.mediaImage}
-                />
-              </Pressable>
+              <View style={styles.mediaWrapper}>
+                <Pressable onPress={() => setIsViewerVisible(true)}>
+                  <Image
+                    source={{ uri: message.content }}
+                    style={styles.mediaImage}
+                  />
+                </Pressable>
+                <Pressable
+                  onPress={handleDownload}
+                  style={[
+                    styles.downloadBtn,
+                    { backgroundColor: "rgba(0,0,0,0.4)" },
+                  ]}
+                  disabled={isDownloading}
+                >
+                  {isDownloading ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Ionicons name="download" size={20} color="white" />
+                  )}
+                </Pressable>
+              </View>
             )}
 
             {isVideo && (
-              <Pressable
-                onPress={() => setIsViewerVisible(true)}
-                style={[
-                  styles.videoContainer,
-                  { backgroundColor: colors.surfaceLight },
-                ]}
-              >
-                <Ionicons name="play-circle" size={48} color={colors.white} />
-              </Pressable>
+              <View style={styles.mediaWrapper}>
+                <Pressable
+                  onPress={() => setIsViewerVisible(true)}
+                  style={[
+                    styles.videoContainer,
+                    { backgroundColor: colors.surfaceLight },
+                  ]}
+                >
+                  <Ionicons name="play-circle" size={48} color={colors.white} />
+                </Pressable>
+                <Pressable
+                  onPress={handleDownload}
+                  style={[
+                    styles.downloadBtn,
+                    { backgroundColor: "rgba(0,0,0,0.4)" },
+                  ]}
+                  disabled={isDownloading}
+                >
+                  {isDownloading ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Ionicons name="download" size={20} color="white" />
+                  )}
+                </Pressable>
+              </View>
             )}
 
             {isVoice && (
@@ -258,27 +298,49 @@ function MessageBubble({
             )}
 
             {isDocument && (
-              <Pressable
-                onPress={() => setIsViewerVisible(true)}
+              <View
                 style={[
                   styles.documentContainer,
                   { backgroundColor: colors.surfaceLight },
                 ]}
               >
-                <Ionicons
-                  name="document-text"
-                  size={24}
-                  color={colors.primary}
-                />
-                <Text
-                  style={[
-                    styles.documentText,
-                    { color: isFromMe ? colors.background : colors.foreground },
-                  ]}
+                <Pressable
+                  onPress={() => setIsViewerVisible(true)}
+                  style={styles.documentInfo}
                 >
-                  Document
-                </Text>
-              </Pressable>
+                  <Ionicons
+                    name="document-text"
+                    size={24}
+                    color={colors.primary}
+                  />
+                  <Text
+                    style={[
+                      styles.documentText,
+                      {
+                        color: isFromMe ? colors.background : colors.foreground,
+                      },
+                    ]}
+                  >
+                    Document
+                  </Text>
+                </Pressable>
+
+                <Pressable
+                  onPress={handleDownload}
+                  style={styles.documentAction}
+                  disabled={isDownloading}
+                >
+                  {isDownloading ? (
+                    <ActivityIndicator size="small" color={colors.primary} />
+                  ) : (
+                    <Ionicons
+                      name="download-outline"
+                      size={22}
+                      color={colors.primary}
+                    />
+                  )}
+                </Pressable>
+              </View>
             )}
 
             <MediaViewer
@@ -351,14 +413,12 @@ const styles = StyleSheet.create({
   justifyStart: {
     justifyContent: "flex-start",
   },
-
   bubble: {
     maxWidth: "80%",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 16,
   },
-
   text: {
     fontSize: 14,
   },
@@ -400,6 +460,33 @@ const styles = StyleSheet.create({
   },
   documentText: {
     fontSize: 14,
+  },
+  mediaWrapper: {
+    position: "relative",
+    width: 200,
+    height: 200,
+    borderRadius: 12,
+    overflow: "hidden",
+    marginBottom: 4,
+  },
+  downloadBtn: {
+    position: "absolute",
+    right: 8,
+    bottom: 8,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  documentInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+  },
+  documentAction: {
+    padding: 4,
   },
   voiceContainer: {
     flexDirection: "row",

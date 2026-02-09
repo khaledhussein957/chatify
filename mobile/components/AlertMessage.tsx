@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "@/hooks/useTheme";
 
 export type AlertMessageHandles = {
-  show: (message: string, type: "success" | "error") => void;
+  show: (message: string, type: "success" | "error" | "info") => void;
   hide: () => void;
 };
 
@@ -29,7 +29,7 @@ const AlertMessage = forwardRef<AlertMessageHandles, AlertMessageProps>(
   ({ onHide, duration = 5000 }, ref) => {
     const { colors } = useTheme();
     const [message, setMessage] = useState<string | null>(null);
-    const [type, setType] = useState<"success" | "error">("success");
+    const [type, setType] = useState<"success" | "error" | "info">("success");
 
     const translateY = useSharedValue(-80);
     const opacity = useSharedValue(0);

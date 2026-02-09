@@ -49,6 +49,15 @@
             "backgroundColor": "#000000"
           }
         }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Chatify to access your photos.",
+          "savePhotosPermission": "Allow Chatify to save photos to your device.",
+          "audioPermission": "Allow Chatify to access your audio.",
+          "isAccessMediaLocationEnabled": true
+        }
       ]
     ],
     "experiments": {
