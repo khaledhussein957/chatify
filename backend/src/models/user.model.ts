@@ -17,7 +17,6 @@ export interface IUser extends Document {
   codeExpires?: Date;
   isVerified: boolean;
   deviceId?: string;
-  pushToken?: string;
 
   // OTP rate limiting (5 OTPs per month)
   otpSentCount: number;
@@ -49,7 +48,6 @@ const UserSchema: Schema = new Schema<IUser>(
     codeExpires: { type: Date, required: false },
     isVerified: { type: Boolean, default: false },
     deviceId: { type: String, required: false },
-    pushToken: { type: String, required: false },
 
     // OTP rate limiting
     otpSentCount: { type: Number, default: 0 },

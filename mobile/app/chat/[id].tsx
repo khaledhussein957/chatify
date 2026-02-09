@@ -166,6 +166,9 @@ const ChatDetailScreen = () => {
 
   const handleActivity = useCallback(
     (text: string) => {
+      if (selectedMessageId && !isEditingMode) {
+        setSelectedMessageId(null);
+      }
       setMessageText(text);
       if (!isConnected || !chatId) return;
 
@@ -180,7 +183,7 @@ const ChatDetailScreen = () => {
         sendActivity(chatId, "none");
       }
     },
-    [chatId, isConnected, sendActivity],
+    [chatId, isConnected, sendActivity, selectedMessageId, isEditingMode],
   );
 
   const pickImage = async () => {
@@ -236,9 +239,9 @@ const ChatDetailScreen = () => {
   };
 
   const handleAttachment = () => {
-    if (selectedMessageId) {
-      clearSelection();
-      return;
+    if (isEditingMode) {
+      setMessageText("");
+      setIsEditingMode(false);
     }
     setIsAttachmentModalVisible(true);
   };
@@ -248,6 +251,10 @@ const ChatDetailScreen = () => {
   };
 
   const handleLongPress = (message: any) => {
+    if (isEditingMode) {
+      setMessageText("");
+      setIsEditingMode(false);
+    }
     if (message.deleted) return;
     const senderId =
       typeof message.sender === "string" ? message.sender : message.sender._id;
@@ -258,8 +265,10 @@ const ChatDetailScreen = () => {
 
   const clearSelection = () => {
     setSelectedMessageId(null);
-    setIsEditingMode(false);
-    setMessageText("");
+    if (isEditingMode) {
+      setMessageText("");
+      setIsEditingMode(false);
+    }
   };
 
   const handleDeleteSelected = () => {
@@ -310,9 +319,9 @@ const ChatDetailScreen = () => {
 
   const startRecording = async () => {
     try {
-      if (selectedMessageId) {
-        clearSelection();
-        return;
+      if (isEditingMode) {
+        setMessageText("");
+        setIsEditingMode(false);
       }
 
       const permission = await Audio.requestPermissionsAsync();
@@ -449,9 +458,9 @@ const ChatDetailScreen = () => {
 
   const handleSendVoice = async (uri: string, duration: number) => {
     try {
-      if (selectedMessageId) {
-        clearSelection();
-        return;
+      if (isEditingMode) {
+        setMessageText("");
+        setIsEditingMode(false);
       }
 
       setIsSending(true);
@@ -512,9 +521,9 @@ const ChatDetailScreen = () => {
           alert.error("Failed to update message");
         }
       } else if (selectedFile) {
-        if (selectedMessageId) {
-          clearSelection();
-          return;
+        if (isEditingMode) {
+          setMessageText("");
+          setIsEditingMode(false);
         }
 
         // Send with file
@@ -526,18 +535,18 @@ const ChatDetailScreen = () => {
         setSelectedFile(null);
         setMessageText("");
       } else if (isConnected) {
-        if (selectedMessageId) {
-          clearSelection();
-          return;
+        if (isEditingMode) {
+          setMessageText("");
+          setIsEditingMode(false);
         }
 
         // Send text only via socket
         sendMessage(chatId, messageText.trim());
         setMessageText("");
       } else {
-        if (selectedMessageId) {
-          clearSelection();
-          return;
+        if (isEditingMode) {
+          setMessageText("");
+          setIsEditingMode(false);
         }
 
         // Fallback: Send text via HTTP if socket is disconnected

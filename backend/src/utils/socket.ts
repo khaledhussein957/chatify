@@ -3,10 +3,9 @@ import { Server as HttpServer } from "http";
 import jwt from "jsonwebtoken";
 import Chat from "../models/chat.model";
 import Message from "../models/message.model";
-import User from "../models/user.model";
 import Status from "../models/status.model";
-import { sendPushNotification } from "./expo";
 import ENV from "../configs/env";
+import User from "../models/user.model";
 
 export const onlineUsers = new Map<string, Set<string>>();
 export let io: Server;
@@ -69,35 +68,14 @@ export const initializeSocket = (httpServer: HttpServer) => {
           const chat = await Chat.findByIdAndUpdate(chatId, {
             lastMessage: message._id,
             lastMessageAt: new Date(),
-          }).populate("participants", "pushToken");
+          }).populate("participants", "name avatar");
 
           if (!chat) return;
 
           await message.populate("sender", "name avatar");
           io.to(`chat:${chatId}`).emit("new-message", message);
 
-          // Handle offline push notifications
-          const sender = await User.findById(userId).select("name");
-          const senderName = sender?.name || "Someone";
-
-          for (const participant of chat.participants as any[]) {
-            const pid = participant._id.toString();
-            if (pid === userId) continue;
-
-            // Check if participant is offline (no active sockets)
-            if (!onlineUsers.has(pid) || onlineUsers.get(pid)!.size === 0) {
-              if (participant.pushToken) {
-                await sendPushNotification({
-                  to: participant.pushToken,
-                  title: chat.isGroupChat
-                    ? chat.name || "Group Chat"
-                    : senderName,
-                  body: text.substring(0, 100),
-                  data: { type: "message", chatId },
-                });
-              }
-            }
-          }
+          // Removed offline push notifications logic
         } catch (err) {
           console.error("Socket send-message error:", err);
         }

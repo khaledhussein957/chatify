@@ -10,7 +10,6 @@ import cloudinary from "../configs/cloudinary";
 
 import { io } from "../utils/socket";
 import User from "../models/user.model";
-import { NotificationService } from "../services/notification.service";
 
 export const createStatus = async (
   req: AuthRequest,
@@ -154,20 +153,6 @@ export const viewStatus = async (
         statusId,
         viewerId: userId,
       });
-
-      // Push Notification & Persistence
-      const me = await User.findById(userId);
-      const owner = await User.findById(status.user);
-
-      if (owner) {
-        await NotificationService.send({
-          userId: status.user.toString(),
-          title: "Status Viewed",
-          body: `${me?.name || "Someone"} viewed your status`,
-          type: "system",
-          data: { statusId, type: "status-viewed" },
-        });
-      }
     }
 
     const finalStatus = updated || status;

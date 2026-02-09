@@ -6,7 +6,6 @@ import Message from "../models/message.model";
 import { io } from "../utils/socket";
 import cloudinary from "../configs/cloudinary";
 import User from "../models/user.model";
-import { NotificationService } from "../services/notification.service";
 
 export const getOrCreateChat = async (
   req: AuthRequest,
@@ -51,21 +50,6 @@ export const getOrCreateChat = async (
       if (io) {
         sortedParticipants.forEach((p) => {
           io.to(`user:${p.toString()}`).emit("new-chat", { chatId: chat?._id });
-        });
-      }
-
-      // Push Notification & Persistence
-      const otherId = participantId.toString();
-      const me = await User.findById(userId);
-      const target = await User.findById(otherId);
-
-      if (target) {
-        await NotificationService.send({
-          userId: otherId,
-          title: "New Chat",
-          body: `${me?.name || "Someone"} started a chat with you`,
-          type: "system",
-          data: { chatId: chat._id, type: "new-chat" },
         });
       }
     }

@@ -11,7 +11,6 @@ import chatRoute from "./routes/chat.route";
 import messageRoute from "./routes/message.route";
 import userRoute from "./routes/user.route";
 import statusRoute from "./routes/status.route";
-import notificationRoute from "./routes/notification.route";
 
 import { errorHandler } from "./middlewares/errorHandler.middleware";
 
@@ -45,7 +44,6 @@ app.use("/api/chats", chatRoute);
 app.use("/api/messages", messageRoute);
 app.use("/api/status", statusRoute);
 app.use("/api/users", userRoute);
-app.use("/api/notifications", notificationRoute);
 
 // Error Handling Middleware
 app.use(errorHandler);
