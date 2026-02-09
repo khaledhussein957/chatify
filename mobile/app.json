@@ -10,9 +10,6 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "infoPlist": {
-        "NSMicrophoneUsageDescription": "This app needs access to the microphone to make audio calls."
-      },
       "bitcode": false
     },
     "android": {
@@ -30,7 +27,6 @@
         "android.permission.CAMERA",
         "android.permission.INTERNET",
         "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.RECORD_AUDIO",
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.WAKE_LOCK",
         "android.permission.BLUETOOTH"
@@ -53,13 +49,6 @@
             "backgroundColor": "#000000"
           }
         }
-      ],
-      [
-        "@config-plugins/react-native-webrtc",
-        {
-          "cameraPermission": "Allow Chatify to access your camera",
-          "microphonePermission": "Allow Chatify to access your microphone"
-        }
       ]
     ],
     "experiments": {
@@ -69,9 +58,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "689693d7-33d2-4599-9297-c730dddb0849"
+        "projectId": "c589ff11-af81-4913-9132-67292bf51e54"
       }
     },
-    "owner": "khaledhussein957"
+    "owner": "khalidhusseinsayid"
   }
 }

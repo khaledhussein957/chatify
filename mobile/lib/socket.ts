@@ -3,7 +3,6 @@ import { io, Socket } from "socket.io-client";
 import { QueryClient } from "@tanstack/react-query";
 import { Chat, Message } from "@/types";
 import { useAuthStore } from "@/store/auth";
-import { useCallStore } from "@/store/call";
 
 const SOCKET_URL = "https://chatify-server-dd9f.onrender.com";
 
@@ -131,32 +130,6 @@ export const useSocketStore = create<SocketState>((set, get) => ({
 
         return { activityUsers };
       });
-    });
-
-    socket.on(
-      "incoming-call",
-      (data: {
-        chatId: string;
-        callerId: string;
-        callerName: string;
-        isGroup: boolean;
-      }) => {
-        useCallStore.getState().setCallStatus({
-          isIncomingCall: true,
-          chatId: data.chatId,
-          role: "receiver",
-          caller: { _id: data.callerId, name: data.callerName },
-          isGroupCall: data.isGroup,
-        });
-      },
-    );
-
-    socket.on("call-ended", (data: { userId: string; chatId: string }) => {
-      useCallStore.getState().removeRemoteStream(data.userId);
-      const { remoteStreams } = useCallStore.getState();
-      if (remoteStreams.size === 0) {
-        useCallStore.getState().resetCall();
-      }
     });
 
     socket.on("user-updated", () => {

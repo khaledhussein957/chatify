@@ -10,7 +10,6 @@ import {
 } from "@/hooks/useMessage";
 import { useChats } from "@/hooks/useChat";
 import { useSocketStore } from "@/lib/socket";
-import { useCallStore } from "@/store/call";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
@@ -148,24 +147,6 @@ const ChatDetailScreen = () => {
     isOnline = onlineUsers.has(participantId);
   }
 
-  const setCallStatus = useCallStore((state) => state.setCallStatus);
-
-  const handleCall = () => {
-    if (!isConnected) {
-      alert.error("You are offline");
-      return;
-    }
-    setCallStatus({
-      isCalling: true,
-      chatId,
-      role: "caller",
-      isGroupCall: isGroup,
-      receiver: participantId
-        ? { _id: participantId, name: name || "User", avatar: avatar || "" }
-        : null,
-    });
-  };
-
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -255,6 +236,10 @@ const ChatDetailScreen = () => {
   };
 
   const handleAttachment = () => {
+    if (selectedMessageId) {
+      clearSelection();
+      return;
+    }
     setIsAttachmentModalVisible(true);
   };
 
@@ -325,6 +310,11 @@ const ChatDetailScreen = () => {
 
   const startRecording = async () => {
     try {
+      if (selectedMessageId) {
+        clearSelection();
+        return;
+      }
+
       const permission = await Audio.requestPermissionsAsync();
       if (permission.status !== "granted") {
         alert.error("Permission to access microphone is required");
@@ -459,7 +449,11 @@ const ChatDetailScreen = () => {
 
   const handleSendVoice = async (uri: string, duration: number) => {
     try {
-      console.log("Preparing to send voice message:", { uri, duration });
+      if (selectedMessageId) {
+        clearSelection();
+        return;
+      }
+
       setIsSending(true);
       await sendVoiceMessage(
         chatId,
@@ -470,7 +464,6 @@ const ChatDetailScreen = () => {
         },
         duration,
       );
-      console.log("Voice message sent successfully!");
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
@@ -519,6 +512,11 @@ const ChatDetailScreen = () => {
           alert.error("Failed to update message");
         }
       } else if (selectedFile) {
+        if (selectedMessageId) {
+          clearSelection();
+          return;
+        }
+
         // Send with file
         await sendMessageWithFile(
           chatId,
@@ -528,10 +526,20 @@ const ChatDetailScreen = () => {
         setSelectedFile(null);
         setMessageText("");
       } else if (isConnected) {
+        if (selectedMessageId) {
+          clearSelection();
+          return;
+        }
+
         // Send text only via socket
         sendMessage(chatId, messageText.trim());
         setMessageText("");
       } else {
+        if (selectedMessageId) {
+          clearSelection();
+          return;
+        }
+
         // Fallback: Send text via HTTP if socket is disconnected
         console.log("Socket disconnected, sending via HTTP fallback...");
         await sendMessageWithFile(chatId, messageText.trim());
@@ -603,9 +611,7 @@ const ChatDetailScreen = () => {
 
         <View style={styles.headerActions}>
           {!selectedMessageId ? (
-            <Pressable style={styles.iconBtn} onPress={handleCall}>
-              <Ionicons name="call-outline" size={24} color={colors.primary} />
-            </Pressable>
+            <></>
           ) : (
             <>
               <Pressable style={styles.iconBtn} onPress={handleEditSelected}>
