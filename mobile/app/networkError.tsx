@@ -2,11 +2,11 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   Dimensions,
   Pressable,
   ActivityIndicator,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import NetInfo from "@react-native-community/netinfo";
 import { COLORS } from "@/constants/theme";
@@ -45,10 +45,11 @@ const NetworkErrorScreen = () => {
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.imageContainer}>
-        <Image
-          source={require("../assets/images/icon.png")}
-          style={styles.image}
-          resizeMode="contain"
+        <Ionicons
+          name="cloud-offline"
+          size={120}
+          color={colors.primary}
+          style={{ marginBottom: 20 }}
         />
       </View>
 
@@ -102,12 +103,6 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     justifyContent: "center",
     alignItems: "center",
-  },
-
-  image: {
-    width: 260,
-    height: 260,
-    opacity: 0.9,
   },
 
   title: {

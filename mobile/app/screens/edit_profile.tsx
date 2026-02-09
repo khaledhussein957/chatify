@@ -86,7 +86,7 @@ const EditProfile = () => {
         if (user && !user.name) {
           // If this was initial setup (onboarding), go to tabs
           if (router.canDismiss()) router.dismissAll();
-          router.replace("/(tabs)");
+          router.replace("/(tabs)/profile");
         } else {
           router.back();
         }

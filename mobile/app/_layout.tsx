@@ -32,7 +32,7 @@ const RootLayoutInner = () => {
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
       <SocketConnection />
-      <CallOverlay />
+      {/* <CallOverlay /> */}
       <Stack
         screenOptions={{
           headerShown: false,
