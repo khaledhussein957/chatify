@@ -71,3 +71,21 @@ export interface Status {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface Notification {
+  _id: string;
+  user: string;
+  title: string;
+  body: string;
+  type: "message" | "voice" | "system";
+  data?: {
+    chatId?: string;
+    messageId?: string;
+    senderId?: string;
+    type?: string;
+    notificationId?: string;
+  };
+  read: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

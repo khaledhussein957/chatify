@@ -1,8 +1,15 @@
 import { create } from "zustand";
 import { io, Socket } from "socket.io-client";
 import { QueryClient } from "@tanstack/react-query";
-import { Chat, Message, MessageSender, Status } from "@/types";
+import { Chat, Message, MessageSender, Status, Notification } from "@/types";
 import { useAuthStore } from "@/store/auth";
+import { useCallStore } from "@/store/call";
+import {
+  RTCPeerConnection,
+  RTCIceCandidate,
+  RTCSessionDescription,
+  mediaDevices,
+} from "react-native-webrtc";
 
 const SOCKET_URL = "https://chatify-server-dd9f.onrender.com";
 
@@ -137,6 +144,73 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         activityUsers.delete(message.chat);
         return { activityUsers };
       });
+    });
+
+    socket.on("new-notification", (notification: Notification) => {
+      console.log("Received new-notification:", notification._id);
+      queryClient.setQueryData<Notification[]>(["notifications"], (old) => {
+        if (!old) return [notification];
+        if (old.some((n) => n._id === notification._id)) return old;
+        return [notification, ...old];
+      });
+    });
+
+    // --- WebRTC Signaling ---
+
+    socket.on(
+      "incoming-call",
+      (data: {
+        chatId: string;
+        callerId: string;
+        callerName: string;
+        isGroup: boolean;
+      }) => {
+        console.log("Incoming call from:", data.callerName);
+        useCallStore.getState().setCallStatus({
+          isIncomingCall: true,
+          chatId: data.chatId,
+          caller: { _id: data.callerId, name: data.callerName },
+          isGroupCall: data.isGroup,
+        });
+      },
+    );
+
+    socket.on("call-accepted", (data: { userId: string; chatId: string }) => {
+      console.log("Call accepted by:", data.userId);
+    });
+
+    socket.on("call-rejected", (data: { userId: string; chatId: string }) => {
+      console.log("Call rejected by:", data.userId);
+      const { isGroupCall } = useCallStore.getState();
+      if (!isGroupCall) {
+        useCallStore.getState().resetCall();
+      }
+    });
+
+    socket.on("call-ended", (data: { userId: string; chatId: string }) => {
+      console.log("Call ended by:", data.userId);
+      useCallStore.getState().removePeerConnection(data.userId);
+      useCallStore.getState().removeRemoteStream(data.userId);
+
+      const { peerConnections } = useCallStore.getState();
+      if (peerConnections.size === 0) {
+        useCallStore.getState().resetCall();
+      }
+    });
+
+    socket.on("webrtc-offer", (data) => {
+      // Handled by CallOverlay or specific hook
+      console.log("Received Offer from:", data.senderId);
+    });
+
+    socket.on("webrtc-answer", (data) => {
+      // Handled by CallOverlay or specific hook
+      console.log("Received Answer from:", data.senderId);
+    });
+
+    socket.on("ice-candidate", (data) => {
+      // Handled by CallOverlay or specific hook
+      console.log("Received ICE Candidate from:", data.senderId);
     });
 
     // Status events

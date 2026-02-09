@@ -9,8 +9,8 @@ import Status from "../models/status.model";
 import cloudinary from "../configs/cloudinary";
 
 import { io } from "../utils/socket";
-import { sendPushNotification } from "../utils/expo";
 import User from "../models/user.model";
+import { NotificationService } from "../services/notification.service";
 
 export const createStatus = async (
   req: AuthRequest,
@@ -155,14 +155,16 @@ export const viewStatus = async (
         viewerId: userId,
       });
 
-      // Push Notification to the status owner
+      // Push Notification & Persistence
       const me = await User.findById(userId);
       const owner = await User.findById(status.user);
-      if (owner?.pushToken) {
-        sendPushNotification({
-          to: owner.pushToken,
+
+      if (owner) {
+        await NotificationService.send({
+          userId: status.user.toString(),
           title: "Status Viewed",
           body: `${me?.name || "Someone"} viewed your status`,
+          type: "system",
           data: { statusId, type: "status-viewed" },
         });
       }

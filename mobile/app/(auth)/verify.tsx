@@ -80,7 +80,7 @@ const VerifyAccountScreen = () => {
         if (res.profileCompleted) {
           router.replace("/(tabs)");
         } else {
-          router.replace("/screens/edit_profile");
+          router.replace("/screens/complete_profile");
         }
       } else {
         alert.error("❌ Verification failed");
