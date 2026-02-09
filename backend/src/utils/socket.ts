@@ -156,7 +156,37 @@ export const initializeSocket = (httpServer: HttpServer) => {
 
 export const forceDisconnectUser = (userId: string) => {
   if (!io) return;
-  io.to(`user:${userId}`).emit("user-deleted", { message: "Account deleted" });
-  io.in(`user:${userId}`).disconnectSockets(true);
+
+  const userRoom = `user:${userId}`;
+  io.to(userRoom).emit("user-deleted", {
+    message: "Your account has been deleted.",
+  });
+  io.in(userRoom).disconnectSockets(true);
+
+  // cleanup in-memory online state if any somehow remains
   onlineUsers.delete(userId);
+};
+
+export const logoutOtherDevices = (userId: string, currentDeviceId: string) => {
+  if (!io) return;
+
+  const userDevices = onlineUsers.get(userId);
+  if (!userDevices) return;
+
+  for (const [deviceId, socketIds] of userDevices.entries()) {
+    if (deviceId !== currentDeviceId) {
+      const deviceRoom = `user:${userId}:device:${deviceId}`;
+      io.to(deviceRoom).emit("session-expired", {
+        message: "You have logged in from another device.",
+      });
+      io.in(deviceRoom).disconnectSockets(true);
+      userDevices.delete(deviceId);
+    }
+  }
+
+  if (userDevices.size === 0) {
+    onlineUsers.delete(userId);
+  } else {
+    onlineUsers.set(userId, userDevices);
+  }
 };
