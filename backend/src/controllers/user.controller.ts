@@ -162,6 +162,33 @@ export const changePhoneNumber = async (req: AuthRequest, res: Response) => {
   }
 };
 
+const validateName = (name: string | undefined): string | null => {
+  if (name !== undefined) {
+    const trimmed = name.trim();
+    if (!trimmed) return "❌ Name cannot be empty";
+    return null;
+  }
+  return null;
+};
+
+const validateEmail = async (
+  email: string | undefined,
+  userId: string,
+): Promise<string | null> => {
+  if (email !== undefined) {
+    const trimmed = email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmed)) return "❌ Invalid email format";
+
+    const existingUser = await User.findOne({
+      email: trimmed,
+      _id: { $ne: userId },
+    });
+    if (existingUser) return "❌ Email already in use";
+  }
+  return null;
+};
+
 export const updateProfile = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
@@ -180,35 +207,74 @@ export const updateProfile = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ message: "❌ User not found" });
     }
 
-    // Name validation
-    if (name !== undefined) {
-      name = name.trim();
-      if (!name) {
-        return res.status(400).json({ message: "❌ Name cannot be empty" });
-      }
-      user.name = name;
+    const nameError = validateName(name);
+    if (nameError) return res.status(400).json({ message: nameError });
+
+    const emailError = await validateEmail(email, userId);
+    if (emailError) {
+      const status = emailError.includes("in use") ? 409 : 400;
+      return res.status(status).json({ message: emailError });
     }
 
-    // Email validation
-    if (email !== undefined) {
-      email = email.trim().toLowerCase();
+    if (name !== undefined) user.name = name.trim();
+    if (email !== undefined) user.email = email.trim().toLowerCase();
 
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(email)) {
-        return res.status(400).json({ message: "❌ Invalid email format" });
-      }
+    await user.save();
 
-      const existingUser = await User.findOne({
-        email,
-        _id: { $ne: userId },
-      });
+    io.emit("user-updated", {
+      userId: user._id,
+      name: user.name,
+      avatar: user.avatar,
+    });
 
-      if (existingUser) {
-        return res.status(409).json({ message: "❌ Email already in use" });
-      }
-
-      user.email = email;
+    return res.status(200).json({
+      message: "✅ Profile updated successfully",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        bio: user.bio,
+      },
+    });
+  } catch (error: any) {
+    if (error.code === 11000) {
+      return res.status(409).json({ message: "❌ Email already in use" });
     }
+    console.error("❌ Error in update profile:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const completeProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    let { name, email } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ message: "❌ Unauthorized" });
+    }
+
+    if (name === undefined && email === undefined) {
+      return res.status(400).json({ message: "❌ No data to update" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "❌ User not found" });
+    }
+
+    const nameError = validateName(name);
+    if (nameError) return res.status(400).json({ message: nameError });
+
+    const emailError = await validateEmail(email, userId);
+    if (emailError) {
+      const status = emailError.includes("in use") ? 409 : 400;
+      return res.status(status).json({ message: emailError });
+    }
+
+    if (name !== undefined) user.name = name.trim();
+    if (email !== undefined) user.email = email.trim().toLowerCase();
 
     const isInitialSetup = !user.password && email;
     let generatedPassword = "";

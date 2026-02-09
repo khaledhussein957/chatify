@@ -6,6 +6,7 @@ interface CallState {
   isIncomingCall: boolean;
   isGroupCall: boolean;
   chatId: string | null;
+  role: "caller" | "receiver" | null;
   caller: { _id: string; name: string; avatar?: string } | null;
   receiver: { _id: string; name: string; avatar?: string } | null;
 
@@ -18,6 +19,7 @@ interface CallState {
     isIncomingCall?: boolean;
     isGroupCall?: boolean;
     chatId?: string | null;
+    role?: "caller" | "receiver" | null;
     caller?: any;
     receiver?: any;
   }) => void;
@@ -37,6 +39,7 @@ export const useCallStore = create<CallState>((set) => ({
   isIncomingCall: false,
   isGroupCall: false,
   chatId: null,
+  role: null,
   caller: null,
   receiver: null,
 
@@ -89,6 +92,7 @@ export const useCallStore = create<CallState>((set) => ({
         isIncomingCall: false,
         isGroupCall: false,
         chatId: null,
+        role: null,
         caller: null,
         receiver: null,
         localStream: null,

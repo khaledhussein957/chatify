@@ -163,6 +163,7 @@ export const useSocketStore = create<SocketState>((set, get) => ({
         useCallStore.getState().setCallStatus({
           isIncomingCall: true,
           chatId: data.chatId,
+          role: "receiver",
           caller: { _id: data.callerId, name: data.callerName },
           isGroupCall: data.isGroup,
         });

@@ -159,6 +159,7 @@ const ChatDetailScreen = () => {
       isCalling: true,
       isIncomingCall: false,
       chatId,
+      role: "caller",
       receiver: {
         _id: participantId,
         name: name,

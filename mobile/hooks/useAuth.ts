@@ -212,7 +212,7 @@ export const useUpdatePushToken = () => {
     mutationFn: async (pushToken: string) => {
       const { data } = await apiWithAuth<{ message: string }>({
         method: "PUT",
-        url: "/user/push-token",
+        url: "/users/push-token",
         data: { pushToken },
       });
       return data;

@@ -8,6 +8,7 @@ import {
   updateProfileAvatar,
   changePhoneNumber,
   updatePushToken,
+  completeProfile,
 } from "../controllers/user.controller";
 
 import { protectRoute } from "../middlewares/auth.middleware";
@@ -40,6 +41,14 @@ router.put(
   validateUpdateProfile,
   updateProfile,
 );
+
+router.put(
+  "/complete-profile",
+  protectRoute,
+  validateUpdateProfile,
+  completeProfile,
+);
+
 router.put(
   "/update-profile-avatar",
   protectRoute,

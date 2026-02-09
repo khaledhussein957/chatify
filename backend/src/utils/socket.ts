@@ -149,25 +149,44 @@ export const initializeSocket = (httpServer: HttpServer) => {
 
               // Check if user is offline and send push notification
               const userDevices = onlineUsers.get(participantStr);
-              if (!userDevices || userDevices.size === 0) {
+              const isOffline = !userDevices || userDevices.size === 0;
+
+              console.log(
+                `[DEBUG] Message to ${participantStr}. Offline? ${isOffline}. Pushing to device? ${isOffline}`,
+              );
+
+              if (isOffline) {
                 // User is offline, send push notification
                 const participant =
                   await User.findById(participantStr).select("pushToken");
+                console.log(
+                  `[DEBUG] Found participant ${participantStr}. Token: ${participant?.pushToken}`,
+                );
+
                 if (participant?.pushToken) {
-                  await sendPushNotification({
-                    to: participant.pushToken,
-                    title: chat.isGroupChat
-                      ? chat.name || "Group Chat"
-                      : senderName,
-                    body: chat.isGroupChat
-                      ? `${senderName}: ${text.substring(0, 100)}`
-                      : text.substring(0, 100),
-                    data: {
-                      type: "message",
-                      chatId,
-                      senderId: userId,
-                    },
-                  });
+                  try {
+                    await sendPushNotification({
+                      to: participant.pushToken,
+                      title: chat.isGroupChat
+                        ? chat.name || "Group Chat"
+                        : senderName,
+                      body: chat.isGroupChat
+                        ? `${senderName}: ${text.substring(0, 100)}`
+                        : text.substring(0, 100),
+                      data: {
+                        type: "message",
+                        chatId,
+                        senderId: userId,
+                      },
+                    });
+                    console.log(
+                      `[DEBUG] Push notification sent to ${participantStr}`,
+                    );
+                  } catch (pushErr) {
+                    console.error(`[DEBUG] Failed to send push:`, pushErr);
+                  }
+                } else {
+                  console.log(`[DEBUG] No push token for ${participantStr}`);
                 }
               }
             }

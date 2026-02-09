@@ -26,9 +26,6 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.khaledhussein957.chatify",
       "permissions": [
-        "RECORD_AUDIO",
-        "MODIFY_AUDIO_SETTINGS",
-        "INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.CAMERA",
         "android.permission.INTERNET",
@@ -75,6 +72,12 @@
         "projectId": "13eb34e1-beb9-42b8-9fe9-bc7b3b36be2c"
       }
     },
-    "owner": "khaledhussein957"
+    "owner": "khaledhussein957",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/13eb34e1-beb9-42b8-9fe9-bc7b3b36be2c"
+    }
   }
 }

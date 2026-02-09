@@ -18,7 +18,7 @@ import { useForm, Controller } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
 
 import { useAuthStore } from "@/store/auth";
-import { useUpdateProfile, useUpdateProfileAvatar } from "@/hooks/useUser";
+import { useCompleteProfile, useUpdateProfileAvatar } from "@/hooks/useUser";
 import { getProfileStyles } from "@/assets/styles/profile.style";
 import { useTheme } from "@/hooks/useTheme";
 import { editProfileSchema } from "@/validators/editProfile.validator";
@@ -35,7 +35,7 @@ const CompleteProfile = () => {
   const { user, updateUser } = useAuthStore();
   const alert = useAlert();
 
-  const updateProfile = useUpdateProfile();
+  const completeProfile = useCompleteProfile();
   const updateAvatar = useUpdateProfileAvatar();
 
   const {
@@ -80,7 +80,7 @@ const CompleteProfile = () => {
   };
 
   const onSubmit = (values: FormValues) => {
-    updateProfile.mutate(values, {
+    completeProfile.mutate(values, {
       onSuccess: (data: any) => {
         updateUser(data.user);
         if (user && !user.name) {
@@ -219,12 +219,13 @@ const CompleteProfile = () => {
             <Pressable
               style={[
                 styles.saveButton,
-                (!isValid || updateProfile.isPending) && styles.disabledButton,
+                (!isValid || completeProfile.isPending) &&
+                  styles.disabledButton,
               ]}
               onPress={handleSubmit(onSubmit)}
-              disabled={!isValid || updateProfile.isPending}
+              disabled={!isValid || completeProfile.isPending}
             >
-              {updateProfile.isPending ? (
+              {completeProfile.isPending ? (
                 <ActivityIndicator
                   color={isDark ? colors.background : colors.white}
                 />

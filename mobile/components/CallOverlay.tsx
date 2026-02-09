@@ -12,6 +12,7 @@ import {
   RTCIceCandidate,
   RTCSessionDescription,
   mediaDevices,
+  RTCView,
 } from "react-native-webrtc";
 import { Ionicons } from "@expo/vector-icons";
 import { useCallStore } from "@/store/call";
@@ -32,17 +33,96 @@ const CallOverlay = () => {
     caller,
     receiver,
     chatId,
+    role,
     setCallStatus,
     resetCall,
     localStream,
     setLocalStream,
     addRemoteStream,
+    remoteStreams,
     peerConnections,
     addPeerConnection,
   } = useCallStore();
 
   const socket = useSocketStore((state) => state.socket);
   const [isMuted, setIsMuted] = useState(false);
+
+  const endCall = React.useCallback(() => {
+    if (chatId) {
+      socket?.emit("end-call", { chatId });
+    }
+    resetCall();
+  }, [chatId, socket, resetCall]);
+
+  const onAccept = React.useCallback(async () => {
+    try {
+      const stream = await mediaDevices.getUserMedia({
+        audio: true,
+        video: false,
+      });
+      setLocalStream(stream);
+
+      const pc = new RTCPeerConnection(configuration);
+
+      stream.getTracks().forEach((track) => {
+        pc.addTrack(track, stream);
+      });
+
+      (pc as any).addEventListener("icecandidate", (event: any) => {
+        if (event.candidate) {
+          socket?.emit("ice-candidate", {
+            targetUserId: caller?._id,
+            candidate: event.candidate,
+            chatId,
+          });
+        }
+      });
+
+      (pc as any).addEventListener("track", (event: any) => {
+        console.log(
+          "[DEBUG] Remote track received in onAccept:",
+          event.streams[0]?.id,
+        );
+        if (caller?._id && event.streams && event.streams[0]) {
+          addRemoteStream(caller._id, event.streams[0]);
+        }
+      });
+
+      if (caller?._id) addPeerConnection(caller._id, pc);
+
+      socket?.emit("accept-call", { chatId });
+      socket?.emit("answer-call", { chatId });
+
+      // Update state AFTER connection is prepared to avoid useEffect race condition calling startCall()
+      setCallStatus({ isIncomingCall: false, isCalling: true });
+    } catch (err) {
+      console.error("Accept error:", err);
+      endCall();
+    }
+  }, [
+    caller?._id,
+    chatId,
+    socket,
+    setLocalStream,
+    addPeerConnection,
+    addRemoteStream,
+    setCallStatus,
+    endCall,
+  ]);
+
+  const onReject = React.useCallback(() => {
+    if (caller && chatId) {
+      socket?.emit("reject-call", { chatId, callerId: caller._id });
+    }
+    resetCall();
+  }, [caller, chatId, socket, resetCall]);
+
+  const toggleMute = React.useCallback(() => {
+    if (localStream) {
+      localStream.getAudioTracks().forEach((t) => (t.enabled = !t.enabled));
+      setIsMuted(!isMuted);
+    }
+  }, [localStream, isMuted]);
 
   useEffect(() => {
     let pc: RTCPeerConnection | null = null;
@@ -77,6 +157,12 @@ const CallOverlay = () => {
 
         (pc as any).addEventListener("track", (event: any) => {
           const targetId = isCalling ? receiver?._id : caller?._id;
+          console.log(
+            "[DEBUG] Remote track received in startCall:",
+            event.streams[0]?.id,
+            "for target:",
+            targetId,
+          );
           if (targetId && event.streams && event.streams[0]) {
             addRemoteStream(targetId, event.streams[0]);
           }
@@ -119,6 +205,7 @@ const CallOverlay = () => {
     setLocalStream,
     receiver?._id,
     socket,
+    endCall,
   ]);
 
   // Handle Socket Events
@@ -126,8 +213,11 @@ const CallOverlay = () => {
     if (!socket) return;
 
     const handleCallAccepted = async (data: any) => {
-      if (isCalling) {
-        // Only caller handles this
+      // Only the ORIGINAL initiator (the person who started the call)
+      // should handle acceptance by creating an offer.
+      const isInitiator = role === "caller";
+
+      if (isCalling && isInitiator) {
         const targetId = receiver?._id;
         const pc = peerConnections.get(targetId!);
         if (pc) {
@@ -170,6 +260,7 @@ const CallOverlay = () => {
     };
 
     const handleCandidate = async (data: any) => {
+      console.log("[DEBUG] ICE candidate received from:", data.senderId);
       const pc = peerConnections.get(data.senderId);
       if (pc) {
         await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
@@ -187,71 +278,7 @@ const CallOverlay = () => {
       socket.off("webrtc-answer", handleAnswer);
       socket.off("ice-candidate", handleCandidate);
     };
-  }, [socket, peerConnections, isCalling, receiver, chatId]);
-
-  const onAccept = async () => {
-    setCallStatus({ isIncomingCall: false, isCalling: true });
-
-    try {
-      const stream = await mediaDevices.getUserMedia({
-        audio: true,
-        video: false,
-      });
-      setLocalStream(stream);
-
-      const pc = new RTCPeerConnection(configuration);
-
-      stream.getTracks().forEach((track) => {
-        pc.addTrack(track, stream);
-      });
-
-      (pc as any).addEventListener("icecandidate", (event: any) => {
-        if (event.candidate) {
-          socket?.emit("ice-candidate", {
-            targetUserId: caller?._id,
-            candidate: event.candidate,
-            chatId,
-          });
-        }
-      });
-
-      (pc as any).addEventListener("track", (event: any) => {
-        if (caller?._id && event.streams && event.streams[0]) {
-          addRemoteStream(caller._id, event.streams[0]);
-        }
-      });
-
-      if (caller?._id) addPeerConnection(caller._id, pc);
-
-      // Emit both accept-call and answer-call to join the call room
-      socket?.emit("accept-call", { chatId });
-      socket?.emit("answer-call", { chatId });
-    } catch (err) {
-      console.error("Accept error:", err);
-      endCall();
-    }
-  };
-
-  const onReject = () => {
-    if (caller && chatId) {
-      socket?.emit("reject-call", { chatId, callerId: caller._id });
-    }
-    resetCall();
-  };
-
-  const endCall = () => {
-    if (chatId) {
-      socket?.emit("end-call", { chatId });
-    }
-    resetCall();
-  };
-
-  const toggleMute = () => {
-    if (localStream) {
-      localStream.getAudioTracks().forEach((t) => (t.enabled = !t.enabled));
-      setIsMuted(!isMuted);
-    }
-  };
+  }, [socket, peerConnections, isCalling, chatId, role, receiver]);
 
   if (!isIncomingCall && !isCalling) return null;
 
@@ -261,11 +288,20 @@ const CallOverlay = () => {
         <View style={styles.content}>
           <View style={styles.header}>
             <Text style={styles.name}>
-              {isIncomingCall ? caller?.name : receiver?.name}
+              {role === "caller" ? receiver?.name : caller?.name}
             </Text>
             <Text style={styles.status}>
               {isIncomingCall ? "Incoming Audio Call..." : "Connected"}
             </Text>
+            {/* Hidden RTCView to ensure audio streams are played back */}
+            {Array.from(remoteStreams.values()).map((stream, idx) => (
+              <RTCView
+                key={idx}
+                streamURL={stream.toURL()}
+                style={{ width: 0, height: 0, opacity: 0 }}
+                objectFit="cover"
+              />
+            ))}
           </View>
 
           <View style={styles.controls}>
