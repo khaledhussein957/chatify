@@ -69,15 +69,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "13eb34e1-beb9-42b8-9fe9-bc7b3b36be2c"
+        "projectId": "689693d7-33d2-4599-9297-c730dddb0849"
       }
     },
-    "owner": "khaledhussein957",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
-    "updates": {
-      "url": "https://u.expo.dev/13eb34e1-beb9-42b8-9fe9-bc7b3b36be2c"
-    }
+    "owner": "khaledhussein957"
   }
 }
