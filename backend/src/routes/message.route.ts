@@ -3,7 +3,7 @@ import { Router } from "express";
 import {
   getMessages,
   sendMessage,
-  sendMessageWithContent,
+  // sendMessageWithContent,
   updateTextMessage,
   deleteMessage,
   sendVoiceMessage,
