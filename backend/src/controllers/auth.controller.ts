@@ -11,11 +11,13 @@ import { generateToken } from "../utils/generateToken";
 import { isOtpSupported, validatePhoneNumber } from "../utils/phoneValidate";
 import sendOtp from "../utils/otp";
 import { generateStrongPassword } from "../utils/passwordGenerator";
-import { logoutOtherDevices } from "../utils/socket";
+import { io, logoutOtherDevices } from "../utils/socket";
 
 import {
   forgotPasswordEmail,
+  sendEmailLinkedSuccessEmail,
   sendPasswordResetSuccessEmail,
+  sendWelcomePasswordEmail,
 } from "../emails/emailHandler";
 
 export const getMe = async (req: AuthRequest, res: Response) => {
@@ -63,7 +65,13 @@ export const register = async (req: Request, res: Response) => {
         .json({ success: false, message: validation?.message });
     }
 
-    // Move isOtpSupported check after user creation/update logic
+    // check if user verified
+    if (user?.isVerified) {
+      return res.status(409).json({
+        success: false,
+        message: "Phone number already registered. Please login.",
+      });
+    }
 
     // Check OTP rate limiting (5 OTPs per month)
     const now = new Date();
@@ -205,6 +213,136 @@ export const verifyCode = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+const validateName = (name: string | undefined): string | null => {
+  if (name !== undefined) {
+    const trimmed = name.trim();
+    if (!trimmed) return "❌ Name cannot be empty";
+    return null;
+  }
+  return null;
+};
+
+const validateEmail = async (
+  email: string | undefined,
+  userId: string,
+): Promise<string | null> => {
+  if (email !== undefined) {
+    const trimmed = email.trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmed)) return "❌ Invalid email format";
+
+    const existingUser = await User.findOne({
+      email: trimmed,
+      _id: { $ne: userId },
+    });
+    if (existingUser) return "❌ Email already in use";
+  }
+  return null;
+};
+
+export const completeProfile = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    let { name, email } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ message: "❌ Unauthorized" });
+    }
+
+    if (name === undefined && email === undefined) {
+      return res.status(400).json({ message: "❌ No data to update" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "❌ User not found" });
+    }
+
+    const nameError = validateName(name);
+    if (nameError) return res.status(400).json({ message: nameError });
+
+    const emailError = await validateEmail(email, userId);
+    if (emailError) {
+      const status = emailError.includes("in use") ? 409 : 400;
+      return res.status(status).json({ message: emailError });
+    }
+
+    if (name !== undefined) user.name = name.trim();
+    if (email !== undefined) user.email = email.trim().toLowerCase();
+
+    await user.save();
+
+    io.emit("user-updated", {
+      userId: user._id,
+      name: user.name,
+      avatar: user.avatar,
+    });
+
+    await sendEmailLinkedSuccessEmail(
+      user.name || "User",
+      user.email!,
+      user.deviceId || "Unknown",
+    );
+
+    return res.status(200).json({
+      message: "✅ Profile updated successfully",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        avatar: user.avatar,
+        bio: user.bio,
+      },
+    });
+  } catch (error: any) {
+    // Handle duplicate key error just in case
+    if (error.code === 11000) {
+      return res.status(409).json({ message: "❌ Email already in use" });
+    }
+
+    console.error("❌ Error in update profile:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const createPassword = async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+    const { password, confirmPassword } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ message: "❌ Unauthorized" });
+    }
+
+    if (!password || !confirmPassword) {
+      return res.status(400).json({ message: "❌ Password required" });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ message: "❌ Passwords do not match" });
+    }
+
+    if (!isValidStrongPassword(password)) {
+      return res.status(400).json({ message: "❌ Password is too weak" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "❌ User not found" });
+    }
+
+    user.password = await bcrypt.hash(password, 10);
+    await user.save();
+    return res
+      .status(200)
+      .json({ message: "✅ Password created successfully" });
+  } catch (error: any) {
+    console.error("❌ Error in create password:", error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
 export const resendOtp = async (req: Request, res: Response) => {
   try {
     const { phone } = req.body;

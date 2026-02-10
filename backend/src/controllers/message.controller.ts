@@ -49,113 +49,114 @@ export const getMessages = async (
   }
 };
 
-export const sendMessageWithContent = async (
-  req: AuthRequest,
-  res: Response,
-  next: NextFunction,
-) => {
-  try {
-    const userId = req.userId;
-    const { chatId, text, duration } = req.body;
+// export const sendMessageWithContent = async (
+//   req: AuthRequest,
+//   res: Response,
+//   next: NextFunction,
+// ) => {
+//   try {
+//     const userId = req.userId;
+//     const { chatId, text, duration } = req.body;
 
-    const chat = await Chat.findOne({ _id: chatId, participants: userId });
-    if (!chat) {
-      console.warn("Chat not found for message send:", chatId);
-      return res.status(404).json({ message: "Chat not found" });
-    }
+//     const chat = await Chat.findOne({ _id: chatId, participants: userId });
+//     if (!chat) {
+//       console.warn("Chat not found for message send:", chatId);
+//       return res.status(404).json({ message: "Chat not found" });
+//     }
 
-    let contentUrl: string | undefined = undefined;
-    let contentPublicId: string | undefined = undefined;
-    let messageType: "text" | "image" | "video" | "voice" = "text";
+//     let contentUrl: string | undefined = undefined;
+//     let contentPublicId: string | undefined = undefined;
+//     let messageType: "text" | "image" | "video" | "voice" = "text";
 
-    // if a file was uploaded via multer, upload it to Cloudinary
-    if (req.file) {
-      const filePath = path.resolve(req.file.path);
-      console.log("Uploading file to Cloudinary:", filePath);
+//     // if a file was uploaded via multer, upload it to Cloudinary
+//     if (req.file) {
+//       const filePath = path.resolve(req.file.path);
+//       console.log("Uploading file to Cloudinary:", filePath);
 
-      const isAudio =
-        req.file.mimetype.startsWith("audio") ||
-        (duration &&
-          !req.file.mimetype.startsWith("video") &&
-          !req.file.mimetype.startsWith("image"));
-      if (isAudio) messageType = "voice";
-      else if (req.file.mimetype.startsWith("image")) messageType = "image";
-      else if (req.file.mimetype.startsWith("video")) messageType = "video";
+//       const isAudio =
+//         req.file.mimetype.startsWith("audio") ||
+//         (duration &&
+//           !req.file.mimetype.startsWith("video") &&
+//           !req.file.mimetype.startsWith("image"));
+//       if (isAudio) messageType = "voice";
+//       else if (req.file.mimetype.startsWith("image")) messageType = "image";
+//       else if (req.file.mimetype.startsWith("video")) messageType = "video";
 
-      const uploadResult = await cloudinary.uploader.upload(filePath, {
-        folder: "chatify",
-        resource_type: isAudio ? "video" : "auto", // Cloudinary uses video for audio
-      });
+//       const uploadResult = await cloudinary.uploader.upload(filePath, {
+//         folder: "chatify",
+//         resource_type: isAudio ? "video" : "auto", // Cloudinary uses video for audio
+//       });
 
-      contentUrl = uploadResult.secure_url as string;
-      contentPublicId = uploadResult.public_id as string; // ✅ save it
-      console.log("File uploaded successfully:", contentUrl);
+//       contentUrl = uploadResult.secure_url as string;
+//       contentPublicId = uploadResult.public_id as string; // ✅ save it
+//       console.log("File uploaded successfully:", contentUrl);
 
-      // remove local file after upload
-      try {
-        fs.unlinkSync(filePath);
-      } catch (err) {
-        console.error("Failed to delete temp file:", err);
-      }
-    }
+//       // remove local file after upload
+//       try {
+//         fs.unlinkSync(filePath);
+//       } catch (err) {
+//         console.error("Failed to delete temp file:", err);
+//       }
+//     }
 
-    if (!text && !req.file) {
-      return res.status(400).json({ message: "Message cannot be empty" });
-    }
+//     if (!text && !req.file) {
+//       return res.status(400).json({ message: "Message cannot be empty" });
+//     }
 
-    const message = new Message({
-      chat: chatId,
-      sender: userId,
-      type: messageType,
-      text: text || "",
-      content: contentUrl,
-      contentPublicId,
-      duration: duration ? Number(duration) : undefined,
-    });
+//     const message = new Message({
+//       chat: chatId,
+//       sender: userId,
+//       type: messageType,
+//       text: text || "",
+//       content: contentUrl,
+//       contentPublicId,
+//       duration: duration ? Number(duration) : undefined,
+//     });
 
-    await message.save();
+//     await message.save();
 
-    chat.lastMessage = message._id as any;
-    chat.lastMessageAt = new Date();
-    await chat.save();
+//     chat.lastMessage = message._id as any;
+//     chat.lastMessageAt = new Date();
+//     await chat.save();
 
-    await message.populate("sender", "name avatar");
+//     await message.populate("sender", "name avatar");
 
-    // Socket Emission
-    if (io) {
-      console.log("Emitting new-message via socket for file attachment");
-      // to the chat room
-      io.to(`chat:${chatId}`).emit("new-message", message);
+//     // Socket Emission
+//     if (io) {
+//       console.log("Emitting new-message via socket for file attachment");
+//       // to the chat room
+//       io.to(`chat:${chatId}`).emit("new-message", message);
 
-      // to other participants personal rooms
-      chat.participants.forEach((participantId) => {
-        const participantIdStr = participantId.toString();
-        if (participantIdStr !== userId) {
-          const userRoom = `user:${participantIdStr}`;
-          const chatRoom = `chat:${chatId}`;
+//       // to other participants personal rooms
+//       chat.participants.forEach((participantId) => {
+//         const participantIdStr = participantId.toString();
+//         if (participantIdStr !== userId) {
+//           const userRoom = `user:${participantIdStr}`;
+//           const chatRoom = `chat:${chatId}`;
 
-          const chatRoomSockets = io.sockets.adapter.rooms.get(chatRoom);
-          const userRoomSockets = io.sockets.adapter.rooms.get(userRoom);
+//           const chatRoomSockets = io.sockets.adapter.rooms.get(chatRoom);
+//           const userRoomSockets = io.sockets.adapter.rooms.get(userRoom);
 
-          if (userRoomSockets) {
-            userRoomSockets.forEach((socketId) => {
-              if (!chatRoomSockets?.has(socketId)) {
-                io.to(socketId).emit("new-message", message);
-              }
-            });
-          }
-        }
-      });
-    }
+//           if (userRoomSockets) {
+//             userRoomSockets.forEach((socketId) => {
+//               if (!chatRoomSockets?.has(socketId)) {
+//                 io.to(socketId).emit("new-message", message);
+//               }
+//             });
+//           }
+//         }
+//       });
+//     }
 
-    res.status(201).json(message);
-  } catch (error) {
-    console.error(`❌ Error in send message with content:`, error);
-    next(error);
-  }
-};
+//     res.status(201).json(message);
+//   } catch (error) {
+//     console.error(`❌ Error in send message with content:`, error);
+//     next(error);
+//   }
+// };
 
 // update text message with in 5m
+
 export const updateTextMessage = async (
   req: AuthRequest,
   res: Response,
@@ -328,6 +329,105 @@ export const sendVoiceMessage = async (
     res.status(201).json(message);
   } catch (error) {
     console.error(`❌ Error in send voice message:`, error);
+    next(error);
+  }
+};
+
+export const sendMessage = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.userId;
+    const { chatId, text, replyTo, duration } = req.body;
+
+    // Ensure chat exists and user is a participant
+    const chat = await Chat.findOne({ _id: chatId, participants: userId });
+    if (!chat) return res.status(404).json({ message: "Chat not found" });
+
+    // Optional: validate replied message
+    let repliedMessage = null;
+    if (replyTo) {
+      repliedMessage = await Message.findById(replyTo);
+      if (!repliedMessage || repliedMessage.deleted) {
+        return res.status(404).json({ message: "Replied message not found" });
+      }
+      if (repliedMessage.chat.toString() !== chatId) {
+        return res
+          .status(400)
+          .json({ message: "Cannot reply to message from another chat" });
+      }
+      if (repliedMessage.sender.toString() === userId) {
+        return res
+          .status(400)
+          .json({ message: "You cannot reply to your own messages" });
+      }
+    }
+
+    // Handle file upload (image/video/audio/docs)
+    let contentUrl: string | undefined = undefined;
+    let contentPublicId: string | undefined = undefined;
+    let messageType: "text" | "image" | "video" | "voice" | "file" = "text";
+
+    if (req.file) {
+      const filePath = path.resolve(req.file.path);
+      const mimetype = req.file.mimetype;
+
+      if (mimetype.startsWith("image")) messageType = "image";
+      else if (mimetype.startsWith("video")) messageType = "video";
+      else if (mimetype.startsWith("audio")) messageType = "voice";
+      else messageType = "file"; // any other file (pdf, docx, etc.)
+
+      const uploadResult = await cloudinary.uploader.upload(filePath, {
+        folder: "chatify",
+        resource_type:
+          messageType === "voice" || messageType === "video" ? "video" : "auto",
+      });
+
+      contentUrl = uploadResult.secure_url;
+      contentPublicId = uploadResult.public_id;
+
+      fs.unlinkSync(filePath); // remove temp file
+    }
+
+    if (!text && !req.file) {
+      return res.status(400).json({ message: "Message cannot be empty" });
+    }
+
+    // Create message
+    const message = new Message({
+      chat: chatId,
+      sender: userId,
+      type: messageType,
+      text: text || "",
+      content: contentUrl,
+      contentPublicId,
+      duration: duration ? Number(duration) : undefined,
+      replyTo: repliedMessage?._id || null,
+    });
+
+    await message.save();
+    chat.lastMessage = message._id as any;
+    chat.lastMessageAt = new Date();
+    await chat.save();
+
+    await message.populate([
+      { path: "sender", select: "name avatar" },
+      {
+        path: "replyTo",
+        populate: { path: "sender", select: "name avatar" },
+      },
+    ]);
+
+    // Emit message to chat via socket
+    if (io) {
+      io.to(`chat:${chatId}`).emit("new-message", message);
+    }
+
+    res.status(201).json(message);
+  } catch (error) {
+    console.error("❌ Error sending message:", error);
     next(error);
   }
 };

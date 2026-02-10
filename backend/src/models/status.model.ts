@@ -12,6 +12,7 @@ export interface IStatus extends Document {
   duration?: number; // seconds (only for video)
 
   viewers: mongoose.Types.ObjectId[];
+  reactions: mongoose.Types.ObjectId[];
 
   expiresAt: Date;
 
@@ -49,6 +50,13 @@ const StatusSchema = new Schema<IStatus>(
     },
 
     viewers: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
+
+    reactions: [
       {
         type: Schema.Types.ObjectId,
         ref: "User",

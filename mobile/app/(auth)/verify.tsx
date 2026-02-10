@@ -225,7 +225,7 @@ const VerifyAccountScreen = () => {
             {/* BACK */}
             <Pressable
               style={{ marginTop: 20, alignItems: "center" }}
-              onPress={() => router.back()}
+              onPress={() => router.push("/(auth)/register")}
             >
               <Text style={{ color: colors.grey }}>Go Back</Text>
             </Pressable>

@@ -20,10 +20,11 @@ export interface Message {
   _id: string;
   chat: string;
   sender: MessageSender | string;
-  type: "text" | "image" | "video" | "voice";
+  type: "text" | "image" | "video" | "voice" | "file";
   text: string;
   content?: string;
   duration?: number;
+  replyTo?: Message | string;
   deleted?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -31,7 +32,7 @@ export interface Message {
 
 export interface ChatLastMessage {
   _id: string;
-  type: "text" | "image" | "video" | "voice";
+  type: "text" | "image" | "video" | "voice" | "file";
   text: string;
   content?: string;
   duration?: number;
@@ -67,6 +68,7 @@ export interface Status {
   mediaType?: "image" | "video";
   duration?: number;
   viewers: string[];
+  reactions: string[];
   expiresAt: string;
   createdAt: string;
   updatedAt: string;

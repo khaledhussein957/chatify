@@ -130,6 +130,38 @@ export const useViewStatus = () => {
 };
 
 // ----------------------
+// Mark a status as reacted
+// ----------------------
+export const useReactToStatus = () => {
+  const { apiWithAuth } = useApi();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (statusId: string) => {
+      const { data } = await apiWithAuth<{
+        message: string;
+        reactionsCount: number;
+        reacted: boolean;
+      }>({
+        method: "POST",
+        url: `/status/${statusId}/react`,
+      });
+      return data;
+    },
+    onSuccess: (data, statusId) => {
+      // Refresh statuses so viewer/reaction counts stay in sync
+      queryClient.invalidateQueries({ queryKey: ["statuses"] });
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) &&
+          query.queryKey[0] === "statuses" &&
+          query.queryKey.length === 2,
+      });
+    },
+  });
+};
+
+// ----------------------
 // Delete a status
 // ----------------------
 export const useDeleteStatus = () => {
@@ -166,12 +198,15 @@ export const useStatusViewers = (statusId?: string) => {
   return useQuery({
     queryKey: ["status-viewers", statusId],
     queryFn: async () => {
-      if (!statusId) return [];
-      const { data } = await apiWithAuth<{ viewers: User[] }>({
+      if (!statusId) return { viewers: [], reactions: [] };
+      const { data } = await apiWithAuth<{
+        viewers: User[];
+        reactions: string[];
+      }>({
         method: "GET",
         url: `/status/${statusId}/viewers`,
       });
-      return data.viewers;
+      return data;
     },
     enabled: !!token && !!statusId,
   });

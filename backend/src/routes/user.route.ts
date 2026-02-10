@@ -7,7 +7,6 @@ import {
   updateProfile,
   updateProfileAvatar,
   changePhoneNumber,
-  completeProfile,
 } from "../controllers/user.controller";
 
 import { protectRoute } from "../middlewares/auth.middleware";
@@ -39,13 +38,6 @@ router.put(
   protectRoute,
   validateUpdateProfile,
   updateProfile,
-);
-
-router.put(
-  "/complete-profile",
-  protectRoute,
-  validateUpdateProfile,
-  completeProfile,
 );
 
 router.put(

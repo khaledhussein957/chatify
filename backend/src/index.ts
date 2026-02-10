@@ -1,6 +1,7 @@
 import Express from "express";
 import { createServer } from "http";
 import cors from "cors";
+import axios from "axios";
 
 import ENV from "./configs/env";
 import connectDB from "./configs/db";

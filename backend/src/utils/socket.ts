@@ -52,16 +52,17 @@ export const initializeSocket = (httpServer: HttpServer) => {
     // --- Send Message ---
     socket.on(
       "send-message",
-      async (data: { chatId: string; text: string }) => {
+      async (data: { chatId: string; text: string; replyTo?: string }) => {
         try {
-          const { chatId, text } = data;
+          const { chatId, text, replyTo } = data;
           if (!text?.trim()) return;
 
-          const message = await Message.create({
+          const message: any = await Message.create({
             chat: chatId,
             sender: userId,
             type: "text",
             text: text.trim(),
+            replyTo: replyTo || undefined,
           });
 
           // Update Chat metadata
@@ -72,7 +73,13 @@ export const initializeSocket = (httpServer: HttpServer) => {
 
           if (!chat) return;
 
-          await message.populate("sender", "name avatar");
+          await message.populate([
+            { path: "sender", select: "name avatar" },
+            {
+              path: "replyTo",
+              populate: { path: "sender", select: "name avatar" },
+            },
+          ]);
           io.to(`chat:${chatId}`).emit("new-message", message);
 
           // Removed offline push notifications logic

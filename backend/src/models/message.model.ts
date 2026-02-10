@@ -11,7 +11,9 @@ export interface IMessage extends Document {
   content?: string; // Cloudinary secure_url
   contentPublicId?: string;
 
-  duration?: number; // 🔥 for voice messages (seconds)
+  duration?: number;
+
+  replyTo?: mongoose.Types.ObjectId;
 
   deleted: boolean;
   deletedAt?: Date;
@@ -54,7 +56,12 @@ const MessageSchema = new Schema<IMessage>(
     },
 
     duration: {
-      type: Number, // seconds (voice only)
+      type: Number,
+    },
+
+    replyTo: {
+      type: Schema.Types.ObjectId,
+      ref: "Message",
     },
 
     deleted: {

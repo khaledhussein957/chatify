@@ -15,7 +15,11 @@ import { Video, ResizeMode } from "expo-av";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/hooks/useTheme";
-import { useUserStatuses, useViewStatus } from "@/hooks/useStatus";
+import {
+  useUserStatuses,
+  useViewStatus,
+  useReactToStatus,
+} from "@/hooks/useStatus";
 import { useAuthStore } from "@/store/auth";
 
 const { width } = Dimensions.get("window");
@@ -30,6 +34,7 @@ const ViewStatusScreen = () => {
 
   const { data: statuses, isLoading } = useUserStatuses(userId);
   const { mutate: markViewed } = useViewStatus();
+  const { mutate: toggleReaction } = useReactToStatus();
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const videoRef = useRef<Video | null>(null);
@@ -49,12 +54,15 @@ const ViewStatusScreen = () => {
 
   // Mark as viewed when current status changes
   useEffect(() => {
-    if (currentStatus && currentUser?._id) {
-      if (!currentStatus.viewers.includes(currentUser._id)) {
-        markViewed(currentStatus._id);
-      }
+    if (
+      currentStatus &&
+      currentUser?._id &&
+      currentStatus.user._id !== currentUser._id &&
+      !currentStatus.viewers.includes(currentUser._id)
+    ) {
+      markViewed(currentStatus._id);
     }
-  }, [currentStatus?._id, currentUser?._id, markViewed]);
+  }, [currentStatus?._id, currentUser?._id, markViewed, currentStatus]);
 
   // Reset video playback when status changes
   useEffect(() => {
@@ -83,6 +91,23 @@ const ViewStatusScreen = () => {
 
   const isVideo =
     !!currentStatus?.mediaUrl && currentStatus?.mediaType === "video";
+
+  const isOwner = currentStatus?.user?._id === currentUser?._id;
+
+  const viewersCount =
+    isOwner && currentStatus && currentUser?._id
+      ? currentStatus.viewers.filter(
+          (viewer) => viewer.toString() !== currentUser._id,
+        ).length
+      : 0;
+
+  const hasReacted = currentStatus?.reactions?.includes(currentUser?._id || "");
+
+  const handleReact = () => {
+    if (currentStatus && !isOwner) {
+      toggleReaction(currentStatus._id);
+    }
+  };
 
   return (
     <SafeAreaView
@@ -191,19 +216,54 @@ const ViewStatusScreen = () => {
                     </Text>
                   </View>
 
-                  <View
-                    style={[
-                      styles.viewersBadge,
-                      { backgroundColor: colors.surfaceLight },
-                    ]}
-                  >
-                    <Ionicons name="eye" size={14} color={colors.foreground} />
-                    <Text
-                      style={[styles.viewersText, { color: colors.foreground }]}
+                  {isOwner && viewersCount > 0 && (
+                    <View
+                      style={[
+                        styles.viewersBadge,
+                        { backgroundColor: colors.surfaceLight },
+                      ]}
                     >
-                      {currentStatus.viewers.length}
-                    </Text>
-                  </View>
+                      <Pressable
+                        onPress={() =>
+                          router.push({
+                            pathname: "/screens/list_viewed_status",
+                            params: { statusId: currentStatus._id },
+                          })
+                        }
+                        style={styles.viewersPressable}
+                      >
+                        <Ionicons
+                          name="eye"
+                          size={14}
+                          color={colors.foreground}
+                        />
+                        <Text
+                          style={[
+                            styles.viewersText,
+                            { color: colors.foreground },
+                          ]}
+                        >
+                          {viewersCount}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  )}
+
+                  {!isOwner && (
+                    <TouchableOpacity
+                      style={[
+                        styles.reactButton,
+                        { backgroundColor: colors.surfaceLight },
+                      ]}
+                      onPress={handleReact}
+                    >
+                      <Ionicons
+                        name={hasReacted ? "heart" : "heart-outline"}
+                        size={24}
+                        color={hasReacted ? "#4ADE80" : colors.foreground}
+                      />
+                    </TouchableOpacity>
+                  )}
                 </View>
               ) : (
                 <View
@@ -285,19 +345,55 @@ const ViewStatusScreen = () => {
                     />
                   </TouchableOpacity>
 
-                  <View
-                    style={[
-                      styles.viewersBadge,
-                      { backgroundColor: colors.surfaceLight },
-                    ]}
-                  >
-                    <Ionicons name="eye" size={14} color={colors.foreground} />
-                    <Text
-                      style={[styles.viewersText, { color: colors.foreground }]}
+                  {/* show only own user */}
+                  {isOwner && viewersCount > 0 && (
+                    <View
+                      style={[
+                        styles.viewersBadge,
+                        { backgroundColor: colors.surfaceLight },
+                      ]}
                     >
-                      {currentStatus.viewers.length}
-                    </Text>
-                  </View>
+                      <Pressable
+                        onPress={() =>
+                          router.push({
+                            pathname: "/screens/list_viewed_status",
+                            params: { statusId: currentStatus._id },
+                          })
+                        }
+                        style={styles.viewersPressable}
+                      >
+                        <Ionicons
+                          name="eye"
+                          size={14}
+                          color={colors.foreground}
+                        />
+                        <Text
+                          style={[
+                            styles.viewersText,
+                            { color: colors.foreground },
+                          ]}
+                        >
+                          {viewersCount}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  )}
+
+                  {!isOwner && (
+                    <TouchableOpacity
+                      style={[
+                        styles.reactButton,
+                        { backgroundColor: colors.surfaceLight },
+                      ]}
+                      onPress={handleReact}
+                    >
+                      <Ionicons
+                        name={hasReacted ? "heart" : "heart-outline"}
+                        size={24}
+                        color={hasReacted ? "#4ADE80" : colors.foreground}
+                      />
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
             </>
@@ -392,6 +488,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 4,
     gap: 4,
+    justifyContent: "center",
+  },
+  viewersPressable: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
   viewersText: {
     fontSize: 12,
@@ -407,6 +509,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     zIndex: 2,
+  },
+  reactButton: {
+    position: "absolute",
+    bottom: 80,
+    right: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 3,
   },
   navArrowRight: {
     position: "absolute",

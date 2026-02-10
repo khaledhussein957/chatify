@@ -1,3 +1,5 @@
+// Reset Password Screen (UPDATED UI)
+
 import {
   View,
   Text,
@@ -18,23 +20,13 @@ import { getAuthStyles } from "@/assets/styles/auth.style";
 import { router } from "expo-router";
 import { useResetPassword, useResendResetCode } from "@/hooks/useAuth";
 import { useState } from "react";
-import { useAlert } from "@/components/AlertMessageController"; // ✅ import alert
+import { useAlert } from "@/components/AlertMessageController";
 import { useTheme } from "@/hooks/useTheme";
 
-// Joi schema for reset password
 const resetPasswordSchema = Joi.object({
-  resetCode: Joi.string().length(6).required().messages({
-    "string.empty": "Reset code is required",
-    "string.length": "Reset code must be 6 digits",
-  }),
-  newPassword: Joi.string().min(8).required().messages({
-    "string.empty": "New password is required",
-    "string.min": "Password must be at least 8 characters",
-  }),
-  confirmPassword: Joi.any().valid(Joi.ref("newPassword")).required().messages({
-    "any.only": "Passwords do not match",
-    "any.required": "Confirm password is required",
-  }),
+  resetCode: Joi.string().length(6).required(),
+  newPassword: Joi.string().min(8).required(),
+  confirmPassword: Joi.any().valid(Joi.ref("newPassword")).required(),
 });
 
 type ResetPasswordFormData = {
@@ -47,9 +39,8 @@ const ResetPasswordScreen = () => {
   const { colors, isDark } = useTheme();
   const styles = getAuthStyles(colors);
   const route = useRoute();
-  const email = (route.params as { email?: string } | undefined)?.email;
+  const email = (route.params as { email?: string })?.email;
 
-  /* HOOKS */
   const { mutateAsync: resendCode, isPending: isResending } =
     useResendResetCode();
   const { mutateAsync: resetPassword, isPending: isResetting } =
@@ -69,44 +60,18 @@ const ResetPasswordScreen = () => {
 
   const alert = useAlert();
 
-  /* RESET PASSWORD */
   const onSubmit = async (data: ResetPasswordFormData) => {
-    if (!email) {
-      alert.error("❌ Missing reset email.");
-      return;
-    }
-    try {
-      await resetPassword({
-        email,
-        resetCode: data.resetCode,
-        newPassword: data.newPassword,
-        confirmPassword: data.confirmPassword,
-      });
+    if (!email) return alert.error("Missing reset email");
 
-      alert.success("✅ Password reset successfully!");
+    try {
+      await resetPassword({ email, ...data });
+      alert.success("Password reset successfully");
       router.replace("/(auth)");
     } catch (error: any) {
-      console.error("Reset Error:", error);
-
+      console.log(error);
+      // Show error alert
       const msg =
-        error?.response?.data?.message || "❌ Failed to reset password.";
-      alert.error(msg);
-    }
-  };
-
-  /* RESEND RESET CODE */
-  const handleResendCode = async () => {
-    if (!email) {
-      alert.error("❌ Missing reset email.");
-      return;
-    }
-    try {
-      await resendCode(email);
-      alert.success("✅ Reset code sent to your email!");
-    } catch (error: any) {
-      console.error("Resend Error:", error);
-
-      const msg = error?.response?.data?.message || "❌ Failed to resend code.";
+        error?.response?.data?.message || "❌ Reset failed. Try again.";
       alert.error(msg);
     }
   };
@@ -117,100 +82,63 @@ const ResetPasswordScreen = () => {
         <KeyboardAvoidingView
           style={{ flex: 1 }}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
         >
           <ScrollView
             contentContainerStyle={{
               flexGrow: 1,
               paddingHorizontal: 24,
-              paddingBottom: 40,
               justifyContent: "center",
             }}
             keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
           >
-            {/* BRAND / TITLE */}
-            <View style={{ alignItems: "center", marginBottom: 16 }}>
-              <Ionicons
-                name="chatbubble-ellipses"
-                size={32}
-                color={colors.primary}
-              />
-              <Text
-                style={[
-                  styles.appName,
-                  { color: colors.foreground, marginTop: 8 },
-                ]}
-              >
-                Reset Password
-              </Text>
-            </View>
-
-            <Text
-              style={{ marginBottom: 12, fontSize: 16, color: colors.grey }}
-            >
-              Reset password for:{" "}
-              <Text style={{ color: colors.primary, fontWeight: "600" }}>
-                {email}
-              </Text>
-            </Text>
-
-            {/* Reset Code */}
+            {/* RESET CODE */}
             <Controller
               control={control}
               name="resetCode"
-              render={({ field: { onChange, onBlur, value } }) => (
+              render={({ field: { onChange, value } }) => (
                 <View style={styles.inputContainer}>
-                  <Text style={[styles.label, { color: colors.foreground }]}>
-                    Reset Code
-                  </Text>
+                  <Text style={styles.label}>Reset Code</Text>
                   <TextInput
                     style={[
                       styles.input,
                       {
                         backgroundColor: colors.surfaceCard,
-                        color: colors.foreground,
                         borderColor: colors.surfaceLight,
+                        color: colors.foreground,
                       },
                     ]}
+                    keyboardType="numeric"
                     placeholder="Enter reset code"
                     placeholderTextColor={colors.grey}
-                    keyboardType="numeric"
-                    onChangeText={onChange}
-                    onBlur={onBlur}
                     value={value}
+                    onChangeText={onChange}
                   />
                   {errors.resetCode && (
                     <Text style={styles.errorText}>
                       {errors.resetCode.message}
                     </Text>
                   )}
-
-                  {/* Resend Code */}
+                  {/* RESEND (UPDATED) */}
                   <Pressable
                     disabled={isResending}
-                    onPress={handleResendCode}
+                    onPress={() => resendCode(email!)}
                     style={{
-                      marginTop: 8,
                       alignSelf: "flex-end",
-                      paddingVertical: 6,
-                      paddingHorizontal: 12,
-                      backgroundColor: colors.primary,
-                      borderRadius: 8,
+                      marginTop: 6,
+                      opacity: isResending ? 0.6 : 1,
                     }}
                   >
                     {isResending ? (
-                      <ActivityIndicator
-                        color={isDark ? colors.background : colors.white}
-                      />
+                      <ActivityIndicator size="small" color={colors.primary} />
                     ) : (
                       <Text
                         style={{
-                          color: isDark ? colors.background : colors.white,
+                          color: colors.primary,
                           fontWeight: "600",
+                          fontSize: 14,
                         }}
                       >
-                        Resend Code
+                        Resend code
                       </Text>
                     )}
                   </Pressable>
@@ -218,139 +146,132 @@ const ResetPasswordScreen = () => {
               )}
             />
 
-            {/* New Password */}
+            {/* NEW PASSWORD */}
             <Controller
               control={control}
               name="newPassword"
-              render={({ field: { onChange, onBlur, value } }) => (
+              render={({ field: { onChange, value } }) => (
                 <View style={styles.inputContainer}>
-                  <Text style={[styles.label, { color: colors.foreground }]}>
-                    New Password
-                  </Text>
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Text style={styles.label}>New Password</Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: colors.surfaceCard,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: colors.surfaceLight,
+                    }}
+                  >
                     <TextInput
                       style={[
                         styles.input,
                         {
                           flex: 1,
-                          backgroundColor: colors.surfaceCard,
+                          backgroundColor: "transparent",
+                          borderWidth: 0,
                           color: colors.foreground,
-                          borderColor: colors.surfaceLight,
+                          paddingRight: 44,
                         },
                       ]}
+                      secureTextEntry={!showPassword}
                       placeholder="Enter new password"
                       placeholderTextColor={colors.grey}
-                      secureTextEntry={!showPassword}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
                       value={value}
+                      onChangeText={onChange}
                     />
                     <Pressable
-                      onPress={() => setShowPassword((prev) => !prev)}
-                      style={{ marginLeft: 8 }}
+                      onPress={() => setShowPassword(!showPassword)}
+                      hitSlop={10}
+                      style={{
+                        paddingHorizontal: 12,
+                        justifyContent: "center",
+                      }}
                     >
                       <Ionicons
-                        name={showPassword ? "eye-off" : "eye"}
-                        size={22}
+                        name={showPassword ? "eye-off-outline" : "eye-outline"}
+                        size={20}
                         color={colors.grey}
                       />
                     </Pressable>
                   </View>
-                  {errors.newPassword && (
-                    <Text style={styles.errorText}>
-                      {errors.newPassword.message}
-                    </Text>
-                  )}
                 </View>
               )}
             />
 
-            {/* Confirm Password */}
+            {/* CONFIRM PASSWORD */}
             <Controller
               control={control}
               name="confirmPassword"
-              render={({ field: { onChange, onBlur, value } }) => (
+              render={({ field: { onChange, value } }) => (
                 <View style={styles.inputContainer}>
-                  <Text style={[styles.label, { color: colors.foreground }]}>
-                    Confirm Password
-                  </Text>
-                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <Text style={styles.label}>Confirm Password</Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      backgroundColor: colors.surfaceCard,
+                      borderRadius: 12,
+                      borderWidth: 1,
+                      borderColor: colors.surfaceLight,
+                    }}
+                  >
                     <TextInput
                       style={[
                         styles.input,
                         {
                           flex: 1,
-                          backgroundColor: colors.surfaceCard,
+                          backgroundColor: "transparent",
+                          borderWidth: 0,
                           color: colors.foreground,
-                          borderColor: colors.surfaceLight,
+                          paddingRight: 44,
                         },
                       ]}
+                      secureTextEntry={!showConfirmPassword}
                       placeholder="Confirm new password"
                       placeholderTextColor={colors.grey}
-                      secureTextEntry={!showConfirmPassword}
-                      onChangeText={onChange}
-                      onBlur={onBlur}
                       value={value}
+                      onChangeText={onChange}
                     />
                     <Pressable
-                      onPress={() => setShowConfirmPassword((prev) => !prev)}
-                      style={{ marginLeft: 8 }}
+                      onPress={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                      hitSlop={10}
+                      style={{
+                        paddingHorizontal: 12,
+                        justifyContent: "center",
+                      }}
                     >
                       <Ionicons
-                        name={showConfirmPassword ? "eye-off" : "eye"}
-                        size={22}
+                        name={
+                          showConfirmPassword
+                            ? "eye-off-outline"
+                            : "eye-outline"
+                        }
+                        size={20}
                         color={colors.grey}
                       />
                     </Pressable>
                   </View>
-                  {errors.confirmPassword && (
-                    <Text style={styles.errorText}>
-                      {errors.confirmPassword.message}
-                    </Text>
-                  )}
                 </View>
               )}
             />
 
-            {/* Reset Button */}
+            {/* SUBMIT */}
             <Pressable
-              disabled={isSubmitting || isResetting}
-              style={styles.formButton}
               onPress={handleSubmit(onSubmit)}
+              style={styles.formButton}
+              disabled={isSubmitting || isResetting}
             >
               {isSubmitting || isResetting ? (
                 <ActivityIndicator
                   color={isDark ? colors.background : colors.white}
                 />
               ) : (
-                <Text
-                  style={[
-                    styles.formButtonText,
-                    { color: isDark ? colors.background : colors.white },
-                  ]}
-                >
-                  Reset Password
-                </Text>
+                <Text style={styles.formButtonText}>Reset Password</Text>
               )}
             </Pressable>
-
-            {/* Back to Login */}
-            <View
-              style={{
-                flexDirection: "row",
-                justifyContent: "center",
-                marginTop: 16,
-              }}
-            >
-              <Text style={{ color: colors.grey }}>
-                Remember your password?{" "}
-              </Text>
-              <Pressable onPress={() => router.push("/(auth)")}>
-                <Text style={{ color: colors.primary, fontWeight: "600" }}>
-                  Login
-                </Text>
-              </Pressable>
-            </View>
           </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>

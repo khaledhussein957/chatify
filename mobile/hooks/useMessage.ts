@@ -24,13 +24,19 @@ type FileUpload = {
   name: string;
 };
 
-export const useSendMessageWithContent = () => {
+export const useSendMessage = () => {
   const { apiWithAuth } = useApi();
 
-  return async (chatId: string, text: string, file?: FileUpload) => {
+  return async (
+    chatId: string,
+    text: string,
+    file?: FileUpload,
+    replyTo?: string,
+  ) => {
     const formData = new FormData();
     formData.append("chatId", chatId);
     formData.append("text", text || "");
+    if (replyTo) formData.append("replyTo", replyTo);
 
     if (file) {
       // @ts-ignore

@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import {
   getMessages,
+  sendMessage,
   sendMessageWithContent,
   updateTextMessage,
   deleteMessage,
@@ -13,12 +14,7 @@ import { protectRoute } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-router.post(
-  "/send",
-  protectRoute,
-  upload.single("content"),
-  sendMessageWithContent,
-);
+router.post("/send", protectRoute, upload.single("content"), sendMessage);
 
 router.post("/voice", protectRoute, upload.single("content"), sendVoiceMessage);
 

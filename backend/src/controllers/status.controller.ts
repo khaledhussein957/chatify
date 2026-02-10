@@ -9,7 +9,6 @@ import Status from "../models/status.model";
 import cloudinary from "../configs/cloudinary";
 
 import { io } from "../utils/socket";
-import User from "../models/user.model";
 
 export const createStatus = async (
   req: AuthRequest,
@@ -164,6 +163,61 @@ export const viewStatus = async (
   }
 };
 
+export const reactToStatus = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.userId;
+    const { statusId } = req.params;
+
+    const status = await Status.findById(statusId);
+    if (!status) {
+      return res.status(404).json({ message: "Status not found" });
+    }
+
+    if (status.expiresAt < new Date()) {
+      return res.status(400).json({ message: "Status expired" });
+    }
+
+    if (status.user.toString() === userId) {
+      return res.status(200).json({
+        message: "Owner cannot react to own status",
+      });
+    }
+
+    const isReacted = status.reactions.some((id) => id.toString() === userId);
+
+    const updated = await Status.findByIdAndUpdate(
+      statusId,
+      isReacted
+        ? { $pull: { reactions: userId } }
+        : { $addToSet: { reactions: userId } },
+      { new: true },
+    );
+
+    if (updated && io) {
+      io.to(`user:${status.user.toString()}`).emit(
+        isReacted ? "status-unreacted" : "status-reacted",
+        {
+          statusId,
+          reactorId: userId,
+        },
+      );
+    }
+
+    res.status(200).json({
+      message: isReacted ? "Unreacted" : "Reacted",
+      reactionsCount: updated?.reactions.length ?? 0,
+      reacted: !isReacted,
+    });
+  } catch (err) {
+    console.error("❌ Error in reactToStatus:", err);
+    next(err);
+  }
+};
+
 export const getStatusViewers = async (
   req: AuthRequest,
   res: Response,
@@ -178,7 +232,9 @@ export const getStatusViewers = async (
     }).populate("viewers", "name avatar");
     if (!status) return res.status(404).json({ message: "Status not found" });
 
-    res.status(200).json({ viewers: status.viewers });
+    res
+      .status(200)
+      .json({ viewers: status.viewers, reactions: status.reactions });
   } catch (err) {
     console.error("❌ Error in getStatusViewers:", err);
     next(err);

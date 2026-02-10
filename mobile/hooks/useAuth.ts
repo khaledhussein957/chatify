@@ -107,6 +107,39 @@ export const useResendCode = () => {
   });
 };
 
+//
+export const useCompleteProfile = () => {
+  const { apiWithAuth } = useApi();
+
+  return useMutation({
+    mutationFn: async (params: Partial<{ name: string; email: string }>) => {
+      const { data } = await apiWithAuth<{ user: User; message: string }>({
+        method: "PUT",
+        url: "/auth/complete-profile",
+        data: params,
+      });
+      return data;
+    },
+  });
+};
+
+export const useCreatePassword = () => {
+  const { apiWithAuth } = useApi();
+
+  return useMutation({
+    mutationFn: async (
+      params: Partial<{ password: string; confirmPassword: string }>,
+    ) => {
+      const { data } = await apiWithAuth<{ message: string }>({
+        method: "PUT",
+        url: "/auth/create-password",
+        data: params,
+      });
+      return data;
+    },
+  });
+};
+
 // ----------------------
 // Login user
 // ----------------------

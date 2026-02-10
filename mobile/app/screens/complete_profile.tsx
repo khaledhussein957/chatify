@@ -18,7 +18,8 @@ import { useForm, Controller } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
 
 import { useAuthStore } from "@/store/auth";
-import { useCompleteProfile, useUpdateProfileAvatar } from "@/hooks/useUser";
+import { useCompleteProfile } from "@/hooks/useAuth";
+import { useUpdateProfileAvatar } from "@/hooks/useUser";
 import { getProfileStyles } from "@/assets/styles/profile.style";
 import { useTheme } from "@/hooks/useTheme";
 import { editProfileSchema } from "@/validators/editProfile.validator";
@@ -84,9 +85,8 @@ const CompleteProfile = () => {
       onSuccess: (data: any) => {
         updateUser(data.user);
         if (user && !user.name) {
-          // If this was initial setup (onboarding), go to tabs
-          if (router.canDismiss()) router.dismissAll();
-          router.replace("/(tabs)");
+          // If this was initial setup (onboarding), go to password creation
+          router.push("/screens/create_password");
         } else {
           router.back();
         }

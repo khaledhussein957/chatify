@@ -18,7 +18,7 @@ interface SocketState {
   disconnect: () => void;
   joinChat: (chatId: string) => void;
   leaveChat: (chatId: string) => void;
-  sendMessage: (chatId: string, text: string) => void;
+  sendMessage: (chatId: string, text: string, replyTo?: string) => void;
   sendActivity: (
     chatId: string,
     activity: "typing" | "recording" | "none",
@@ -163,8 +163,8 @@ export const useSocketStore = create<SocketState>((set, get) => ({
     get().socket?.emit("leave-chat", chatId);
   },
 
-  sendMessage: (chatId, text) => {
-    get().socket?.emit("send-message", { chatId, text });
+  sendMessage: (chatId, text, replyTo) => {
+    get().socket?.emit("send-message", { chatId, text, replyTo });
   },
 
   sendActivity: (chatId, activity) => {

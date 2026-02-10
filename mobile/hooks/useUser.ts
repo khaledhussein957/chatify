@@ -81,22 +81,6 @@ export const useUpdateProfile = () => {
   });
 };
 
-//
-export const useCompleteProfile = () => {
-  const { apiWithAuth } = useApi();
-
-  return useMutation({
-    mutationFn: async (params: Partial<{ name: string; email: string }>) => {
-      const { data } = await apiWithAuth<{ user: User; message: string }>({
-        method: "PUT",
-        url: "/users/complete-profile",
-        data: params,
-      });
-      return data;
-    },
-  });
-};
-
 // ----------------------
 // Update profile avatar
 // ----------------------
@@ -127,7 +111,6 @@ export const useUpdateProfileAvatar = () => {
         method: "PUT",
         url: "/users/update-profile-avatar",
         data: formData,
-        // Don't set Content-Type manually - axios will set it with proper boundary for FormData
       });
       return data;
     },

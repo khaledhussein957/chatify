@@ -19,6 +19,22 @@ export const verifyCode = Joi.object({
   deviceId: Joi.string().optional(),
 });
 
+export const updateProfileSchema = Joi.object({
+  name: Joi.string().min(2).max(100).optional(),
+  email: Joi.string().email().optional(),
+});
+
+export const createPasswordSchema = Joi.object({
+  password: Joi.string().min(8).required(),
+  confirmPassword: Joi.string()
+    .min(8)
+    .required()
+    .valid(Joi.ref("password"))
+    .messages({
+      "any.only": "Passwords must match",
+    }),
+});
+
 export const resendOtpSchema = Joi.object({
   phone: Joi.string()
     .pattern(/^[0-9]{9,15}$/)

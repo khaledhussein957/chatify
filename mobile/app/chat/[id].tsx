@@ -3,7 +3,7 @@ import MessageBubble from "@/components/MessageBubble";
 import { useCurrentUser } from "@/hooks/useAuth";
 import {
   useMessages,
-  useSendMessageWithContent,
+  useSendMessage,
   useSendVoiceMessage,
   useUpdateTextMessage,
   useDeleteMessage,
@@ -72,6 +72,7 @@ const ChatDetailScreen = () => {
     null,
   );
   const [isEditingMode, setIsEditingMode] = useState(false);
+  const [replyMessage, setReplyMessage] = useState<Message | null>(null);
 
   // Voice Recording & Playback State
   const [isRecording, setIsRecording] = useState(false);
@@ -94,7 +95,7 @@ const ChatDetailScreen = () => {
   const shouldRecordRef = useRef(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
-  const sendMessageWithFile = useSendMessageWithContent();
+  const sendMessageWithFile = useSendMessage();
   const sendVoiceMessage = useSendVoiceMessage();
   const updateTextMessage = useUpdateTextMessage();
   const deleteMessage = useDeleteMessage();
@@ -257,11 +258,7 @@ const ChatDetailScreen = () => {
       setIsEditingMode(false);
     }
     if (message.deleted) return;
-    const senderId =
-      typeof message.sender === "string" ? message.sender : message.sender._id;
-    if (senderId === currentUser?._id) {
-      setSelectedMessageId(message._id);
-    }
+    setSelectedMessageId(message._id);
   };
 
   const clearSelection = () => {
@@ -269,6 +266,15 @@ const ChatDetailScreen = () => {
     if (isEditingMode) {
       setMessageText("");
       setIsEditingMode(false);
+    }
+  };
+
+  const handleReplySelected = () => {
+    if (!selectedMessageId) return;
+    const msg = messages?.find((m) => m._id === selectedMessageId);
+    if (msg) {
+      setReplyMessage(msg);
+      clearSelection();
     }
   };
 
@@ -532,8 +538,10 @@ const ChatDetailScreen = () => {
           chatId,
           messageText.trim() || "",
           selectedFile,
+          replyMessage?._id,
         );
         setSelectedFile(null);
+        setReplyMessage(null);
         setMessageText("");
       } else if (isConnected) {
         if (isEditingMode) {
@@ -542,7 +550,8 @@ const ChatDetailScreen = () => {
         }
 
         // Send text only via socket
-        sendMessage(chatId, messageText.trim());
+        sendMessage(chatId, messageText.trim(), replyMessage?._id);
+        setReplyMessage(null);
         setMessageText("");
       } else {
         if (isEditingMode) {
@@ -552,7 +561,13 @@ const ChatDetailScreen = () => {
 
         // Fallback: Send text via HTTP if socket is disconnected
         console.log("Socket disconnected, sending via HTTP fallback...");
-        await sendMessageWithFile(chatId, messageText.trim());
+        await sendMessageWithFile(
+          chatId,
+          messageText.trim(),
+          undefined,
+          replyMessage?._id,
+        );
+        setReplyMessage(null);
         setMessageText("");
       }
 
@@ -628,12 +643,51 @@ const ChatDetailScreen = () => {
             <></>
           ) : (
             <>
-              <Pressable style={styles.iconBtn} onPress={handleEditSelected}>
-                <Ionicons name="pencil" size={20} color={colors.primary} />
-              </Pressable>
-              <Pressable style={styles.iconBtn} onPress={handleDeleteSelected}>
-                <Ionicons name="trash" size={20} color={colors.error} />
-              </Pressable>
+              {(() => {
+                const msg = messages?.find((m) => m._id === selectedMessageId);
+                const isMsgFromMe =
+                  msg &&
+                  (typeof msg.sender === "string"
+                    ? msg.sender === currentUser?._id
+                    : msg.sender._id === currentUser?._id);
+
+                return (
+                  <>
+                    {isMsgFromMe && (
+                      <Pressable
+                        style={styles.iconBtn}
+                        onPress={handleEditSelected}
+                      >
+                        <Ionicons
+                          name="pencil"
+                          size={20}
+                          color={colors.primary}
+                        />
+                      </Pressable>
+                    )}
+                    {isMsgFromMe && (
+                      <Pressable
+                        style={styles.iconBtn}
+                        onPress={handleDeleteSelected}
+                      >
+                        <Ionicons name="trash" size={20} color={colors.error} />
+                      </Pressable>
+                    )}
+                    {!isMsgFromMe && (
+                      <Pressable
+                        style={styles.iconBtn}
+                        onPress={handleReplySelected}
+                      >
+                        <Ionicons
+                          name="arrow-undo"
+                          size={20}
+                          color={colors.primary}
+                        />
+                      </Pressable>
+                    )}
+                  </>
+                );
+              })()}
             </>
           )}
         </View>
@@ -718,13 +772,47 @@ const ChatDetailScreen = () => {
             </ScrollView>
           )}
 
+          {/* Reply Preview */}
+          {replyMessage && (
+            <View
+              style={[
+                styles.replyPreview,
+                { backgroundColor: colors.surfaceCard },
+              ]}
+            >
+              <View
+                style={[styles.replyLine, { backgroundColor: colors.primary }]}
+              />
+              <View style={styles.replyContent}>
+                <Text style={[styles.replyName, { color: colors.primary }]}>
+                  {typeof replyMessage.sender === "string"
+                    ? "User"
+                    : // like "John Doe" -> "John"
+                      replyMessage.sender.name?.split(" ")[0]}
+                </Text>
+                <Text
+                  style={[styles.replyText, { color: colors.grey }]}
+                  numberOfLines={1}
+                >
+                  {replyMessage.text || "Media"}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setReplyMessage(null)}
+                style={styles.replyClose}
+              >
+                <Ionicons name="close-circle" size={20} color={colors.grey} />
+              </Pressable>
+            </View>
+          )}
+
           {/* Input */}
           <View
             style={[
               styles.inputWrapper,
               {
                 backgroundColor: colors.background,
-                borderTopColor: colors.surfaceLight,
+                borderTopColor: colors.surfaceDivider,
               },
             ]}
           >
@@ -1122,5 +1210,35 @@ const styles = StyleSheet.create({
     color: COLORS.grey,
     fontSize: 16,
     fontWeight: "600",
+  },
+
+  replyPreview: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
+    marginBottom: -1, // merge with input bar
+    marginHorizontal: 12,
+  },
+  replyLine: {
+    width: 3,
+    height: "100%",
+    borderRadius: 1.5,
+    marginRight: 10,
+  },
+  replyContent: {
+    flex: 1,
+  },
+  replyName: {
+    fontSize: 12,
+    fontWeight: "bold",
+    marginBottom: 2,
+  },
+  replyText: {
+    fontSize: 13,
+  },
+  replyClose: {
+    padding: 4,
   },
 });

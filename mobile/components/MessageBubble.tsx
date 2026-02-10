@@ -191,6 +191,72 @@ function MessageBubble({
           </Text>
         )}
 
+        {/* Reply Message Block */}
+        {message.replyTo && !message.deleted && (
+          <View
+            style={[
+              styles.replyBubble,
+              {
+                backgroundColor: isFromMe
+                  ? "rgba(255, 255, 255, 0.15)"
+                  : isDark
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(0, 0, 0, 0.05)",
+                borderColor: isFromMe
+                  ? "rgba(255, 255, 255, 0.2)"
+                  : colors.primary + "30",
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.replyIndicator,
+                {
+                  backgroundColor: isFromMe
+                    ? colors.background
+                    : colors.primary,
+                },
+              ]}
+            />
+            <View style={styles.replyBubbleContent}>
+              <Text
+                style={[
+                  styles.replyBubbleName,
+                  { color: isFromMe ? colors.background : colors.primary },
+                ]}
+              >
+                {typeof message.replyTo === "string"
+                  ? "Original message"
+                  : typeof message.replyTo.sender === "string"
+                    ? "Someone"
+                    : message.replyTo.sender.name?.split(" ")[0]}
+              </Text>
+              <Text
+                style={[
+                  styles.replyBubbleText,
+                  {
+                    color: isFromMe
+                      ? "rgba(255, 255, 255, 0.8)"
+                      : colors.foreground,
+                  },
+                ]}
+                numberOfLines={2}
+              >
+                {typeof message.replyTo === "string"
+                  ? "Click to see"
+                  : message.replyTo.text ||
+                    (message.replyTo.type === "image"
+                      ? "📷 Image"
+                      : message.replyTo.type === "video"
+                        ? "🎥 Video"
+                        : message.replyTo.type === "voice"
+                          ? "🎤 Voice message"
+                          : "📄 File")}
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Media Content */}
         {message.content && !message.deleted && (
           <>
@@ -517,5 +583,32 @@ const styles = StyleSheet.create({
   },
   voiceDuration: {
     fontSize: 10,
+  },
+
+  // Reply Bubble Styles
+  replyBubble: {
+    flexDirection: "row",
+    borderRadius: 8,
+    borderWidth: 1,
+    overflow: "hidden",
+    marginBottom: 6,
+    paddingRight: 8,
+  },
+  replyIndicator: {
+    width: 4,
+    height: "100%",
+  },
+  replyBubbleContent: {
+    flex: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+  },
+  replyBubbleName: {
+    fontSize: 11,
+    fontWeight: "bold",
+    marginBottom: 1,
+  },
+  replyBubbleText: {
+    fontSize: 12,
   },
 });
