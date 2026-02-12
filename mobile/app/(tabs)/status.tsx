@@ -170,7 +170,7 @@ const StatusScreen = () => {
                 onPress={() =>
                   myStatuses
                     ? handleOpenUserStatuses(currentUser?._id || "")
-                    : setIsCreateModalVisible(true)
+                    : setIsTypeModalVisible(true)
                 }
               />
               <Text style={[styles.sectionLabel, { color: colors.grey }]}>

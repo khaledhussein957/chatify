@@ -182,6 +182,83 @@ export const getChats = async (
   }
 };
 
+export const leaveGroupChat = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.userId;
+    const { chatId } = req.params;
+
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+    if (!chatId || !Types.ObjectId.isValid(chatId.toString()))
+      return res.status(400).json({ message: "Invalid chat ID" });
+
+    const chat = await Chat.findById(chatId);
+    if (!chat) return res.status(404).json({ message: "Chat not found" });
+
+    // Check if user is participant
+    if (!chat.participants.some((p: any) => p.toString() === userId)) {
+      return res.status(403).json({ message: "You are not part of this chat" });
+    }
+
+    // Remove user from participants
+    chat.participants = chat.participants.filter(
+      (p: any) => p.toString() !== userId,
+    );
+
+    // If user was admin → remove from admins
+    let wasAdmin = false;
+
+    if (chat.admins && chat.admins.length > 0) {
+      if (chat.admins.some((a: any) => a.toString() === userId)) {
+        wasAdmin = true;
+        chat.admins = chat.admins.filter((a: any) => a.toString() !== userId);
+      }
+    }
+
+    // 🔥 If no participants left → delete chat
+    if (chat.participants.length === 0) {
+      await Message.deleteMany({ chat: chat._id });
+      await chat.deleteOne();
+
+      if (io) {
+        io.emit("chat-deleted", { chatId });
+      }
+
+      return res.status(200).json({
+        message: "Chat deleted (last participant left)",
+      });
+    }
+
+    // 🔥 If admin left and no admins remain → transfer admin
+    if (wasAdmin && (!chat.admins || chat.admins.length === 0)) {
+      const newAdmin = chat.participants[0]; // pick first remaining user
+      chat.admins = [newAdmin];
+    }
+
+    await chat.save();
+
+    // Emit socket event
+    if (io) {
+      chat.participants.forEach((p: any) => {
+        io.to(`user:${p.toString()}`).emit("user-left-chat", {
+          chatId,
+          userId,
+          newAdmins: chat.admins,
+        });
+      });
+    }
+
+    res.status(200).json({ message: "Left group successfully" });
+  } catch (error) {
+    console.log(`Error in leave group chat: ${error}`);
+    next(error);
+  }
+};
+
 export const deleteChat = async (
   req: AuthRequest,
   res: Response,

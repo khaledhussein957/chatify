@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/lib/axios";
 import type { Message } from "@/types";
@@ -39,10 +40,12 @@ export const useSendMessage = () => {
     if (replyTo) formData.append("replyTo", replyTo);
 
     if (file) {
+      const fileUri =
+        Platform.OS === "android" ? file.uri : file.uri.replace("file://", "");
       // @ts-ignore
       formData.append("content", {
-        uri: file.uri,
-        name: file.name,
+        uri: fileUri,
+        name: file.name || "media.jpg",
         type: file.type,
       });
     }
@@ -68,10 +71,12 @@ export const useSendVoiceMessage = () => {
     formData.append("chatId", chatId);
     formData.append("duration", duration.toString());
 
+    const fileUri =
+      Platform.OS === "android" ? file.uri : file.uri.replace("file://", "");
     // @ts-ignore
     formData.append("content", {
-      uri: file.uri,
-      name: file.name,
+      uri: fileUri,
+      name: file.name || "voice.m4a",
       type: file.type,
     } as any);
 
@@ -108,6 +113,19 @@ export const useDeleteMessage = () => {
     const { data } = await apiWithAuth<{ message: string }>({
       method: "DELETE",
       url: `/messages/delete/${messageId}`,
+    });
+    return data;
+  };
+};
+
+export const useReactToMessage = () => {
+  const { apiWithAuth } = useApi();
+
+  return async (messageId: string, emoji: string) => {
+    const { data } = await apiWithAuth({
+      method: "POST",
+      url: `/messages/react/${messageId}`,
+      data: { emoji },
     });
     return data;
   };

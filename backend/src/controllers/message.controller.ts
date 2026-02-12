@@ -7,6 +7,7 @@ import path from "path";
 import fs from "fs";
 import { io } from "../utils/socket";
 import User from "../models/user.model";
+import { Types } from "mongoose";
 
 export const getMessages = async (
   req: AuthRequest,
@@ -428,6 +429,71 @@ export const sendMessage = async (
     res.status(201).json(message);
   } catch (error) {
     console.error("❌ Error sending message:", error);
+    next(error);
+  }
+};
+
+export const reactToMessage = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.userId;
+    const { messageId } = req.params;
+    const { emoji } = req.body;
+
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!emoji) return res.status(400).json({ message: "Emoji is required" });
+
+    const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ message: "Message not found" });
+
+    // Check if user is participant of the chat
+    const chat = await Chat.findOne({
+      _id: message.chat,
+      participants: userId,
+    });
+    if (!chat) return res.status(403).json({ message: "Unauthorized" });
+
+    const reactionIndex = message.reactions.findIndex((r) => r.emoji === emoji);
+
+    if (reactionIndex > -1) {
+      const userIndex = message.reactions[reactionIndex].users.findIndex(
+        (u) => u.toString() === userId,
+      );
+
+      if (userIndex > -1) {
+        // Remove reaction
+        message.reactions[reactionIndex].users.splice(userIndex, 1);
+        if (message.reactions[reactionIndex].users.length === 0) {
+          message.reactions.splice(reactionIndex, 1);
+        }
+      } else {
+        // Add user to existing emoji reaction
+        message.reactions[reactionIndex].users.push(new Types.ObjectId(userId));
+      }
+    } else {
+      // Add new emoji reaction
+      message.reactions.push({
+        emoji,
+        users: [new Types.ObjectId(userId)],
+      });
+    }
+
+    await message.save();
+
+    // Socket Emission
+    if (io) {
+      io.to(`chat:${message.chat}`).emit("message-reaction", {
+        messageId: message._id,
+        reactions: message.reactions,
+      });
+    }
+
+    res.status(200).json(message.reactions);
+  } catch (error) {
+    console.error(`❌ Error in react to message:`, error);
     next(error);
   }
 };

@@ -18,6 +18,11 @@ export interface IMessage extends Document {
   deleted: boolean;
   deletedAt?: Date;
 
+  reactions: {
+    emoji: string;
+    users: mongoose.Types.ObjectId[];
+  }[];
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -71,6 +76,12 @@ const MessageSchema = new Schema<IMessage>(
     deletedAt: {
       type: Date,
     },
+    reactions: [
+      {
+        emoji: { type: String, required: true },
+        users: [{ type: Schema.Types.ObjectId, ref: "User" }],
+      },
+    ],
   },
   { timestamps: true },
 );

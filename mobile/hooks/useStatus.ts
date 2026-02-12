@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "@/lib/axios";
 import { useAuthStore } from "@/store/auth";
@@ -68,11 +69,17 @@ export const useCreateStatus = () => {
       }
 
       if (params.media) {
+        const fileUri =
+          Platform.OS === "android"
+            ? params.media.uri
+            : params.media.uri.replace("file://", "");
+
+        // @ts-ignore
         formData.append("media", {
-          uri: params.media.uri,
+          uri: fileUri,
           type: params.media.type,
-          name: params.media.name,
-        } as any);
+          name: params.media.name || "media.jpg",
+        });
 
         if (typeof params.media.duration === "number") {
           formData.append("duration", String(params.media.duration));

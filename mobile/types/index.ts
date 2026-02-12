@@ -25,6 +25,10 @@ export interface Message {
   content?: string;
   duration?: number;
   replyTo?: Message | string;
+  reactions?: {
+    emoji: string;
+    users: string[];
+  }[];
   deleted?: boolean;
   createdAt: string;
   updatedAt: string;

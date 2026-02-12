@@ -4,6 +4,7 @@ import {
   getChats,
   getOrCreateChat,
   getOrCreateGroupChat,
+  leaveGroupChat,
   deleteChat,
 } from "../controllers/chat.controller";
 
@@ -17,5 +18,6 @@ router.post("/with/group", protectRoute, getOrCreateGroupChat);
 router.post("/with/:participantId", protectRoute, getOrCreateChat);
 
 router.delete("/:chatId", protectRoute, deleteChat);
+router.delete("/:chatId/leave", protectRoute, leaveGroupChat);
 
 export default router;

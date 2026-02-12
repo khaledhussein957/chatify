@@ -6,7 +6,11 @@ import {
   StyleSheet,
   Pressable,
   ActivityIndicator,
+  Modal,
+  TouchableOpacity,
 } from "react-native";
+import EmojiSelector, { Categories } from "react-native-emoji-selector";
+import { useReactToMessage } from "@/hooks/useMessage";
 import { format } from "date-fns";
 import { useTheme } from "@/hooks/useTheme";
 import { Image } from "expo-image";
@@ -14,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import MediaViewer from "./MediaViewer";
 import { Audio, AVPlaybackStatus } from "expo-av";
 import { useDownload, MediaType } from "@/hooks/useDownload";
+import { useAuthStore } from "@/store/auth";
 
 function MessageBubble({
   message,
@@ -39,6 +44,9 @@ function MessageBubble({
   const [isLoadingAudio, setIsLoadingAudio] = useState(false);
   const soundRef = useRef<Audio.Sound | null>(null);
   const { downloadMedia, isDownloading } = useDownload();
+  const reactToMessage = useReactToMessage();
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const currentUser = useAuthStore((state) => state.user);
 
   const handleDownload = () => {
     if (message.content) {
@@ -151,6 +159,17 @@ function MessageBubble({
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
+
+  const handleEmojiSelect = async (emoji: string) => {
+    setShowEmojiPicker(false);
+    try {
+      await reactToMessage(message._id, emoji);
+    } catch (error) {
+      console.error("Error reacting to message:", error);
+    }
+  };
+
+  const currentReactions = message.reactions || [];
 
   return (
     <View
@@ -462,7 +481,98 @@ function MessageBubble({
             {time}
           </Text>
         )}
+
+        {/* Reactions List */}
+        {currentReactions.length > 0 && !message.deleted && (
+          <View style={styles.reactionsContainer}>
+            {currentReactions.map((reaction, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.reactionBadge,
+                  {
+                    backgroundColor: reaction.users.includes(
+                      currentUser?._id || "",
+                    )
+                      ? colors.primary + "20"
+                      : isDark
+                        ? "rgba(255,255,255,0.05)"
+                        : "rgba(0,0,0,0.05)",
+                  },
+                ]}
+                onPress={() => handleEmojiSelect(reaction.emoji)}
+              >
+                <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
+                <Text
+                  style={[styles.reactionCount, { color: colors.foreground }]}
+                >
+                  {reaction.users.length}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </Pressable>
+
+      {/* Add Reaction Button for long press or overlay */}
+      {!message.deleted && (
+        <TouchableOpacity
+          onPress={() => setShowEmojiPicker(true)}
+          style={[
+            styles.addReactionBtn,
+            isFromMe ? { marginRight: 8 } : { marginLeft: 8 },
+          ]}
+        >
+          <Ionicons
+            name="happy-outline"
+            size={20}
+            color={colors.grey}
+            style={{ opacity: 0.6 }}
+          />
+        </TouchableOpacity>
+      )}
+
+      {/* Emoji Picker Modal */}
+      <Modal
+        visible={showEmojiPicker}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowEmojiPicker(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowEmojiPicker(false)}
+        >
+          <View
+            style={[
+              styles.emojiPickerContainer,
+              { backgroundColor: colors.background },
+            ]}
+          >
+            <View style={styles.emojiPickerHeader}>
+              <Text
+                style={[styles.emojiPickerTitle, { color: colors.foreground }]}
+              >
+                Add Reaction
+              </Text>
+              <TouchableOpacity onPress={() => setShowEmojiPicker(false)}>
+                <Ionicons name="close" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flex: 1 }}>
+              <EmojiSelector
+                onEmojiSelected={handleEmojiSelect}
+                columns={8}
+                showSearchBar={true}
+                showSectionTitles={true}
+                category={Categories.all}
+                theme={colors.primary}
+              />
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -610,5 +720,55 @@ const styles = StyleSheet.create({
   },
   replyBubbleText: {
     fontSize: 12,
+  },
+  reactionsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 6,
+    gap: 4,
+  },
+  reactionBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(128,128,128,0.1)",
+    gap: 4,
+  },
+  reactionEmoji: {
+    fontSize: 14,
+  },
+  reactionCount: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  addReactionBtn: {
+    alignSelf: "center",
+    padding: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  emojiPickerContainer: {
+    height: "50%",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 16,
+    overflow: "hidden",
+  },
+  emojiPickerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  emojiPickerTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
   },
 });

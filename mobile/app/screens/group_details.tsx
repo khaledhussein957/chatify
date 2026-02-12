@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useChats, useDeleteChat } from "@/hooks/useChat";
+import { useChats, useDeleteChat, useLeaveGroupChat } from "@/hooks/useChat";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { useAlert } from "@/components/AlertMessageController";
@@ -17,6 +17,7 @@ const GroupDetailsScreen = () => {
   const { data: currentUser } = useCurrentUser();
   const { colors } = useTheme();
   const { mutateAsync: deleteChat } = useDeleteChat();
+  const { mutateAsync: leaveGroup } = useLeaveGroupChat();
   const alert = useAlert();
 
   const chat = chats?.find((c) => c._id === chatId);
@@ -49,7 +50,7 @@ const GroupDetailsScreen = () => {
 
   const handleDeleteGroup = async () => {
     alert.confirm(
-      `Are you sure you want to delete the group "${chat.name}"? This action cannot be undone.`,
+      `Are you sure you want to delete the group "${chat.name}"? This action cannot be undone and will delete the chat for all members.`,
       async () => {
         try {
           await deleteChat(chat._id);
@@ -62,6 +63,24 @@ const GroupDetailsScreen = () => {
         }
       },
       { confirmText: "Delete", confirmColor: COLORS.error },
+    );
+  };
+
+  const handleLeaveGroup = async () => {
+    alert.confirm(
+      `Are you sure you want to leave the group "${chat.name}"?`,
+      async () => {
+        try {
+          await leaveGroup(chat._id);
+          alert.success("You have left the group");
+          router.dismissAll();
+          router.replace("/(tabs)");
+        } catch (error: any) {
+          console.error("Leave group error:", error);
+          alert.error(error.message || "Failed to leave group");
+        }
+      },
+      { confirmText: "Leave", confirmColor: COLORS.error },
     );
   };
 
@@ -145,20 +164,37 @@ const GroupDetailsScreen = () => {
           })}
         </View>
 
-        {/* Admin Actions */}
-        {isAdmin && (
-          <View style={styles.adminActions}>
+        {/* Actions Section */}
+        <View style={styles.adminActions}>
+          <Pressable
+            style={[styles.actionBtn, { borderColor: colors.error }]}
+            onPress={handleLeaveGroup}
+          >
+            <Ionicons name="log-out-outline" size={20} color={colors.error} />
+            <Text style={[styles.actionBtnText, { color: colors.error }]}>
+              Leave Group
+            </Text>
+          </Pressable>
+
+          {isAdmin && (
             <Pressable
-              style={[styles.deleteBtn, { borderColor: colors.error }]}
+              style={[
+                styles.actionBtn,
+                {
+                  borderColor: colors.error,
+                  marginTop: 12,
+                  backgroundColor: colors.error + "10",
+                },
+              ]}
               onPress={handleDeleteGroup}
             >
               <Ionicons name="trash-outline" size={20} color={colors.error} />
-              <Text style={[styles.deleteBtnText, { color: colors.error }]}>
-                Delete Group
+              <Text style={[styles.actionBtnText, { color: colors.error }]}>
+                Delete Group For Everyone
               </Text>
             </Pressable>
-          </View>
-        )}
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -255,7 +291,7 @@ const styles = StyleSheet.create({
     marginTop: 32,
     paddingHorizontal: 16,
   },
-  deleteBtn: {
+  actionBtn: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -264,7 +300,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     gap: 8,
   },
-  deleteBtnText: {
+  actionBtnText: {
     fontSize: 16,
     fontWeight: "600",
   },

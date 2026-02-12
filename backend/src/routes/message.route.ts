@@ -7,6 +7,7 @@ import {
   updateTextMessage,
   deleteMessage,
   sendVoiceMessage,
+  reactToMessage,
 } from "../controllers/message.controller";
 import upload from "../middlewares/upload";
 
@@ -23,5 +24,7 @@ router.get("/:chatId", protectRoute, getMessages);
 router.put("/update/:messageId", protectRoute, updateTextMessage);
 
 router.delete("/delete/:messageId", protectRoute, deleteMessage);
+
+router.post("/react/:messageId", protectRoute, reactToMessage);
 
 export default router;

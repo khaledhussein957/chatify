@@ -1,3 +1,4 @@
+import { Platform } from "react-native";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import type { User } from "@/types";
 import { useApi } from "@/lib/axios";
@@ -98,11 +99,15 @@ export const useUpdateProfileAvatar = () => {
       name: string;
     }) => {
       const formData = new FormData();
+      const fileUri =
+        Platform.OS === "android" ? uri : uri.replace("file://", "");
+
+      // @ts-ignore
       formData.append("avatar", {
-        uri,
+        uri: fileUri,
         type,
-        name,
-      } as any);
+        name: name || "avatar.jpg",
+      });
 
       const { data } = await apiWithAuth<{
         message: string;
@@ -110,6 +115,9 @@ export const useUpdateProfileAvatar = () => {
       }>({
         method: "PUT",
         url: "/users/update-profile-avatar",
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
         data: formData,
       });
       return data;

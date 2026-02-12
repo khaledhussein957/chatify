@@ -2,12 +2,12 @@ import axios from "axios";
 import { useCallback } from "react";
 import { useAuthStore } from "@/store/auth";
 
-const API_URL = "https://chatify-server-dd9f.onrender.com/api";
+const API_URL = "http://192.168.8.64:9000/api";
 
 // Axios instance
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 30000, // 30 seconds
+  timeout: 120000, // 120 seconds (needed for slow media uploads)
 });
 
 // Response interceptor registered once
@@ -19,8 +19,14 @@ api.interceptors.response.use(
       if (error.response.data?.message) {
         error.message = error.response.data.message;
       }
+    } else if (
+      error.code === "ECONNABORTED" ||
+      error.message.includes("timeout")
+    ) {
+      console.warn("API request timed out:", error.message);
+      error.message = "Request timed out. Please check your connection.";
     } else {
-      console.warn("API request setup error:", error.message);
+      console.warn("API network error or setup issue:", error.message);
     }
     return Promise.reject(error);
   },
