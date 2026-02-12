@@ -69,9 +69,13 @@ Utilizes Expo Router's directory-based navigation:
 
 - **Real-time:** Instant delivery with bidirectional state updates (Typing, Recording, Online/Offline).
 - **Group Chats:** Feature-rich group management with admin transfers and real-time membership notifications.
+- **Message Reactions:** Add emoji reactions to any message with real-time synchronization and toggle functionality.
+- **Media Downloads:** Save shared images, videos, and documents directly to your device with integrated progress tracking.
+- **Search System:** Efficient header-integrated search across all chats and groups for quick navigation.
 - **Voice Messages:** Record and play voice notes with integrated progress tracking and duration awareness.
-- **Message Actions:** Edit and delete support within a 5-minute window, with real-time UI synchronization.
+- **Message Actions:** Edit and delete support with placeholders for deleted content to maintain conversation flow.
 - **Rich Media:** Seamless sharing of Photos, Videos, and Documents with immersive viewers.
 - **Status:** Share temporary text/media updates with a dedicated browser-like progress interface.
+- **Reliability:** Custom network error handling and connection state awareness for a seamless experience.
 - **Custom UI System:** Premium, theme-aware alerts and modals replacing generic native dialogs for a consistent "Chatify" experience.
 - **Data Integrity:** Reliable message history with automatic metadata re-syncing during participant departures.

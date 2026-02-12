@@ -502,7 +502,11 @@ export const forgotPassword = async (req: Request, res: Response) => {
 
     await user.save();
 
-    await forgotPasswordEmail(user.name!, user.email!, resetCode);
+    try {
+      await forgotPasswordEmail(user.name!, user.email!, resetCode);
+    } catch (error) {
+      console.log(`❌ Error in forgot password email: ${error}`);
+    }
 
     res.status(200).json({ message: "✅ Reset code sent to email" });
   } catch (error) {

@@ -456,29 +456,60 @@ export const reactToMessage = async (
     });
     if (!chat) return res.status(403).json({ message: "Unauthorized" });
 
-    const reactionIndex = message.reactions.findIndex((r) => r.emoji === emoji);
+    // Find if user already has any reaction
+    let existingReactionIndex = -1;
+    let existingUserIndex = -1;
 
-    if (reactionIndex > -1) {
-      const userIndex = message.reactions[reactionIndex].users.findIndex(
+    for (let i = 0; i < message.reactions.length; i++) {
+      const uIdx = message.reactions[i].users.findIndex(
         (u) => u.toString() === userId,
       );
+      if (uIdx > -1) {
+        existingReactionIndex = i;
+        existingUserIndex = uIdx;
+        break;
+      }
+    }
 
-      if (userIndex > -1) {
-        // Remove reaction
-        message.reactions[reactionIndex].users.splice(userIndex, 1);
-        if (message.reactions[reactionIndex].users.length === 0) {
-          message.reactions.splice(reactionIndex, 1);
+    if (existingReactionIndex > -1) {
+      const existingEmoji = message.reactions[existingReactionIndex].emoji;
+
+      // Remove existing reaction
+      message.reactions[existingReactionIndex].users.splice(
+        existingUserIndex,
+        1,
+      );
+      if (message.reactions[existingReactionIndex].users.length === 0) {
+        message.reactions.splice(existingReactionIndex, 1);
+      }
+
+      // If clicking DIFFERENT emoji, add it. If clicking SAME emoji, we just unreacted.
+      if (existingEmoji !== emoji) {
+        const newReactionIndex = message.reactions.findIndex(
+          (r) => r.emoji === emoji,
+        );
+        if (newReactionIndex > -1) {
+          message.reactions[newReactionIndex].users.push(
+            new Types.ObjectId(userId),
+          );
+        } else {
+          message.reactions.push({
+            emoji,
+            users: [new Types.ObjectId(userId)],
+          });
         }
-      } else {
-        // Add user to existing emoji reaction
-        message.reactions[reactionIndex].users.push(new Types.ObjectId(userId));
       }
     } else {
-      // Add new emoji reaction
-      message.reactions.push({
-        emoji,
-        users: [new Types.ObjectId(userId)],
-      });
+      // No existing reaction, add new one
+      const newIndex = message.reactions.findIndex((r) => r.emoji === emoji);
+      if (newIndex > -1) {
+        message.reactions[newIndex].users.push(new Types.ObjectId(userId));
+      } else {
+        message.reactions.push({
+          emoji,
+          users: [new Types.ObjectId(userId)],
+        });
+      }
     }
 
     await message.save();
