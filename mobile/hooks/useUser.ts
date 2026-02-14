@@ -34,7 +34,7 @@ export const useChangePhoneNumber = () => {
     mutationFn: async (params: { oldPhone: string; newPhone: string }) => {
       const { data } = await apiWithAuth<{ message: string }>({
         method: "PUT",
-        url: "/users/change-phone-number",
+        url: "/users/update-phone",
         data: params,
       });
       return data;
