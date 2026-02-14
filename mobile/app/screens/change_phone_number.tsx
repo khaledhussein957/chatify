@@ -26,7 +26,7 @@ type FormValues = {
   newPhone: string;
 };
 
-const ChangePassword = () => {
+const ChangePhoneNumber = () => {
   const { colors, isDark } = useTheme();
   const styles = getProfileStyles(colors);
   const alert = useAlert();
@@ -44,12 +44,12 @@ const ChangePassword = () => {
   const onSubmit = (values: FormValues) => {
     changePhoneNumber.mutate(values, {
       onSuccess: (data: any) => {
-        alert.success(data.message || "Password updated successfully");
+        alert.success(data.message || "Phone number updated successfully");
         router.back();
       },
       onError: (error: any) => {
         alert.error(
-          error.response?.data?.message || "Failed to update password",
+          error.response?.data?.message || "Failed to update phone number",
         );
       },
     });
@@ -82,7 +82,7 @@ const ChangePassword = () => {
           ]}
         >
           <View style={{ marginTop: 40 }}>
-            {/* Current Password */}
+            {/* Current Phone */}
             <View style={styles.inputContainer}>
               <Text style={[styles.inputLabel, { color: colors.foreground }]}>
                 Current Phone Number
@@ -115,7 +115,7 @@ const ChangePassword = () => {
               )}
             </View>
 
-            {/* New Password */}
+            {/* New Phone */}
             <View style={styles.inputContainer}>
               <Text style={[styles.inputLabel, { color: colors.foreground }]}>
                 New Phone Number
@@ -168,7 +168,7 @@ const ChangePassword = () => {
                     { color: isDark ? colors.background : colors.white },
                   ]}
                 >
-                  Update Password
+                  Update Phone Number
                 </Text>
               )}
             </Pressable>
@@ -179,4 +179,4 @@ const ChangePassword = () => {
   );
 };
 
-export default ChangePassword;
+export default ChangePhoneNumber;
