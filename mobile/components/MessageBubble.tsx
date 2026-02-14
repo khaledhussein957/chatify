@@ -466,20 +466,35 @@ function MessageBubble({
 
         {/* Time */}
         {!message.deleted && (
-          <Text
-            style={[
-              styles.time,
-              {
-                color: isFromMe
-                  ? "rgba(0,0,0,0.4)"
-                  : isDark
-                    ? "rgba(255,255,255,0.4)"
-                    : "rgba(0,0,0,0.3)",
-              },
-            ]}
-          >
-            {time}
-          </Text>
+          <>
+            <Text
+              style={[
+                styles.time,
+                {
+                  color: isFromMe
+                    ? "rgba(0,0,0,0.4)"
+                    : isDark
+                      ? "rgba(255,255,255,0.4)"
+                      : "rgba(0,0,0,0.3)",
+                },
+              ]}
+            >
+              {time}
+              {Boolean(message.isEdited) && (
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontStyle: "italic",
+                    color: isFromMe ? "rgba(0,0,0,0.6)" : colors.grey,
+                    fontWeight: "700",
+                  }}
+                >
+                  {" • edited"}
+                </Text>
+              )}
+            </Text>
+            {/* Debug Log: {console.log("DEBUG: isEdited ->", message.isEdited)} */}
+          </>
         )}
 
         {/* Reactions List */}

@@ -4,7 +4,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { Chat, Message } from "@/types";
 import { useAuthStore } from "@/store/auth";
 
-const SOCKET_URL = "https://chatify-server-dd9f.onrender.com";
+const SOCKET_URL = "http://192.168.1.183:9000";
 
 interface SocketState {
   socket: Socket | null;
@@ -150,6 +150,48 @@ export const useSocketStore = create<SocketState>((set, get) => ({
           );
         },
       );
+    });
+
+    socket.on("message-updated", ({ messageId, text, isEdited, chatId }) => {
+      const { queryClient } = get();
+      if (!queryClient) return;
+
+      // Update message history for this specific chat
+      if (chatId) {
+        queryClient.setQueryData<Message[]>(["messages", chatId], (old) => {
+          if (!old) return old;
+          return old.map((m) =>
+            m._id === messageId ? { ...m, text, isEdited } : m,
+          );
+        });
+      }
+
+      // Fallback: update all message queries just in case
+      queryClient.setQueriesData<Message[]>(
+        { queryKey: ["messages"] },
+        (old) => {
+          if (!old) return old;
+          return old.map((m) =>
+            m._id === messageId ? { ...m, text, isEdited } : m,
+          );
+        },
+      );
+
+      // Update chats list
+      queryClient.setQueryData<Chat[]>(["chats"], (old) => {
+        return old?.map((c) =>
+          c.lastMessage?._id === messageId
+            ? {
+                ...c,
+                lastMessage: {
+                  ...c.lastMessage,
+                  text,
+                  isEdited,
+                } as any,
+              }
+            : c,
+        );
+      });
     });
 
     socket.on("session-expired", () => {

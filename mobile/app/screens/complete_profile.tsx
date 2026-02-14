@@ -85,8 +85,8 @@ const CompleteProfile = () => {
       onSuccess: (data: any) => {
         updateUser(data.user);
         if (user && !user.name) {
-          // If this was initial setup (onboarding), go to password creation
-          router.push("/screens/create_password");
+          // If this was initial setup (onboarding), go to main tabs
+          router.replace("/(tabs)");
         } else {
           router.back();
         }
@@ -105,7 +105,7 @@ const CompleteProfile = () => {
       {/* Header */}
       <View style={[styles.pageHeader, { marginTop: 20 }]}>
         <Text style={[styles.pageTitle, { color: colors.foreground }]}>
-          Complete Profile
+          {user?.name ? "Edit Profile" : "Complete Profile"}
         </Text>
         <View style={{ width: 40 }} />
       </View>
@@ -236,7 +236,7 @@ const CompleteProfile = () => {
                     { color: isDark ? colors.background : colors.white },
                   ]}
                 >
-                  Save Changes
+                  {user?.name ? "Save Changes" : "Complete Profile"}
                 </Text>
               )}
             </Pressable>

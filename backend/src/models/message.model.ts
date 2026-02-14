@@ -15,6 +15,7 @@ export interface IMessage extends Document {
 
   replyTo?: mongoose.Types.ObjectId;
 
+  isEdited: boolean;
   deleted: boolean;
   deletedAt?: Date;
 
@@ -69,6 +70,10 @@ const MessageSchema = new Schema<IMessage>(
       ref: "Message",
     },
 
+    isEdited: {
+      type: Boolean,
+      default: false,
+    },
     deleted: {
       type: Boolean,
       default: false,

@@ -47,7 +47,12 @@ export const useUserRegister = () => {
   return useMutation({
     mutationKey: ["auth", "register"],
     mutationFn: async (userData: { phone: string }) => {
-      const { data } = await api<{ message: string; userId: string }>({
+      const { data } = await api<{
+        message: string;
+        userId: string;
+        userExists?: boolean;
+        user?: { name: string; email: string; avatar?: string };
+      }>({
         method: "POST",
         url: "/auth/register",
         data: userData,
@@ -117,117 +122,6 @@ export const useCompleteProfile = () => {
         method: "PUT",
         url: "/auth/complete-profile",
         data: params,
-      });
-      return data;
-    },
-  });
-};
-
-export const useCreatePassword = () => {
-  const { apiWithAuth } = useApi();
-
-  return useMutation({
-    mutationFn: async (
-      params: Partial<{ password: string; confirmPassword: string }>,
-    ) => {
-      const { data } = await apiWithAuth<{ message: string }>({
-        method: "PUT",
-        url: "/auth/create-password",
-        data: params,
-      });
-      return data;
-    },
-  });
-};
-
-// ----------------------
-// Login user
-// ----------------------
-export const useUserLogin = () => {
-  const { api } = useApi();
-  const setAuth = useAuthStore((state) => state.setAuth);
-
-  return useMutation({
-    mutationKey: ["auth", "login"],
-    mutationFn: async (credentials: {
-      email: string;
-      password: string;
-      deviceId?: string;
-    }) => {
-      const { data } = await api<{ token: string; user: User }>({
-        method: "POST",
-        url: "/auth/login",
-        data: credentials,
-      });
-      return data;
-    },
-    onSuccess: (data) => {
-      setAuth(data.user, data.token);
-    },
-  });
-};
-
-// ----------------------
-// Forgot password
-// ----------------------
-export const useForgotPassword = () => {
-  const { api } = useApi();
-
-  return useMutation({
-    mutationKey: ["auth", "forgotPassword"],
-    mutationFn: async (email: string) => {
-      const { data } = await api<{ message: string }>({
-        method: "POST",
-        url: "/auth/forgot-password",
-        data: { email },
-      });
-      return data;
-    },
-  });
-};
-
-// ----------------------
-// Resend reset code
-// ----------------------
-export const useResendResetCode = () => {
-  const { api } = useApi();
-
-  return useMutation({
-    mutationKey: ["auth", "resendCode"],
-    mutationFn: async (email: string) => {
-      const { data } = await api<{ message: string }>({
-        method: "POST",
-        url: "/auth/reset-code",
-        data: { email },
-      });
-      return data;
-    },
-  });
-};
-
-// ----------------------
-// Reset password
-// ----------------------
-export const useResetPassword = () => {
-  const { api } = useApi();
-
-  return useMutation({
-    mutationKey: ["auth", "resetPassword"],
-    mutationFn: async (params: {
-      email: string;
-      resetCode: string;
-      newPassword: string;
-      confirmPassword: string;
-    }) => {
-      const { data } = await api<{ message: string }>({
-        method: "POST",
-        url: "/auth/reset-password",
-        data: {
-          email: params.email,
-          resetCode: params.resetCode,
-          newPassword: params.newPassword,
-          confirmPassword: params.confirmPassword,
-        },
       });
       return data;
     },

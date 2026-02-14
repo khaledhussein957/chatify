@@ -53,6 +53,7 @@ const ChatItem = ({
   const hasUnread = unreadChats.has(chat._id);
 
   const displayName = chat.isGroupChat ? chat.name : participant?.name;
+  const isEdited = chat.lastMessage?.isEdited;
   const displayAvatar = chat.isGroupChat
     ? `https://ui-avatars.com/api/?name=${chat.name}&background=random`
     : participant?.avatar;
@@ -147,6 +148,7 @@ const ChatItem = ({
                           ? "Video 📹"
                           : "File 📁"
                       : "No messages yet 📝")}
+              {isEdited && " (Edited)"}
             </Text>
           )}
         </View>

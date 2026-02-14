@@ -33,14 +33,15 @@ export const getMessages = async (
       .sort({ createdAt: 1 });
 
     const formatted = messages.map((m) => {
+      const obj = m.toObject();
       if (m.deleted) {
         return {
-          ...m.toObject(),
+          ...obj,
           text: "🚫 This message was deleted",
           content: undefined,
         };
       }
-      return m;
+      return obj;
     });
 
     res.json(formatted);
@@ -195,6 +196,7 @@ export const updateTextMessage = async (
     }
 
     message.text = text;
+    message.isEdited = true;
     await message.save();
 
     // Socket Emission
@@ -202,6 +204,8 @@ export const updateTextMessage = async (
       io.to(`chat:${message.chat}`).emit("message-updated", {
         messageId: message._id,
         text: message.text,
+        isEdited: true,
+        chatId: message.chat,
       });
     }
 

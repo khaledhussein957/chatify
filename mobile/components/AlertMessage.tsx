@@ -26,7 +26,7 @@ type AlertMessageProps = {
 };
 
 const AlertMessage = forwardRef<AlertMessageHandles, AlertMessageProps>(
-  ({ onHide, duration = 5000 }, ref) => {
+  ({ onHide, duration = 10000 }, ref) => {
     const { colors } = useTheme();
     const [message, setMessage] = useState<string | null>(null);
     const [type, setType] = useState<"success" | "error" | "info">("success");

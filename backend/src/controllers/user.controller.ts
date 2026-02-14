@@ -14,12 +14,6 @@ import { isValidStrongPassword } from "../utils/validStrongPassword";
 import { io, forceDisconnectUser } from "../utils/socket";
 import { validatePhoneNumber } from "../utils/phoneValidate";
 
-import {
-  sendEmailLinkedSuccessEmail,
-  sendWelcomePasswordEmail,
-} from "../emails/emailHandler";
-import { generateStrongPassword } from "../utils/passwordGenerator";
-
 export const getUsers = async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;

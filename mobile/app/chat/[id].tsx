@@ -510,7 +510,7 @@ const ChatDetailScreen = () => {
         // Optimistic update
         queryClient.setQueryData<Message[]>(["messages", chatId], (old) => {
           return old?.map((m) =>
-            m._id === messageId ? { ...m, text: newText } : m,
+            m._id === messageId ? { ...m, text: newText, isEdited: true } : m,
           );
         });
 

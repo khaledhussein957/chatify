@@ -2,7 +2,7 @@ import axios from "axios";
 import { useCallback } from "react";
 import { useAuthStore } from "@/store/auth";
 
-const API_URL = "https://chatify-server-dd9f.onrender.com/api";
+const API_URL = "http://192.168.1.183:9000/api";
 
 // Axios instance
 const api = axios.create({

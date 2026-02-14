@@ -3,12 +3,12 @@ import {
   Text,
   Pressable,
   ActivityIndicator,
-  Image,
   TextInput,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from "react-native";
+import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useForm, Controller } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
@@ -38,7 +38,13 @@ type VerifyFormData = {
 const VerifyAccountScreen = () => {
   const { colors, isDark } = useTheme();
   const styles = getAuthStyles(colors);
-  const { phone } = useLocalSearchParams<{ phone?: string }>();
+  const { phone, exists, name, email, avatar } = useLocalSearchParams<{
+    phone?: string;
+    exists?: string;
+    name?: string;
+    email?: string;
+    avatar?: string;
+  }>();
   const alert = useAlert();
   const [deviceId, setDeviceId] = useState<string>("");
 
@@ -137,13 +143,56 @@ const VerifyAccountScreen = () => {
               />
             </View>
 
-            {/* TITLE */}
-            <Text style={[styles.title, { color: colors.primary }]}>
-              Verify Your Account
-            </Text>
-            <Text style={[styles.subtitle, { color: colors.grey }]}>
-              Enter the 6-digit code sent to {phone}
-            </Text>
+            {/* TITLE / WELCOME BACK */}
+            {exists === "true" ? (
+              <View style={{ alignItems: "center", marginBottom: 20 }}>
+                <Image
+                  source={
+                    avatar ||
+                    `https://ui-avatars.com/api/?name=${name}+&background=0D0D0F&color=22C55E`
+                  }
+                  style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: 40,
+                    marginBottom: 12,
+                    borderWidth: 2,
+                    borderColor: colors.primary,
+                  }}
+                />
+                <Text
+                  style={[
+                    styles.title,
+                    { color: colors.foreground, fontSize: 24, marginBottom: 4 },
+                  ]}
+                >
+                  Welcome back, {name?.split(" ")[0]}!
+                </Text>
+                {email ? (
+                  <Text
+                    style={{
+                      color: colors.grey,
+                      fontSize: 14,
+                      marginBottom: 12,
+                    }}
+                  >
+                    {email}
+                  </Text>
+                ) : null}
+                <Text style={[styles.subtitle, { color: colors.grey }]}>
+                  Enter the 6-digit code sent to {phone}
+                </Text>
+              </View>
+            ) : (
+              <>
+                <Text style={[styles.title, { color: colors.primary }]}>
+                  Verify Your Account
+                </Text>
+                <Text style={[styles.subtitle, { color: colors.grey }]}>
+                  Enter the 6-digit code sent to {phone}
+                </Text>
+              </>
+            )}
 
             {/* CODE INPUT */}
             <Controller
@@ -225,7 +274,7 @@ const VerifyAccountScreen = () => {
             {/* BACK */}
             <Pressable
               style={{ marginTop: 20, alignItems: "center" }}
-              onPress={() => router.push("/(auth)/register")}
+              onPress={() => router.push("/(auth)")}
             >
               <Text style={{ color: colors.grey }}>Go Back</Text>
             </Pressable>

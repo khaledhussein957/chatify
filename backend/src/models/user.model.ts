@@ -7,11 +7,6 @@ export interface IUser extends Document {
   bio?: string;
   avatar?: string;
 
-  resetCode?: string;
-  resetCodeExpiresAt?: Date;
-  resetPasswordResendCount: number;
-  resetPasswordRequestedAt?: Date;
-
   phone: string;
   verificationCode?: string;
   codeExpires?: Date;
@@ -33,15 +28,6 @@ const UserSchema: Schema = new Schema<IUser>(
     password: { type: String, required: false },
     bio: { type: String, required: false },
     avatar: { type: String, required: false },
-
-    resetCode: { type: String, required: false },
-    resetCodeExpiresAt: { type: Date, required: false },
-    resetPasswordResendCount: {
-      type: Number,
-      default: 0,
-      max: 3,
-    },
-    resetPasswordRequestedAt: Date,
 
     phone: { type: String, required: true, unique: true },
     verificationCode: { type: String, required: false },

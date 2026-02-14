@@ -30,6 +30,7 @@ export interface Message {
     users: string[];
   }[];
   deleted?: boolean;
+  isEdited?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,6 +42,7 @@ export interface ChatLastMessage {
   content?: string;
   duration?: number;
   deleted?: boolean;
+  isEdited?: boolean;
   sender: string;
   createdAt: string;
 }
