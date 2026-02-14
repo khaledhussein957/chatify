@@ -2,7 +2,6 @@ import { Router } from "express";
 
 import {
   getUsers,
-  changePassword,
   deleteAccount,
   updateProfile,
   updateProfileAvatar,
@@ -11,7 +10,6 @@ import {
 
 import { protectRoute } from "../middlewares/auth.middleware";
 import {
-  validateChangePassword,
   validateUpdateProfile,
   validateUpdatePhone,
 } from "../middlewares/userValidate.middleware";
@@ -21,12 +19,6 @@ const router = Router();
 
 router.get("/", protectRoute, getUsers);
 
-router.put(
-  "/change-password",
-  protectRoute,
-  validateChangePassword,
-  changePassword,
-);
 router.put(
   "/update-phone",
   protectRoute,

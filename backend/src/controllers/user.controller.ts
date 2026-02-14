@@ -10,7 +10,6 @@ import Status from "../models/status.model";
 
 import cloudinary from "../configs/cloudinary";
 
-import { isValidStrongPassword } from "../utils/validStrongPassword";
 import { io, forceDisconnectUser } from "../utils/socket";
 import { validatePhoneNumber } from "../utils/phoneValidate";
 
@@ -29,68 +28,6 @@ export const getUsers = async (req: AuthRequest, res: Response) => {
     res.json(users);
   } catch (error) {
     console.log(`❌ Error in get users: ${error}`);
-    return res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-export const changePassword = async (req: AuthRequest, res: Response) => {
-  try {
-    const userId = req.userId;
-    const { currentPassword, newPassword, confirmPassword } = req.body;
-
-    if (!userId) {
-      return res.status(401).json({ message: "❌ Unauthorized" });
-    }
-
-    if (!currentPassword || !newPassword || !confirmPassword)
-      return res.status(400).json({ message: "❌ All fields are required" });
-
-    if (newPassword !== confirmPassword) {
-      return res.status(400).json({ message: "❌ Passwords do not match" });
-    }
-
-    if (newPassword === currentPassword) {
-      return res.status(400).json({
-        message: "❌ New password must be different from current password",
-      });
-    }
-
-    const isStrongPassword = isValidStrongPassword(newPassword);
-    if (!isStrongPassword)
-      return res
-        .status(400)
-        .json({ message: "❌ New password is not strong enough" });
-
-    const user = await User.findById(userId);
-
-    if (!user) {
-      return res.status(404).json({ message: "❌ User not found" });
-    }
-
-    if (!user.password) {
-      return res.status(400).json({
-        message:
-          "❌ Password not set. Use a different method to update your credentials.",
-      });
-    }
-
-    const isPasswordValid = await bcrypt.compare(
-      currentPassword,
-      user.password,
-    );
-    if (!isPasswordValid) {
-      return res
-        .status(401)
-        .json({ message: "❌ Current password is incorrect" });
-    }
-
-    const hashedNewPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedNewPassword;
-    await user.save();
-
-    res.status(200).json({ message: "✅ Password changed successfully" });
-  } catch (error) {
-    console.log(`❌ Error in change password: ${error}`);
     return res.status(500).json({ message: "Internal server error" });
   }
 };

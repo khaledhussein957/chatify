@@ -132,6 +132,7 @@ const RegisterScreen = () => {
                         placeholder="Enter your phone"
                         placeholderTextColor={colors.grey}
                         autoCapitalize="none"
+                        keyboardType="number-pad"
                         onChangeText={onChange}
                         onBlur={onBlur}
                         value={value}

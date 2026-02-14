@@ -25,10 +25,10 @@ const ACCOUNT_ITEMS = [
     route: "/screens/edit_profile",
   },
   {
-    icon: "lock-closed-outline",
-    label: "Change Password",
+    icon: "call-outline",
+    label: "Change Phone Number",
     color: "#22C55E",
-    route: "/screens/change_password",
+    route: "/screens/change_phone_number",
   },
   {
     icon: "trash-outline",

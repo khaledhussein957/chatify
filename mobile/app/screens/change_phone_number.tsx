@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -15,39 +15,34 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useForm, Controller } from "react-hook-form";
 import { joiResolver } from "@hookform/resolvers/joi";
 
-import { useChangePassword } from "@/hooks/useUser";
+import { useChangePhoneNumber } from "@/hooks/useUser";
 import { getProfileStyles } from "@/assets/styles/profile.style";
 import { useAlert } from "@/components/AlertMessageController";
 import { useTheme } from "@/hooks/useTheme";
-import { changePasswordSchema } from "@/validators/changePassword.validator";
+import { changePhoneNumberSchema } from "@/validators/changePhoneNumber.validator";
 
 type FormValues = {
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
+  oldPhone: string;
+  newPhone: string;
 };
 
 const ChangePassword = () => {
   const { colors, isDark } = useTheme();
   const styles = getProfileStyles(colors);
   const alert = useAlert();
-  const changePassword = useChangePassword();
-
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const changePhoneNumber = useChangePhoneNumber();
 
   const {
     control,
     handleSubmit,
     formState: { errors, isValid },
   } = useForm<FormValues>({
-    resolver: joiResolver(changePasswordSchema),
+    resolver: joiResolver(changePhoneNumberSchema),
     mode: "onChange",
   });
 
   const onSubmit = (values: FormValues) => {
-    changePassword.mutate(values, {
+    changePhoneNumber.mutate(values, {
       onSuccess: (data: any) => {
         alert.success(data.message || "Password updated successfully");
         router.back();
@@ -71,7 +66,7 @@ const ChangePassword = () => {
           <Ionicons name="arrow-back" size={24} color={colors.primary} />
         </Pressable>
         <Text style={[styles.pageTitle, { color: colors.foreground }]}>
-          Change Password
+          Change Phone Number
         </Text>
         <View style={{ width: 40 }} />
       </View>
@@ -90,11 +85,11 @@ const ChangePassword = () => {
             {/* Current Password */}
             <View style={styles.inputContainer}>
               <Text style={[styles.inputLabel, { color: colors.foreground }]}>
-                Current Password
+                Current Phone Number
               </Text>
               <Controller
                 control={control}
-                name="currentPassword"
+                name="oldPhone"
                 render={({ field: { onChange, value } }) => (
                   <View style={styles.passwordInputWrapper}>
                     <TextInput
@@ -108,44 +103,26 @@ const ChangePassword = () => {
                       ]}
                       value={value}
                       onChangeText={onChange}
-                      placeholder="Enter current password"
+                      placeholder="Enter current phone number"
                       placeholderTextColor={colors.grey}
-                      secureTextEntry={!showCurrentPassword}
+                      keyboardType="number-pad"
                     />
-                    <Pressable
-                      style={styles.eyeIcon}
-                      onPress={() =>
-                        setShowCurrentPassword(!showCurrentPassword)
-                      }
-                    >
-                      <Ionicons
-                        name={
-                          showCurrentPassword
-                            ? "eye-off-outline"
-                            : "eye-outline"
-                        }
-                        size={20}
-                        color={colors.grey}
-                      />
-                    </Pressable>
                   </View>
                 )}
               />
-              {errors.currentPassword && (
-                <Text style={styles.errorText}>
-                  {errors.currentPassword.message}
-                </Text>
+              {errors.oldPhone && (
+                <Text style={styles.errorText}>{errors.oldPhone.message}</Text>
               )}
             </View>
 
             {/* New Password */}
             <View style={styles.inputContainer}>
               <Text style={[styles.inputLabel, { color: colors.foreground }]}>
-                New Password
+                New Phone Number
               </Text>
               <Controller
                 control={control}
-                name="newPassword"
+                name="newPhone"
                 render={({ field: { onChange, value } }) => (
                   <View style={styles.passwordInputWrapper}>
                     <TextInput
@@ -159,80 +136,15 @@ const ChangePassword = () => {
                       ]}
                       value={value}
                       onChangeText={onChange}
-                      placeholder="Enter new password"
+                      placeholder="Enter new phone number"
                       placeholderTextColor={colors.grey}
-                      secureTextEntry={!showNewPassword}
+                      keyboardType="number-pad"
                     />
-                    <Pressable
-                      style={styles.eyeIcon}
-                      onPress={() => setShowNewPassword(!showNewPassword)}
-                    >
-                      <Ionicons
-                        name={
-                          showNewPassword ? "eye-off-outline" : "eye-outline"
-                        }
-                        size={20}
-                        color={colors.grey}
-                      />
-                    </Pressable>
                   </View>
                 )}
               />
-              {errors.newPassword && (
-                <Text style={styles.errorText}>
-                  {errors.newPassword.message}
-                </Text>
-              )}
-            </View>
-
-            {/* Confirm Password */}
-            <View style={styles.inputContainer}>
-              <Text style={[styles.inputLabel, { color: colors.foreground }]}>
-                Confirm New Password
-              </Text>
-              <Controller
-                control={control}
-                name="confirmPassword"
-                render={({ field: { onChange, value } }) => (
-                  <View style={styles.passwordInputWrapper}>
-                    <TextInput
-                      style={[
-                        styles.passwordInput,
-                        {
-                          backgroundColor: colors.surfaceCard,
-                          color: colors.foreground,
-                          borderColor: colors.surfaceLight,
-                        },
-                      ]}
-                      value={value}
-                      onChangeText={onChange}
-                      placeholder="Confirm new password"
-                      placeholderTextColor={colors.grey}
-                      secureTextEntry={!showConfirmPassword}
-                    />
-                    <Pressable
-                      style={styles.eyeIcon}
-                      onPress={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
-                      }
-                    >
-                      <Ionicons
-                        name={
-                          showConfirmPassword
-                            ? "eye-off-outline"
-                            : "eye-outline"
-                        }
-                        size={20}
-                        color={colors.grey}
-                      />
-                    </Pressable>
-                  </View>
-                )}
-              />
-              {errors.confirmPassword && (
-                <Text style={styles.errorText}>
-                  {errors.confirmPassword.message}
-                </Text>
+              {errors.newPhone && (
+                <Text style={styles.errorText}>{errors.newPhone.message}</Text>
               )}
             </View>
 
@@ -240,12 +152,12 @@ const ChangePassword = () => {
             <Pressable
               style={[
                 styles.saveButton,
-                (!isValid || changePassword.isPending) && { opacity: 0.7 },
+                (!isValid || changePhoneNumber.isPending) && { opacity: 0.7 },
               ]}
               onPress={handleSubmit(onSubmit)}
-              disabled={!isValid || changePassword.isPending}
+              disabled={!isValid || changePhoneNumber.isPending}
             >
-              {changePassword.isPending ? (
+              {changePhoneNumber.isPending ? (
                 <ActivityIndicator
                   color={isDark ? colors.background : colors.white}
                 />

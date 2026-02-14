@@ -25,28 +25,6 @@ export const useUsers = () => {
 };
 
 // ----------------------
-// Change password
-// ----------------------
-export const useChangePassword = () => {
-  const { apiWithAuth } = useApi();
-
-  return useMutation({
-    mutationFn: async (params: {
-      currentPassword: string;
-      newPassword: string;
-      confirmPassword: string;
-    }) => {
-      const { data } = await apiWithAuth<{ message: string }>({
-        method: "PUT",
-        url: "/users/change-password",
-        data: params,
-      });
-      return data;
-    },
-  });
-};
-
-// ----------------------
 // Change phone number
 // ----------------------
 export const useChangePhoneNumber = () => {
