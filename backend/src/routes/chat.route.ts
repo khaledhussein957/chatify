@@ -12,6 +12,7 @@ import {
 } from "../controllers/chat.controller";
 
 import { protectRoute } from "../middlewares/auth.middleware";
+import upload from "../middlewares/upload";
 
 const router = Router();
 
@@ -21,8 +22,13 @@ router.post("/with/group", protectRoute, getOrCreateGroupChat);
 router.post("/with/:participantId", protectRoute, getOrCreateChat);
 
 router.post("/:chatId/add-member", protectRoute, addMember);
-router.post("/:chatId/update-group-name", protectRoute, updateGroupName);
-router.post("/:chatId/update-group-avatar", protectRoute, updateGroupAvatar);
+router.put("/:chatId/update-group-name", protectRoute, updateGroupName);
+router.put(
+  "/:chatId/update-group-avatar",
+  protectRoute,
+  upload.single("groupImage"),
+  updateGroupAvatar,
+);
 
 router.delete("/:chatId", protectRoute, deleteChat);
 router.delete("/:chatId/leave", protectRoute, leaveGroupChat);

@@ -11,7 +11,7 @@ interface SocketState {
   isConnected: boolean;
   onlineUsers: Set<string>;
   unreadChats: Set<string>;
-  activityUsers: Map<string, Map<string, { name: string; activity: string }>>; // chatId -> Map(userId -> {name, activity})
+  activityUsers: Map<string, Map<string, { name: string; activity: string }>>;
   queryClient: QueryClient | null;
 
   connect: (token: string, queryClient: QueryClient, deviceId: string) => void;
