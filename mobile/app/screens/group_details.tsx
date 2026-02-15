@@ -14,12 +14,15 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
+import * as ImagePicker from "expo-image-picker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   useChats,
   useDeleteChat,
   useLeaveGroupChat,
   useAddMember,
+  useUpdateGroupName,
+  useUpdateGroupAvatar,
 } from "@/hooks/useChat";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useUsers } from "@/hooks/useUser";
@@ -37,10 +40,17 @@ const GroupDetailsScreen = () => {
   const { mutateAsync: deleteChat } = useDeleteChat();
   const { mutateAsync: leaveGroup } = useLeaveGroupChat();
   const { mutateAsync: addMember, isPending: isAddingMember } = useAddMember();
+  const { mutateAsync: updateGroupName, isPending: isUpdatingName } =
+    useUpdateGroupName();
+  const { mutateAsync: updateGroupAvatar, isPending: isUpdatingAvatar } =
+    useUpdateGroupAvatar();
   const alert = useAlert();
 
   const [isAddMemberModalVisible, setIsAddMemberModalVisible] =
     React.useState(false);
+  const [isEditNameModalVisible, setIsEditNameModalVisible] =
+    React.useState(false);
+  const [newName, setNewName] = React.useState("");
   const [searchQuery, setSearchQuery] = React.useState("");
 
   const chat = chats?.find((c) => c._id === chatId);
@@ -111,9 +121,50 @@ const GroupDetailsScreen = () => {
     try {
       await addMember({ chatId: chat._id, memberId });
       alert.success("Member added successfully");
+      setIsAddMemberModalVisible(false);
     } catch (error: any) {
       console.error("Add member error:", error);
       alert.error(error.response?.data?.message || "Failed to add member");
+    }
+  };
+
+  const handleUpdateName = async () => {
+    if (!newName.trim() || newName === chat.name) {
+      setIsEditNameModalVisible(false);
+      return;
+    }
+    try {
+      await updateGroupName({ chatId: chat._id, name: newName.trim() });
+      alert.success("Group name updated");
+      setIsEditNameModalVisible(false);
+    } catch (error: any) {
+      console.error("Update group name error:", error);
+      alert.error(error.response?.data?.message || "Failed to update name");
+    }
+  };
+
+  const handlePickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const asset = result.assets[0];
+      try {
+        await updateGroupAvatar({
+          chatId: chat._id,
+          uri: asset.uri,
+          type: asset.mimeType || "image/jpeg",
+          name: asset.fileName || "group-avatar.jpg",
+        });
+        alert.success("Group avatar updated");
+      } catch (error: any) {
+        console.error("Update group avatar error:", error);
+        alert.error(error.response?.data?.message || "Failed to update avatar");
+      }
     }
   };
 
@@ -157,10 +208,47 @@ const GroupDetailsScreen = () => {
       >
         {/* Group Info Section */}
         <View style={styles.infoSection}>
-          <Image source={displayAvatar} style={styles.groupAvatar} />
-          <Text style={[styles.groupName, { color: colors.foreground }]}>
-            {chat.name}
-          </Text>
+          <View style={styles.avatarWrapper}>
+            <Image
+              source={chat.groupImage || displayAvatar}
+              style={styles.groupAvatar}
+            />
+            {isAdmin && (
+              <TouchableOpacity
+                style={[
+                  styles.cameraButton,
+                  { backgroundColor: colors.primary },
+                ]}
+                onPress={handlePickImage}
+                disabled={isUpdatingAvatar}
+              >
+                {isUpdatingAvatar ? (
+                  <ActivityIndicator size="small" color={colors.background} />
+                ) : (
+                  <Ionicons name="camera" size={18} color={colors.background} />
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+          <View style={styles.nameHeader}>
+            <Text style={[styles.groupName, { color: colors.foreground }]}>
+              {chat.name}
+            </Text>
+            {isAdmin && (
+              <TouchableOpacity
+                onPress={() => {
+                  setNewName(chat.name!);
+                  setIsEditNameModalVisible(true);
+                }}
+              >
+                <Ionicons
+                  name="create-outline"
+                  size={20}
+                  color={colors.primary}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
           <Text style={[styles.memberCount, { color: colors.grey }]}>
             {participants.length}{" "}
             {participants.length === 1 ? "Member" : "Members"}
@@ -219,7 +307,7 @@ const GroupDetailsScreen = () => {
                   <Text
                     style={[styles.memberName, { color: colors.foreground }]}
                   >
-                    {p.name}
+                    {p.name + " " + p.isAdmin && "Admin "}
                   </Text>
                   {p.phone && (
                     <Text style={[styles.memberPhone, { color: colors.grey }]}>
@@ -382,6 +470,63 @@ const GroupDetailsScreen = () => {
           </View>
         </SafeAreaView>
       </Modal>
+
+      {/* EDIT NAME MODAL */}
+      <Modal
+        transparent
+        animationType="fade"
+        visible={isEditNameModalVisible}
+        onRequestClose={() => setIsEditNameModalVisible(false)}
+      >
+        <View style={styles.modalOverlayCentered}>
+          <View
+            style={[
+              styles.modalContentSmall,
+              { backgroundColor: colors.background },
+            ]}
+          >
+            <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+              Rename Group
+            </Text>
+            <View
+              style={[
+                styles.searchInputWrapper,
+                { backgroundColor: colors.surfaceLight, marginTop: 16 },
+              ]}
+            >
+              <TextInput
+                value={newName}
+                onChangeText={setNewName}
+                style={[styles.searchInput, { color: colors.foreground }]}
+                placeholder="Enter group name"
+                placeholderTextColor={colors.grey}
+                autoFocus
+              />
+            </View>
+            <View style={styles.modalButtonsRow}>
+              <TouchableOpacity
+                onPress={() => setIsEditNameModalVisible(false)}
+                style={styles.modalBtn}
+              >
+                <Text style={{ color: colors.grey }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleUpdateName}
+                style={[styles.modalBtn, { backgroundColor: colors.primary }]}
+                disabled={isUpdatingName}
+              >
+                {isUpdatingName ? (
+                  <ActivityIndicator size="small" color={colors.background} />
+                ) : (
+                  <Text style={{ color: colors.background, fontWeight: "600" }}>
+                    Save
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -424,12 +569,32 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
+  },
+  avatarWrapper: {
+    position: "relative",
     marginBottom: 16,
+  },
+  cameraButton: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+    borderColor: "white",
+  },
+  nameHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4,
   },
   groupName: {
     fontSize: 24,
     fontWeight: "700",
-    marginBottom: 4,
   },
   memberCount: {
     fontSize: 16,
@@ -581,6 +746,36 @@ const styles = StyleSheet.create({
   },
   userEmail: {
     fontSize: 14,
+  },
+  modalOverlayCentered: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  modalContentSmall: {
+    width: "100%",
+    borderRadius: 24,
+    padding: 20,
+    elevation: 5,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  modalBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 12,
+    minWidth: 80,
+    alignItems: "center",
+  },
+  modalButtonsRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 20,
+    gap: 12,
   },
 });
 

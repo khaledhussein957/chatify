@@ -315,6 +315,130 @@ export const addMember = async (
   }
 };
 
+export const updateGroupAvatar = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.userId;
+    const { chatId } = req.params;
+
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!chatId || !Types.ObjectId.isValid(chatId.toString()))
+      return res.status(400).json({ message: "Invalid chat ID" });
+
+    const chat = await Chat.findById(chatId);
+    if (!chat) return res.status(404).json({ message: "Chat not found" });
+
+    if (!chat.participants.some((p: any) => p.toString() === userId)) {
+      return res.status(403).json({ message: "You are not part of this chat" });
+    }
+
+    if (
+      chat.isGroupChat &&
+      !(chat.admins ?? []).some((admin: any) => admin.toString() === userId)
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Only admins can update group avatar" });
+    }
+
+    if (!req.file)
+      return res.status(400).json({ message: "❌ No file uploaded" });
+
+    if (chat.groupImage) {
+      try {
+        const publicId = chat.groupImage.split("/").pop()?.split(".")[0];
+        if (publicId) {
+          await cloudinary.uploader.destroy(publicId.toString());
+          console.log("✅ Successfully destroyed.");
+        }
+      } catch (error) {
+        console.log(`❌ Error destroying avatar: ${error}`);
+      }
+    }
+
+    // upload new avatar to cloudinary
+    const result = await cloudinary.uploader.upload(req.file.path, {
+      folder: "group-avatars",
+      width: 150,
+      height: 150,
+      crop: "fill",
+    });
+
+    chat.groupImage = result.secure_url;
+    await chat.save();
+
+    if (io) {
+      chat.participants.forEach((p: any) => {
+        io.to(`user:${p.toString()}`).emit("group-avatar-updated", {
+          chatId,
+          userId,
+          groupImage: chat.groupImage,
+        });
+      });
+    }
+
+    res.status(200).json({ message: "Group avatar updated successfully" });
+  } catch (error) {
+    console.log(`Error in update group avatar: ${error}`);
+    next(error);
+  }
+};
+
+export const updateGroupName = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.userId;
+    const { chatId } = req.params;
+
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!chatId || !Types.ObjectId.isValid(chatId.toString()))
+      return res.status(400).json({ message: "Invalid chat ID" });
+
+    const chat = await Chat.findById(chatId);
+    if (!chat) return res.status(404).json({ message: "Chat not found" });
+
+    if (!chat.participants.some((p: any) => p.toString() === userId)) {
+      return res.status(403).json({ message: "Unauthorized" });
+    }
+    if (
+      chat.isGroupChat &&
+      !(chat.admins ?? []).some((admin: any) => admin.toString() === userId)
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Only admins can update group name" });
+    }
+
+    const { name } = req.body;
+    if (!name || typeof name !== "string")
+      return res.status(400).json({ message: "Invalid name" });
+
+    chat.name = name;
+    await chat.save();
+
+    if (io) {
+      chat.participants.forEach((p: any) => {
+        io.to(`user:${p.toString()}`).emit("group-name-updated", {
+          chatId,
+          userId,
+          name,
+        });
+      });
+    }
+
+    res.status(200).json({ message: "Group name updated successfully" });
+  } catch (error) {
+    console.log(`Error in update group name: ${error}`);
+    next(error);
+  }
+};
+
 export const deleteChat = async (
   req: AuthRequest,
   res: Response,

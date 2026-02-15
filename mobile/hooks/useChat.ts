@@ -2,6 +2,7 @@ import { useApi } from "@/lib/axios";
 import type { Chat } from "@/types";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Platform } from "react-native";
 
 export const useChats = () => {
   const { apiWithAuth } = useApi();
@@ -77,6 +78,66 @@ export const useAddMember = () => {
         method: "POST",
         url: `/chats/${chatId}/add-member`,
         data: { memberId },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+    },
+  });
+};
+
+export const useUpdateGroupAvatar = () => {
+  const { apiWithAuth } = useApi();
+
+  return useMutation({
+    mutationFn: async ({
+      chatId,
+      uri,
+      type,
+      name,
+    }: {
+      chatId: string;
+      uri: string;
+      type: string;
+      name: string;
+    }) => {
+      const formData = new FormData();
+      const fileUri =
+        Platform.OS === "android" ? uri : uri.replace("file://", "");
+
+      // @ts-ignore
+      formData.append("groupImage", {
+        uri: fileUri,
+        type,
+        name: name || "groupImage.jpg",
+      });
+
+      const { data } = await apiWithAuth<{
+        message: string;
+        groupImage: string;
+      }>({
+        method: "PUT",
+        url: `/chats/${chatId}/update-group-avatar`,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        data: formData,
+      });
+      return data;
+    },
+  });
+};
+
+export const useUpdateGroupName = () => {
+  const { apiWithAuth } = useApi();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ chatId, name }: { chatId: string; name: string }) => {
+      await apiWithAuth({
+        method: "PUT",
+        url: `/chats/${chatId}/update-group-name`,
+        data: { name },
       });
     },
     onSuccess: () => {

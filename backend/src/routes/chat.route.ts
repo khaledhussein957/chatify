@@ -7,6 +7,8 @@ import {
   leaveGroupChat,
   addMember,
   deleteChat,
+  updateGroupName,
+  updateGroupAvatar,
 } from "../controllers/chat.controller";
 
 import { protectRoute } from "../middlewares/auth.middleware";
@@ -19,6 +21,8 @@ router.post("/with/group", protectRoute, getOrCreateGroupChat);
 router.post("/with/:participantId", protectRoute, getOrCreateChat);
 
 router.post("/:chatId/add-member", protectRoute, addMember);
+router.post("/:chatId/update-group-name", protectRoute, updateGroupName);
+router.post("/:chatId/update-group-avatar", protectRoute, updateGroupAvatar);
 
 router.delete("/:chatId", protectRoute, deleteChat);
 router.delete("/:chatId/leave", protectRoute, leaveGroupChat);
