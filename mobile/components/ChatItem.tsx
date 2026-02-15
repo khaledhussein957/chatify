@@ -55,7 +55,7 @@ const ChatItem = ({
   const displayName = chat.isGroupChat ? chat.name : participant?.name;
   const isEdited = chat.lastMessage?.isEdited;
   const displayAvatar = chat.isGroupChat
-    ? `https://ui-avatars.com/api/?name=${chat.name}&background=random`
+    ? chat.groupImage
     : participant?.avatar;
 
   return (

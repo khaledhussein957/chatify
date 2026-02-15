@@ -606,13 +606,21 @@ const ChatDetailScreen = () => {
         >
           {!selectedMessageId ? (
             <>
-              {avatar && <Image source={avatar} style={styles.avatar} />}
+              <Image
+                source={
+                  isGroup
+                    ? chat?.groupImage ||
+                      `https://ui-avatars.com/api/?name=${chat?.name || name}&background=random`
+                    : avatar
+                }
+                style={styles.avatar}
+              />
               <View style={styles.headerText}>
                 <Text
                   style={[styles.name, { color: colors.foreground }]}
                   numberOfLines={1}
                 >
-                  {name}
+                  {isGroup ? chat?.name || name : name}
                 </Text>
                 <Text
                   style={[

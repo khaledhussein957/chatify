@@ -68,7 +68,7 @@ Utilizes Expo Router's directory-based navigation:
 ### 💬 Messaging
 
 - **Real-time:** Instant delivery with bidirectional state updates (Typing, Recording, Online/Offline).
-- **Group Chats:** Feature-rich group management with admin transfers and real-time membership notifications.
+- **Group Chats:** Feature-rich group management with admin transfers, member removal, and real-time membership notifications.
 - **Message Reactions:** Add emoji reactions to any message with real-time synchronization and toggle functionality.
 - **Media Downloads:** Save shared images, videos, and documents directly to your device with integrated progress tracking.
 - **Search System:** Efficient header-integrated search across all chats and groups for quick navigation.

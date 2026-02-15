@@ -163,6 +163,30 @@ export const useLeaveGroupChat = () => {
   });
 };
 
+export const useRemoveMemberFromGroup = () => {
+  const { apiWithAuth } = useApi();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      chatId,
+      memberId,
+    }: {
+      chatId: string;
+      memberId: string;
+    }) => {
+      await apiWithAuth({
+        method: "DELETE",
+        url: `/chats/${chatId}/remove-member`,
+        data: { memberId },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+    },
+  });
+};
+
 export const useDeleteChat = () => {
   const { apiWithAuth } = useApi();
   const queryClient = useQueryClient();

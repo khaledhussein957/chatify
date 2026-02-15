@@ -23,6 +23,7 @@ import {
   useAddMember,
   useUpdateGroupName,
   useUpdateGroupAvatar,
+  useRemoveMemberFromGroup,
 } from "@/hooks/useChat";
 import { useCurrentUser } from "@/hooks/useAuth";
 import { useUsers } from "@/hooks/useUser";
@@ -40,6 +41,7 @@ const GroupDetailsScreen = () => {
   const { mutateAsync: deleteChat } = useDeleteChat();
   const { mutateAsync: leaveGroup } = useLeaveGroupChat();
   const { mutateAsync: addMember, isPending: isAddingMember } = useAddMember();
+  const { mutateAsync: removeMember } = useRemoveMemberFromGroup();
   const { mutateAsync: updateGroupName, isPending: isUpdatingName } =
     useUpdateGroupName();
   const { mutateAsync: updateGroupAvatar, isPending: isUpdatingAvatar } =
@@ -114,6 +116,24 @@ const GroupDetailsScreen = () => {
         }
       },
       { confirmText: "Leave", confirmColor: COLORS.error },
+    );
+  };
+
+  const handleRemoveMember = async (memberId: string, memberName: string) => {
+    alert.confirm(
+      `Are you sure you want to remove ${memberName} from the group?`,
+      async () => {
+        try {
+          await removeMember({ chatId: chat._id, memberId });
+          alert.success(`${memberName} removed from group`);
+        } catch (error: any) {
+          console.error("Remove member error:", error);
+          alert.error(
+            error.response?.data?.message || "Failed to remove member",
+          );
+        }
+      },
+      { confirmText: "Remove", confirmColor: COLORS.error },
     );
   };
 
@@ -289,6 +309,8 @@ const GroupDetailsScreen = () => {
               p.avatar ||
               `https://ui-avatars.com/api/?name=${p.name}&background=random`;
 
+            const isMe = p._id === currentUser?._id;
+
             return (
               <View
                 key={p._id || index}
@@ -307,7 +329,10 @@ const GroupDetailsScreen = () => {
                   <Text
                     style={[styles.memberName, { color: colors.foreground }]}
                   >
-                    {p.name + " " + p.isAdmin && "Admin "}
+                    {p.name}{" "}
+                    {p.isAdmin && (
+                      <Text style={{ color: colors.primary }}>(Admin)</Text>
+                    )}
                   </Text>
                   {p.phone && (
                     <Text style={[styles.memberPhone, { color: colors.grey }]}>
@@ -315,6 +340,18 @@ const GroupDetailsScreen = () => {
                     </Text>
                   )}
                 </View>
+                {isAdmin && !isMe && (
+                  <TouchableOpacity
+                    onPress={() => handleRemoveMember(p._id, p.name)}
+                    style={{ padding: 8 }}
+                  >
+                    <Ionicons
+                      name="trash-outline"
+                      size={20}
+                      color={colors.error}
+                    />
+                  </TouchableOpacity>
+                )}
               </View>
             );
           })}
