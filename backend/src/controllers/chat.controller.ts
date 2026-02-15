@@ -259,6 +259,62 @@ export const leaveGroupChat = async (
   }
 };
 
+export const addMember = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const userId = req.userId;
+    const { chatId } = req.params;
+
+    if (!userId) return res.status(401).json({ message: "Unauthorized" });
+    if (!chatId || !Types.ObjectId.isValid(chatId.toString()))
+      return res.status(400).json({ message: "Invalid chat ID" });
+
+    const chat = await Chat.findById(chatId);
+    if (!chat) return res.status(404).json({ message: "Chat not found" });
+
+    if (!chat.participants.some((p: any) => p.toString() === userId)) {
+      return res.status(403).json({ message: "You are not part of this chat" });
+    }
+
+    if (
+      chat.isGroupChat &&
+      !(chat.admins ?? []).some((admin: any) => admin.toString() === userId)
+    ) {
+      return res
+        .status(403)
+        .json({ message: "Only admins can add members to group chat" });
+    }
+
+    const { memberId } = req.body;
+    if (!memberId || !Types.ObjectId.isValid(memberId.toString()))
+      return res.status(400).json({ message: "Invalid member ID" });
+
+    const member = await User.findById(memberId);
+    if (!member) return res.status(404).json({ message: "Member not found" });
+
+    chat.participants.push(memberId);
+    await chat.save();
+
+    if (io) {
+      chat.participants.forEach((p: any) => {
+        io.to(`user:${p.toString()}`).emit("user-added-to-chat", {
+          chatId,
+          userId,
+          memberId,
+        });
+      });
+    }
+
+    res.status(200).json({ message: "Member added successfully" });
+  } catch (error) {
+    console.log(`Error in add member: ${error}`);
+    next(error);
+  }
+};
+
 export const deleteChat = async (
   req: AuthRequest,
   res: Response,

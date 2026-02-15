@@ -1,11 +1,28 @@
 import React from "react";
-import { View, Text, StyleSheet, ScrollView, Pressable } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  TextInput,
+  ActivityIndicator,
+  Modal,
+  FlatList,
+  TouchableOpacity,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useChats, useDeleteChat, useLeaveGroupChat } from "@/hooks/useChat";
+import {
+  useChats,
+  useDeleteChat,
+  useLeaveGroupChat,
+  useAddMember,
+} from "@/hooks/useChat";
 import { useCurrentUser } from "@/hooks/useAuth";
+import { useUsers } from "@/hooks/useUser";
 import { useTheme } from "@/hooks/useTheme";
 import { useAlert } from "@/components/AlertMessageController";
 import { COLORS } from "@/constants/theme";
@@ -15,10 +32,16 @@ const GroupDetailsScreen = () => {
   const { id: chatId } = useLocalSearchParams<{ id: string }>();
   const { data: chats } = useChats();
   const { data: currentUser } = useCurrentUser();
+  const { data: users, isLoading: isLoadingUsers } = useUsers();
   const { colors } = useTheme();
   const { mutateAsync: deleteChat } = useDeleteChat();
   const { mutateAsync: leaveGroup } = useLeaveGroupChat();
+  const { mutateAsync: addMember, isPending: isAddingMember } = useAddMember();
   const alert = useAlert();
+
+  const [isAddMemberModalVisible, setIsAddMemberModalVisible] =
+    React.useState(false);
+  const [searchQuery, setSearchQuery] = React.useState("");
 
   const chat = chats?.find((c) => c._id === chatId);
 
@@ -84,6 +107,34 @@ const GroupDetailsScreen = () => {
     );
   };
 
+  const handleAddMember = async (memberId: string) => {
+    try {
+      await addMember({ chatId: chat._id, memberId });
+      alert.success("Member added successfully");
+    } catch (error: any) {
+      console.error("Add member error:", error);
+      alert.error(error.response?.data?.message || "Failed to add member");
+    }
+  };
+
+  const filteredUsers =
+    users?.filter((u) => {
+      // Don't show current user or users already in the group
+      if (u._id === currentUser?._id) return false;
+      const isAlreadyInGroup = participants.some(
+        (p: any) =>
+          p.toString() === u._id || (typeof p === "object" && p._id === u._id),
+      );
+      if (isAlreadyInGroup) return false;
+
+      if (!searchQuery.trim()) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        u.name?.toLowerCase().includes(query) ||
+        u.email?.toLowerCase().includes(query)
+      );
+    }) || [];
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -121,6 +172,23 @@ const GroupDetailsScreen = () => {
           <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
             Participants
           </Text>
+          {isAdmin && (
+            <TouchableOpacity
+              onPress={() => setIsAddMemberModalVisible(true)}
+              style={styles.addParticipantBtn}
+            >
+              <Ionicons
+                name="person-add-outline"
+                size={20}
+                color={colors.primary}
+              />
+              <Text
+                style={[styles.addParticipantText, { color: colors.primary }]}
+              >
+                Add
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.membersList}>
@@ -196,6 +264,124 @@ const GroupDetailsScreen = () => {
           )}
         </View>
       </ScrollView>
+
+      {/* ADD MEMBER MODAL */}
+      <Modal
+        transparent
+        animationType="slide"
+        visible={isAddMemberModalVisible}
+        onRequestClose={() => setIsAddMemberModalVisible(false)}
+      >
+        <SafeAreaView style={styles.modalOverlay} edges={["top", "bottom"]}>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: colors.background, height: "90%" },
+            ]}
+          >
+            {/* Modal Header */}
+            <View
+              style={[
+                styles.modalHeader,
+                { borderBottomColor: colors.surfaceDivider },
+              ]}
+            >
+              <TouchableOpacity
+                onPress={() => setIsAddMemberModalVisible(false)}
+                style={styles.modalCloseBtn}
+              >
+                <Ionicons name="close" size={24} color={colors.foreground} />
+              </TouchableOpacity>
+              <Text style={[styles.modalTitle, { color: colors.foreground }]}>
+                Add Participants
+              </Text>
+              <View style={{ width: 40 }} />
+            </View>
+
+            {/* Search Bar */}
+            <View style={styles.searchContainer}>
+              <View
+                style={[
+                  styles.searchInputWrapper,
+                  { backgroundColor: colors.surfaceLight },
+                ]}
+              >
+                <Ionicons name="search" size={20} color={colors.grey} />
+                <TextInput
+                  placeholder="Search users..."
+                  placeholderTextColor={colors.grey}
+                  style={[styles.searchInput, { color: colors.foreground }]}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  autoCapitalize="none"
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery("")}>
+                    <Ionicons
+                      name="close-circle"
+                      size={20}
+                      color={colors.grey}
+                    />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {/* Users List */}
+            {isLoadingUsers ? (
+              <View style={styles.modalCentered}>
+                <ActivityIndicator size="large" color={colors.primary} />
+              </View>
+            ) : filteredUsers.length === 0 ? (
+              <View style={styles.modalCentered}>
+                <Text style={{ color: colors.grey }}>No users found</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={filteredUsers}
+                keyExtractor={(item) => item._id}
+                contentContainerStyle={styles.modalListContent}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={[
+                      styles.userItem,
+                      { borderBottomColor: colors.surfaceDivider },
+                    ]}
+                    onPress={() => handleAddMember(item._id)}
+                    disabled={isAddingMember}
+                  >
+                    <Image
+                      source={
+                        item.avatar ||
+                        `https://ui-avatars.com/api/?name=${item.name}&background=random`
+                      }
+                      style={styles.userAvatar}
+                    />
+                    <View style={styles.userInfo}>
+                      <Text
+                        style={[
+                          styles.userNameModal,
+                          { color: colors.foreground },
+                        ]}
+                      >
+                        {item.name}
+                      </Text>
+                      <Text style={[styles.userEmail, { color: colors.grey }]}>
+                        {item.phone || item.email}
+                      </Text>
+                    </View>
+                    <Ionicons
+                      name="add-circle-outline"
+                      size={24}
+                      color={colors.primary}
+                    />
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -253,6 +439,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: "transparent",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  addParticipantBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: COLORS.primary + "15",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  addParticipantText: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   sectionTitle: {
     fontSize: 18,
@@ -303,6 +505,82 @@ const styles = StyleSheet.create({
   actionBtnText: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    overflow: "hidden",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+  },
+  modalCloseBtn: {
+    width: 40,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  searchContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  searchInputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 4,
+  },
+  modalCentered: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalListContent: {
+    paddingHorizontal: 20,
+    paddingBottom: 40,
+  },
+  userItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+  },
+  userAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  userInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  userNameModal: {
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  userEmail: {
+    fontSize: 14,
   },
 });
 

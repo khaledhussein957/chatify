@@ -61,6 +61,30 @@ export const useCreateGroupChat = () => {
   });
 };
 
+export const useAddMember = () => {
+  const { apiWithAuth } = useApi();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      chatId,
+      memberId,
+    }: {
+      chatId: string;
+      memberId: string;
+    }) => {
+      await apiWithAuth({
+        method: "POST",
+        url: `/chats/${chatId}/add-member`,
+        data: { memberId },
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chats"] });
+    },
+  });
+};
+
 export const useLeaveGroupChat = () => {
   const { apiWithAuth } = useApi();
   const queryClient = useQueryClient();
