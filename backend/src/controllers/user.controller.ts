@@ -21,7 +21,7 @@ export const getUsers = async (req: AuthRequest, res: Response) => {
       return res.status(401).json({ message: "Unauthorized" });
     }
 
-    const users = await User.find({ _id: { $ne: userId } })
+    const users = await User.find({ _id: { $ne: userId }, isVerified: true })
       .select("name email avatar")
       .limit(50);
 
