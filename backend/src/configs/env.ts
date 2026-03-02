@@ -22,6 +22,9 @@ const ENV = {
   CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || "",
 
   API_URL: process.env.API_URL || "",
+
+  STREAM_API_KEY: process.env.STREAM_API_KEY || "",
+  STREAM_SECRET_KEY: process.env.STREAM_SECRET_KEY || "",
 };
 
 export default ENV;

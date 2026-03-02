@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import type { User } from "@/types";
 import { useApi } from "@/lib/axios";
 import { useAuthStore } from "@/store/auth";
+import * as Sentry from "@sentry/react-native";
 
 // ----------------------
 // Get all users
@@ -39,6 +40,11 @@ export const useChangePhoneNumber = () => {
       });
       return data;
     },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "user", action: "change-phone" },
+      });
+    },
   });
 };
 
@@ -56,6 +62,11 @@ export const useUpdateProfile = () => {
         data: params,
       });
       return data;
+    },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "user", action: "update-profile" },
+      });
     },
   });
 };
@@ -116,6 +127,11 @@ export const useDeleteAccount = () => {
         url: "/users/delete-account",
       });
       return data;
+    },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "user", action: "delete-account" },
+      });
     },
   });
 };

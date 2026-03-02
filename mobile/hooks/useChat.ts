@@ -3,6 +3,7 @@ import type { Chat } from "@/types";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Platform } from "react-native";
+import * as Sentry from "@sentry/react-native";
 
 export const useChats = () => {
   const { apiWithAuth } = useApi();
@@ -34,6 +35,11 @@ export const useGetOrCreateChat = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chats"] });
     },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "chat", action: "get-or-create" },
+      });
+    },
   });
 };
 
@@ -59,6 +65,11 @@ export const useCreateGroupChat = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chats"] });
     },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "chat", action: "create-group" },
+      });
+    },
   });
 };
 
@@ -82,6 +93,11 @@ export const useAddMember = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chats"] });
+    },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "chat", action: "add-member" },
+      });
     },
   });
 };
@@ -125,6 +141,11 @@ export const useUpdateGroupAvatar = () => {
       });
       return data;
     },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "chat", action: "update-group-avatar" },
+      });
+    },
   });
 };
 
@@ -143,6 +164,11 @@ export const useUpdateGroupName = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chats"] });
     },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "chat", action: "update-group-name" },
+      });
+    },
   });
 };
 
@@ -159,6 +185,11 @@ export const useLeaveGroupChat = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chats"] });
+    },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "chat", action: "leave-group" },
+      });
     },
   });
 };
@@ -184,6 +215,11 @@ export const useRemoveMemberFromGroup = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chats"] });
     },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "chat", action: "remove-member" },
+      });
+    },
   });
 };
 
@@ -200,6 +236,11 @@ export const useDeleteChat = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["chats"] });
+    },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "chat", action: "delete" },
+      });
     },
   });
 };

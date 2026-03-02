@@ -41,6 +41,14 @@ import { useAlert } from "@/components/AlertMessageController";
 import { useTheme } from "@/hooks/useTheme";
 import { format, isToday, isYesterday, isSameDay } from "date-fns";
 
+let useStreamVideoClient: any = null;
+try {
+  const sdk = require("@stream-io/video-react-native-sdk");
+  useStreamVideoClient = sdk.useStreamVideoClient;
+} catch (error) {
+  console.log("Stream Video SDK not available");
+}
+
 type ChatParams = {
   id: string;
   participantId: string;
@@ -582,6 +590,41 @@ const ChatDetailScreen = () => {
     }
   };
 
+  const videoClient = useStreamVideoClient?.();
+
+  const startVideoCall = async () => {
+    if (!videoClient || !currentUser) {
+      alert.error("Video calls are not supported in this environment");
+      return;
+    }
+
+    try {
+      const callId = `call_${chatId}_${Date.now()}`;
+      const call = videoClient.call("default", callId);
+
+      const members = isGroup
+        ? chat?.participants.map((p: any) => ({
+            user_id: typeof p === "string" ? p : p._id,
+          }))
+        : [{ user_id: currentUser._id }, { user_id: participantId }];
+
+      await call.getOrCreate({
+        data: {
+          members: members || [],
+          custom: {
+            chatId,
+            name: isGroup ? chat?.name || name : currentUser.name,
+          },
+        },
+      });
+
+      router.push(`/call/${callId}` as any);
+    } catch (error) {
+      console.error("Failed to start video call", error);
+      alert.error("Failed to start video call");
+    }
+  };
+
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: colors.background }]}
@@ -648,7 +691,16 @@ const ChatDetailScreen = () => {
 
         <View style={styles.headerActions}>
           {!selectedMessageId ? (
-            <></>
+            <>
+              {useStreamVideoClient && (
+                <Pressable
+                  style={[styles.iconBtn, { marginRight: 8 }]}
+                  onPress={startVideoCall}
+                >
+                  <Ionicons name="videocam" size={24} color={colors.primary} />
+                </Pressable>
+              )}
+            </>
           ) : (
             <>
               {(() => {

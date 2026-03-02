@@ -1,8 +1,11 @@
 import axios from "axios";
 import { useCallback } from "react";
+import * as Sentry from "@sentry/react-native";
 import { useAuthStore } from "@/store/auth";
 
-const API_URL = "https://chatify-server-dd9f.onrender.com/api";
+const API_URL = process.env.EXPO_PUBLIC_API_URL!;
+
+// https://chatify-server-dd9f.onrender.com/api
 
 // Axios instance
 const api = axios.create({
@@ -19,6 +22,19 @@ api.interceptors.response.use(
       if (error.response.data?.message) {
         error.message = error.response.data.message;
       }
+
+      Sentry.captureException(error, {
+        extra: {
+          status: error.response.status,
+          endpoint: error.config?.url,
+          method: error.config?.method,
+          data: error.response.data,
+        },
+        tags: {
+          area: "api",
+          endpoint: error.config?.url || "unknown",
+        },
+      });
     } else if (
       error.code === "ECONNABORTED" ||
       error.message.includes("timeout")
@@ -27,6 +43,17 @@ api.interceptors.response.use(
       error.message = "Request timed out. Please check your connection.";
     } else {
       console.warn("API network error or setup issue:", error.message);
+      Sentry.captureException(error, {
+        extra: {
+          endpoint: error.config?.url,
+          method: error.config?.method,
+          code: error.code,
+        },
+        tags: {
+          area: "api",
+          type: "network_error",
+        },
+      });
     }
     return Promise.reject(error);
   },

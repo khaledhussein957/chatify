@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 import { useQuery } from "@tanstack/react-query";
 import { useApi } from "@/lib/axios";
 import type { Message } from "@/types";
+import * as Sentry from "@sentry/react-native";
 
 export const useMessages = (chatId: string) => {
   const { apiWithAuth } = useApi();
@@ -50,16 +51,24 @@ export const useSendMessage = () => {
       });
     }
 
-    const { data } = await apiWithAuth<Message>({
-      method: "POST",
-      url: "/messages/send",
-      data: formData,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    try {
+      const { data } = await apiWithAuth<Message>({
+        method: "POST",
+        url: "/messages/send",
+        data: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
-    return data;
+      return data;
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { area: "message", action: "send" },
+        extra: { chatId, hasFile: !!file },
+      });
+      throw error;
+    }
   };
 };
 
@@ -80,16 +89,24 @@ export const useSendVoiceMessage = () => {
       type: file.type,
     } as any);
 
-    const { data } = await apiWithAuth<Message>({
-      method: "POST",
-      url: "/messages/voice",
-      data: formData,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-    });
+    try {
+      const { data } = await apiWithAuth<Message>({
+        method: "POST",
+        url: "/messages/voice",
+        data: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
-    return data;
+      return data;
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { area: "message", action: "send-voice" },
+        extra: { chatId, duration },
+      });
+      throw error;
+    }
   };
 };
 
@@ -97,12 +114,20 @@ export const useUpdateTextMessage = () => {
   const { apiWithAuth } = useApi();
 
   return async (messageId: string, text: string) => {
-    const { data } = await apiWithAuth<Message>({
-      method: "PUT",
-      url: `/messages/update/${messageId}`,
-      data: { text },
-    });
-    return data;
+    try {
+      const { data } = await apiWithAuth<Message>({
+        method: "PUT",
+        url: `/messages/update/${messageId}`,
+        data: { text },
+      });
+      return data;
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { area: "message", action: "update" },
+        extra: { messageId },
+      });
+      throw error;
+    }
   };
 };
 
@@ -110,11 +135,19 @@ export const useDeleteMessage = () => {
   const { apiWithAuth } = useApi();
 
   return async (messageId: string) => {
-    const { data } = await apiWithAuth<{ message: string }>({
-      method: "DELETE",
-      url: `/messages/delete/${messageId}`,
-    });
-    return data;
+    try {
+      const { data } = await apiWithAuth<{ message: string }>({
+        method: "DELETE",
+        url: `/messages/delete/${messageId}`,
+      });
+      return data;
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { area: "message", action: "delete" },
+        extra: { messageId },
+      });
+      throw error;
+    }
   };
 };
 
@@ -122,11 +155,19 @@ export const useReactToMessage = () => {
   const { apiWithAuth } = useApi();
 
   return async (messageId: string, emoji: string) => {
-    const { data } = await apiWithAuth({
-      method: "POST",
-      url: `/messages/react/${messageId}`,
-      data: { emoji },
-    });
-    return data;
+    try {
+      const { data } = await apiWithAuth({
+        method: "POST",
+        url: `/messages/react/${messageId}`,
+        data: { emoji },
+      });
+      return data;
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { area: "message", action: "react" },
+        extra: { messageId, emoji },
+      });
+      throw error;
+    }
   };
 };

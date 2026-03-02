@@ -1,7 +1,6 @@
 import Express from "express";
 import { createServer } from "http";
 import cors from "cors";
-import axios from "axios";
 
 import ENV from "./configs/env";
 import connectDB from "./configs/db";
@@ -12,6 +11,7 @@ import chatRoute from "./routes/chat.route";
 import messageRoute from "./routes/message.route";
 import userRoute from "./routes/user.route";
 import statusRoute from "./routes/status.route";
+import streamRoute from "./routes/stream.route";
 
 import { errorHandler } from "./middlewares/errorHandler.middleware";
 
@@ -45,6 +45,7 @@ app.use("/api/chats", chatRoute);
 app.use("/api/messages", messageRoute);
 app.use("/api/status", statusRoute);
 app.use("/api/users", userRoute);
+app.use("/api/stream", streamRoute);
 
 // Error Handling Middleware
 app.use(errorHandler);

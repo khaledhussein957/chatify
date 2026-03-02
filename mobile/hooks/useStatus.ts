@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useApi } from "@/lib/axios";
 import { useAuthStore } from "@/store/auth";
 import type { Status, User } from "@/types";
+import * as Sentry from "@sentry/react-native";
 
 // ----------------------
 // Get all active statuses
@@ -105,6 +106,11 @@ export const useCreateStatus = () => {
         });
       }
     },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "status", action: "create" },
+      });
+    },
   });
 };
 
@@ -190,6 +196,11 @@ export const useDeleteStatus = () => {
           Array.isArray(query.queryKey) &&
           query.queryKey[0] === "statuses" &&
           query.queryKey.length === 2,
+      });
+    },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "status", action: "delete" },
       });
     },
   });

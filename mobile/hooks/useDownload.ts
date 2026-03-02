@@ -6,6 +6,8 @@ import { useState } from "react";
 import * as Haptics from "expo-haptics";
 import { useAlert } from "@/components/AlertMessageController";
 
+import * as Sentry from "@sentry/react-native";
+
 export type MediaType = "image" | "video" | "document";
 
 export const useDownload = () => {
@@ -66,6 +68,10 @@ export const useDownload = () => {
       }
     } catch (error) {
       console.error("Download Error:", error);
+      Sentry.captureException(error, {
+        tags: { area: "download", type },
+        extra: { url },
+      });
       alert.error(
         "An error occurred while downloading the file. Please try again.",
       );

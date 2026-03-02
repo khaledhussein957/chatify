@@ -2,6 +2,7 @@ import { useApi } from "@/lib/axios";
 import { useAuthStore } from "@/store/auth";
 import { User } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as Sentry from "@sentry/react-native";
 
 // --- Auth callback (optional) ---
 export const useAuthCallback = () => {
@@ -14,6 +15,11 @@ export const useAuthCallback = () => {
         url: "/auth/callback",
       });
       return data;
+    },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "auth", action: "callback" },
+      });
     },
   });
 };
@@ -59,6 +65,11 @@ export const useUserRegister = () => {
       });
       return data;
     },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "auth", action: "register" },
+      });
+    },
   });
 };
 
@@ -90,6 +101,11 @@ export const useVerifyCode = () => {
     onSuccess: (data) => {
       setAuth(data.user, data.token);
     },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "auth", action: "verify-code" },
+      });
+    },
   });
 };
 
@@ -109,6 +125,11 @@ export const useResendCode = () => {
       });
       return data;
     },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "auth", action: "resend-code" },
+      });
+    },
   });
 };
 
@@ -124,6 +145,31 @@ export const useCompleteProfile = () => {
         data: params,
       });
       return data;
+    },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "auth", action: "complete-profile" },
+      });
+    },
+  });
+};
+
+export const useCreatePassword = () => {
+  const { apiWithAuth } = useApi();
+
+  return useMutation({
+    mutationFn: async (params: any) => {
+      const { data } = await apiWithAuth({
+        method: "POST",
+        url: "/auth/create-password",
+        data: params,
+      });
+      return data;
+    },
+    onError: (error) => {
+      Sentry.captureException(error, {
+        tags: { area: "auth", action: "create-password" },
+      });
     },
   });
 };

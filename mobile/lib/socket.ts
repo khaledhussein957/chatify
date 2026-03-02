@@ -3,8 +3,11 @@ import { io, Socket } from "socket.io-client";
 import { QueryClient } from "@tanstack/react-query";
 import { Chat, Message } from "@/types";
 import { useAuthStore } from "@/store/auth";
+import * as Sentry from "@sentry/react-native";
 
-const SOCKET_URL = "https://chatify-server-dd9f.onrender.com";
+const SOCKET_URL = process.env.EXPO_PUBLIC_API_URL!;
+
+// "https://chatify-server-dd9f.onrender.com"
 
 interface SocketState {
   socket: Socket | null;
@@ -47,9 +50,30 @@ export const useSocketStore = create<SocketState>((set, get) => ({
       set({ isConnected: true });
     });
 
-    socket.on("disconnect", () => {
-      console.log("❌ Socket disconnected");
+    socket.on("connect_error", (error) => {
+      console.error("❌ Socket connection error:", error);
+      Sentry.captureException(error, {
+        tags: { area: "socket", event: "connect_error" },
+      });
       set({ isConnected: false });
+    });
+
+    socket.on("error", (error) => {
+      console.error("❌ Socket error:", error);
+      Sentry.captureException(error, {
+        tags: { area: "socket", event: "error" },
+      });
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("❌ Socket disconnected:", reason);
+      set({ isConnected: false });
+      if (reason === "io server disconnect" || reason === "transport error") {
+        Sentry.captureMessage(`Socket disconnected: ${reason}`, {
+          level: "warning",
+          tags: { area: "socket", reason },
+        });
+      }
     });
 
     socket.on("online-users", ({ userIds }: { userIds: string[] }) => {
